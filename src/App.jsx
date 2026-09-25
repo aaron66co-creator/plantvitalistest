@@ -2764,6 +2764,12 @@ function calorieBandOnly(plan, tgt, allowGrow){
   };
   // שלב 1: אכיפת התקרות (גם על פריטים שהגיעו לכאן כבר מעבר לתקרה משלבים קודמים)
   Object.keys(plan).forEach(mk=>{ plan[mk]=(plan[mk]||[]).map(it=>{ if(!it||!it.fk) return it; const c=hardCap(it); return it.g>c+0.05?{...it,g:Math.round(c*10)/10}:it; }); });
+  // יחידות שלמות בלבד (לבקשת המשתמש: "אל תציע חלקי יחידות כמו רבע אגוז ברזיל") — אגוזים, פירות, לחם ופריטים
+  // שהמנה שלהם היא "יחידה"/"פרוסה"/"חופן": מעוגלים למספר שלם של יחידות, לפחות יחידה אחת
+  const isPiece=it=>{ const fd=fdOf(it.fk); if(!fd||fd._isRecipe) return false; const su=getServingUnit(it.fk,fd,"he"); if(!su||su.weightOnly||!su.g) return false;
+    return fd.cat==="אגוזים"||fd.cat==="פרי"||BREAD.has(it.fk)||/יחידה|פרוסה|חופן/.test(su.he||""); };
+  Object.keys(plan).forEach(mk=>{ plan[mk]=(plan[mk]||[]).map(it=>{ if(!it||!it.fk||!isPiece(it)) return it; const u=oneUnitG(it.fk,fdOf(it.fk),null); if(!u) return it;
+    const n=Math.max(1,Math.round(it.g/u)); const g=Math.round(n*u*10)/10; return Math.abs(g-it.g)>0.05?{...it,g}:it; }); });
   // שלב 2: השלמה ל-98% — רק שינוי כמות (לא הוספה/מחיקה), רק במתכונים/דגנים/קטניות/תבשילים שאינם ביחידות שלמות
   const ADJ_CATS=new Set(["דגן","קטנית","תבשיל","מרק","מאפה"]);
   const adjustable=it=>{
@@ -2859,7 +2865,7 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
     }
     if (hasGrain(its()) && !hasLeg(its())) {
       const u=used(), fams=legFams(), soyIn=its().some(it=>isSoy(it.fk));
-      const pool=["chickpeas","redLentils","whiteBeans","blackBeans","greenPeas","lupinBeansCooked","edamame","tofu"].filter(f=>FDB[f]&&!u.has(f)&&!(soyIn&&isSoy(f)));
+      const pool=["chickpeas","redLentils","whiteBeans","blackBeans","greenPeas","lupinBeansCooked","edamame"].filter(f=>FDB[f]&&!u.has(f)&&!(soyIn&&isSoy(f)));
       const fk=pool.find(f=>!fams.has(legumeFamilyOf(f)))||pool[0];
       if (fk) add(mk,fk,stdG(fk)*0.5);
     }
@@ -2901,17 +2907,17 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
   const KEYS=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD");
   const UL={selenium:400,iodine:1100,manganese:dri?.manganese?.ul||15};
   const SOURCES={
-    choline:["cauliflower","broccoli","lupinBeansCooked","edamame","mushroom","swisschard","spinach","kale","brusselsSp","quinoaCooked","chickpeas","tofu","soymilkFortified"],
+    choline:["cauliflower","broccoli","lupinBeansCooked","edamame","mushroom","swisschard","spinach","kale","brusselsSp","quinoaCooked","chickpeas","soymilkFortified"],
     vitE:["sunflowerS","almonds","hazelnuts","almondbutter","swisschard","spinach","peanutButter"],
-    calcium:["tahiniFullRaw","tofu","bokChoy","kale","soymilkFortified","swisschard","almonds","chiaseeds"],
-    selenium:["brazilNuts","mushroom","sunflowerS","chiaseeds","tofu"],
+    calcium:["tahiniFullRaw","bokChoy","kale","soymilkFortified","swisschard","almonds","chiaseeds"],
+    selenium:["brazilNuts","mushroom","sunflowerS","chiaseeds"],
     iodine:["saltIodized","wakame"],
-    iron:["lupinBeansCooked","redLentils","swisschard","spinach","pumpkinS","tofu","chickpeas","quinoaCooked","tahiniFullRaw"],
+    iron:["lupinBeansCooked","redLentils","swisschard","spinach","pumpkinS","chickpeas","quinoaCooked","tahiniFullRaw"],
     vitA:["carrot","pumpkin","sweetPotatoCooked","spinach","kale"],
     vitK:["kale","spinach","swisschard","broccoli"], vitC:["broccoli","redPepper","kiwi","orange"],
     vitB1:["sunflowerS","greenPeas","quinoaCooked"], vitB2:["mushroom","almonds","spinach"], vitB3:["mushroom","peanuts","brownRiceCooked"],
     vitB5:["mushroom","cauliflower","sunflowerS","avocado"], vitB6:["chickpeas","banana","sunflowerS"], vitB9:["redLentils","chickpeas","spinach","broccoli"],
-    zinc:["pumpkinS","lupinBeansCooked","chickpeas","tofu"], magnesium:["pumpkinS","swisschard","spinach","almonds"], potassium:["swisschard","spinach","mushroom","sweetPotatoCooked"],
+    zinc:["pumpkinS","lupinBeansCooked","chickpeas"], magnesium:["pumpkinS","swisschard","spinach","almonds"], potassium:["swisschard","spinach","mushroom","sweetPotatoCooked"],
     phosphorus:["pumpkinS","sunflowerS","lupinBeansCooked"], copper:["sunflowerS","cashews","chickpeas","mushroom"], manganese:["chickpeas","quinoaCooked","pumpkinS"],
     sodium:["saltIodized"],
   };
@@ -2937,6 +2943,7 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
       if (fd.cat==="ירק" && (mk==="breakfast" || rawVegUnits(its)>=2)) continue;
       if (fd.cat==="עלים" && mk==="breakfast") continue;
       if (isNutItem(fk) && mealHasSeed(its)) continue;
+      if (isNutItem(fk) && its.some(it=>isNutItem(it.fk)&&it.fk!==fk)) continue; // סוג אגוז אחד בלבד בארוחה
       if (isSeedItem(fk) && (mealHasNut(its)||its.some(it=>isSeedItem(it.fk)))) continue;
       if (isSoy(fk) && its.some(it=>isSoy(it.fk))) continue;
       if (SPREAD_RAW.has(fk) && !its.some(it=>isBaked(it.fk)||BREAD.has(it.fk))) continue; // ממרח רק ליד מאפה/לחם
@@ -2982,19 +2989,23 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
           const restore=sn=>Object.keys(sn).forEach(m=>{ plan[m]=sn[m]; });
           const fatPct=X=>(X.fat||0)*9/Math.max(1,X.kcal||0);
           // גם כלל השומן (≤30% מהקלוריות): תוספת מותרת רק אם אחוז השומן נשאר ≤30%, או לפחות לא עלה
-          const ulFine=()=>{ const T2=dayT(); return Object.keys(UL).every(u=>(T2[u]||0)<=UL[u]||(T2[u]||0)<=(T[u]||0)+1e-6) && (fatPct(T2)<=0.30||fatPct(T2)<=fatPct(T)+1e-6); };
+          const o63=X=>(X.omega3||0)>0?(X.omega6||0)/X.omega3:99;
+          // גם יחס אומגה 6:3 (≤5:1): תוספת מותרת רק אם היחס נשאר ≤5, או לפחות לא עלה
+          const ulFine=()=>{ const T2=dayT(); return Object.keys(UL).every(u=>(T2[u]||0)<=UL[u]||(T2[u]||0)<=(T[u]||0)+1e-6) && (fatPct(T2)<=0.30||fatPct(T2)<=fatPct(T)+1e-6) && (o63(T2)<=5||o63(T2)<=o63(T)+1e-6); };
           const ulOk=()=>true;
           // קודם: הגדלת פריט קיים
           let done=false;
           for (const mk of MAINS){ const its=plan[mk]||[]; const idx=its.findIndex(it=>it.fk===fk); if(idx<0) continue;
             const it=its[idx]; const cap=Math.min(it.g+maxAddG(fk), (fd.cat==="קטנית"||fd.cat==="פרי")?stdG(fk):stdG(fk)*3);
             if (wholeUnitStepG(fk) && fd.cat==="פרי") break;
-            const addG=Math.min(cap-it.g, gap/perG*1.05); if (addG<=0.5||!ulOk(addG)) break;
+            let addG=Math.min(cap-it.g, gap/perG*1.05); if (addG<=0.5||!ulOk(addG)) break;
+            { const pu=isNutItem(fk)?unitG(fk):null; if (pu) { if (it.g+pu>cap+0.5) break; addG=pu; } }
             if (mealKc(mk)+fd.per100.kcal*addG/100 > tgt*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38) && !(plan[mk]||[]).some(x=>x.fk!==fk&&shrinkable(x))) break;
             const sn=snap(); plan[mk][idx]={...it,g:Math.round((it.g+addG)*10)/10}; compensate(mk, fd.per100.kcal*addG/100, fk);
             if (ulFine()) done=true; else restore(sn); break; }
           if (!done && !used().has(fk)){
-            const addG=Math.max(Math.min(maxAddG(fk), gap/perG*1.05), Math.min(maxAddG(fk), stdG(fk)*0.25));
+            let addG=Math.max(Math.min(maxAddG(fk), gap/perG*1.05), Math.min(maxAddG(fk), stdG(fk)*0.25));
+            { const pu=(isNutItem(fk)||FDB[fk]?.cat==="פרי")?unitG(fk):null; if (pu) addG=pu; } // יחידה שלמה, לא חלקי-אגוז
             const mk=pickMeal(fk, fd.per100.kcal*addG/100); if(!mk) continue;
             if (!ulOk(addG)) continue;
             const sn=snap(); done=add(mk,fk,addG); if (done) { compensate(mk, fd.per100.kcal*addG/100, fk); if (!ulFine()) { restore(sn); done=false; } }
@@ -3079,6 +3090,73 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
       calorieBandOnly(plan, tgt, leanGrow);
     }
   };
+  // ── סוג אגוז אחד לארוחה (לבקשת המשתמש) ──
+  // אם בארוחה יש כמה סוגי אגוזים: משאירים את העיקרי, ומעבירים את האחרים לארוחה עיקרית אחרת בלי אגוזים ובלי
+  // זרעים; אם אין כזו — מסירים (שער-הקלוריות משלים אחר כך)
+  const nutDedupPass=()=>{
+    for (const mk of ["breakfast","lunch","dinner"]) {
+      const nuts=(plan[mk]||[]).filter(it=>fdOf(it.fk)?.cat==="אגוזים");
+      if (nuts.length<=1) continue;
+      nuts.sort((a,b)=>ingNut(b.fk,b.g).kcal-ingNut(a.fk,a.g).kcal);
+      for (const extra of nuts.slice(1)) {
+        plan[mk]=plan[mk].filter(it=>it!==extra);
+        const dest=["breakfast","lunch","dinner"].find(m=>m!==mk&&(plan[m]||[]).length&&!plan[m].some(it=>fdOf(it.fk)?.cat==="אגוזים")&&!mealHasSeed(plan[m]));
+        if (dest) plan[dest]=[...plan[dest],extra];
+      }
+    }
+  };
+  // ── טופו קשה רק בתוך מתכון (לבקשת המשתמש) ──
+  // טופו כפריט עצמאי מוחלף במתכון שמכיל טופו (שלא הופיע היום), בערך קלורי דומה; אם אין מתכון מתאים — מוסר
+  const TOFU_RAW=new Set(["tofu","tofuCalciumSet"]);
+  const tofuPass=()=>{
+    for (const mk of Object.keys(plan)) {
+      (plan[mk]||[]).forEach((it,idx)=>{
+        if (!TOFU_RAW.has(it.fk)) return;
+        const k=ingNut(it.fk,it.g).kcal, u=used();
+        const recs=shuffleArr(Object.keys(TEMP_FDB).filter(id=>TEMP_FDB[id]?._isRecipe&&(TEMP_FDB[id]._ings||[]).some(i=>TOFU_RAW.has(i.fk))&&!u.has(id)&&!blocked(id)));
+        if (recs.length) {
+          const rfk=recs[0], rfd=TEMP_FDB[rfk], sg=rfd._servingG||150, perG=(rfd.per100.kcal||1)/100;
+          plan[mk][idx]={fk:rfk,g:Math.round(Math.max(sg*0.5,Math.min(sg*1.5,k/perG))*10)/10};
+        } else plan[mk][idx]=null;
+      });
+      plan[mk]=(plan[mk]||[]).filter(Boolean);
+    }
+  };
+  // ── יחס אומגה 6:3 ≤5:1 (יעד פנימי 4.5) ──
+  // קודם מוסיפים/מגדילים מקור אומגה 3 (פשתן טחון עד 14 גר' ביום, צ'יה עד 16, אגוזי מלך עד חופן) בכבוד לכללי
+  // זרעים/אגוזים; אם אין אפשרות — מקטינים ביחידה את הפריט העשיר ביותר באומגה 6 (גרעינים/טחינה/חמאות-אגוזים)
+  const O3_SRC=[["flaxseed",14],["chiaseeds",16],["walnuts",28]];
+  const O6_HEAVY=new Set(["sunflowerS","pumpkinS","sesame","tahini","tahiniRaw","tahiniFullRaw","peanutButter","peanuts","almondbutter","almonds","hazelnuts","cashews","pistachio"]);
+  const ratio63=()=>{ const T=dayT(); return (T.omega3||0)>0?(T.omega6||0)/T.omega3:99; };
+  const omegaPass=()=>{
+    for (let guard=0; guard<12 && ratio63()>4.5; guard++){
+      let done=false;
+      for (const [fk,cap] of O3_SRC){
+        if (!FDB[fk]||blocked(fk)) continue;
+        const step=unitG(fk)||7;
+        const cur=Object.values(plan).flat().filter(x=>x&&x.fk===fk).reduce((a,x)=>a+x.g,0);
+        if (cur+step>cap+0.5) continue;
+        const k=FDB[fk].per100.kcal*step/100;
+        const where=MAINS.find(m=>(plan[m]||[]).some(it=>it.fk===fk));
+        if (where){ const idx=plan[where].findIndex(it=>it.fk===fk); plan[where][idx]={...plan[where][idx],g:Math.round((plan[where][idx].g+step)*10)/10}; compensate(where,k,fk); done=true; break; }
+        if (used().has(fk)) continue;
+        const mk=["breakfast","lunch","dinner"].find(m=>{ const its=plan[m]||[]; if(!its.length) return false;
+          if (isSeedItem(fk)) return !mealHasNut(its)&&!its.some(it=>isSeedItem(it.fk));
+          return !mealHasSeed(its)&&!its.some(it=>isNutItem(it.fk)); });
+        if (!mk) continue;
+        add(mk,fk,step); compensate(mk,k,fk); done=true; break;
+      }
+      if (!done){
+        let best=null;
+        MAINS.forEach(mk=>(plan[mk]||[]).forEach((it,idx)=>{ if(!O6_HEAVY.has(it.fk)) return; const o6=ingNut(it.fk,it.g).omega6||0; if(!best||o6>best.o6) best={mk,idx,it,o6}; }));
+        if (!best) break;
+        const step=unitG(best.it.fk)||10;
+        if (best.it.g>step+0.5) plan[best.mk][best.idx]={...best.it,g:Math.round((best.it.g-step)*10)/10};
+        else if (!["tahini","tahiniRaw","tahiniFullRaw","peanutButter","almondbutter"].includes(best.it.fk)) plan[best.mk]=plan[best.mk].filter((_,i)=>i!==best.idx);
+        else break;
+      }
+    }
+  };
   // סבבים עד התייצבות: מיקרו → הצמדות → תקרות-ארוחה ויום (הקטנה בלבד) → שער 98-100%. כל סבב יכול לשנות את
   // קודמו (קיצוץ-קלוריות מוריד רכיבים, תוספת-מיקרו מוסיפה קלוריות), לכן חוזרים עד שאין חוסר ואין חריגה
   const mealK=mk=>sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
@@ -3086,12 +3164,15 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
     MAINS.forEach(mk=>{ const over=mealK(mk)-tgt*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38); if (over>0) compensate(mk,over,null,true); });
     const dk=dayT().kcal; if (dk>tgt) compensate("lunch",dk-tgt*0.99,null,false);
   };
-  const stable=()=>{ const T=dayT(); return T.kcal>=tgt*0.98&&T.kcal<=tgt&&(T.fat||0)*9<=T.kcal*0.30&&(T.manganese||0)<=(dri?.manganese?.ul||15)&&KEYS.every(k=>!dri[k]||(T[k]||0)>=dri[k].dri*0.98); };
+  const stable=()=>{ const T=dayT(); return T.kcal>=tgt*0.98&&T.kcal<=tgt&&(T.fat||0)*9<=T.kcal*0.30&&(T.manganese||0)<=(dri?.manganese?.ul||15)&&((T.omega3||0)>0&&(T.omega6||0)/T.omega3<=5)&&KEYS.every(k=>!dri[k]||(T[k]||0)>=dri[k].dri*0.98); };
   for (let round=0; round<6; round++){
     saladPass();
     fruitPass();
     microPass();
     pairingPass(); // תוספות-מיקרו יכולות ליצור צורך בהצמדה חדשה (למשל קטנית בלי דגן)
+    tofuPass();
+    nutDedupPass();
+    omegaPass();
     closure();
     fatMnPass();
     calorieBandOnly(plan, tgt, leanGrow);
@@ -18711,10 +18792,8 @@ function AppInner(){
         )}
         {tab==="micro"&&!desktopMicroLayout&&(
           <>
-            {omegaRatioNode}
+            {ratiosSectionNode /* לבקשת המשתמש: אותה טבלת יחסים פשוטה כמו ב-Desktop (במקום שלושת הכרטיסים) */}
             {omegaConversionNode}
-            {knaSectionNode}
-            {capSectionNode}
             {satFatSectionNode}
             {microVitSectionNode}
           </>
