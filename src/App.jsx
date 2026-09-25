@@ -12617,6 +12617,7 @@ function getServingUnit(fk,fd,lang){
 }
 
 function servingLabel(fk,g,lang){
+  const fd=FDB[fk]||TEMP_FDB[fk]; const u=getServingUnit(fk,fd,lang); const gr=lang==="he"?"ג׳":"g";
   if(!u){
     const cat=fd?.cat||"";
     let fallbackHe="",fallbackEn="",baseG=100;
@@ -12670,6 +12671,14 @@ const FOOD_GROUP_MAP = Object.fromEntries(FOOD_GROUP_OPTIONS.map(o=>[o.v,o]));
 const SALAD_FOOD_GROUPS = new Set(["סלט_בסיס","סלט_ארוחה","סלט_אחר"]);
 const RECIPE_EMOJI={"פשטידה":"🥧","מאפה":"🍞","מרק":"🍲","תבשיל":"🫕"};
 const RECIPE_STORAGE="wfpb_recipes";
+// חדש (לבקשת המשתמש: כפתור מחיקה גם למתכוני ברירת-המחדל) — רשימת מזהי מתכונים מובנים שהמשתמש מחק. בלי
+// הרשימה הזו, מתכון מובנה שנמחק היה חוזר בטעינה הבאה, כי הטעינה ממזגת את DEF_RECIPES לכל מה שלא שמור
+const DELETED_RECIPES_STORAGE="wfpb_deleted_builtin_recipes";
+function mergeRecipesWithDefaults(saved){
+  const savedIds=new Set(saved.map(r=>r.id));
+  const deleted=new Set(load(DELETED_RECIPES_STORAGE,[]));
+  return [...saved,...DEF_RECIPES.filter(r=>!savedIds.has(r.id)&&!deleted.has(r.id))];
+}
 // תיקון (לבקשת המשתמש: "בעיה 2 — אין זיכרון בין שבועות") — מפתח-אחסון חדש לזיכרון-שימוש-מתכונים חוצה-שבועות,
 // כדי שמתכון שנבחר בשבוע שעבר יקבל עדיפות-נמוכה-יחסית גם בשבוע חדש שנוצר עכשיו, לא רק בתוך אותו שבוע
 const RECIPE_USAGE_HISTORY_STORAGE="wfpb_recipe_usage_history";
@@ -16621,8 +16630,23 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
     setRecipes(next);save(RECIPE_STORAGE,next);setShowNew(false);setEditId(null);
   }
   function delRec(id){
+    // מתכון מובנה: נרשם ברשימת-המחוקים כדי שלא יחזור בטעינה הבאה (גם אם נערך קודם ונשמר ב-RECIPE_STORAGE)
+    if(DEF_RECIPES.find(d=>d.id===id)){
+      const del=new Set(load(DELETED_RECIPES_STORAGE,[])); del.add(id);
+      save(DELETED_RECIPES_STORAGE,[...del]);
+    }
     const next=recipes.filter(r=>r.id!==id);
     setRecipes(next);save(RECIPE_STORAGE,next);
+    setConfirmDelId(null);
+    if(expanded===id) setExpanded(null);
+  }
+  // מחיקה בשתי לחיצות (כמו "נקה שבוע"): לחיצה ראשונה מבקשת אישור, שנייה מוחקת; האישור פג אחרי 3 שניות
+  const[confirmDelId,setConfirmDelId]=useState(null);
+  useEffect(()=>{ if(!confirmDelId) return; const t=setTimeout(()=>setConfirmDelId(null),3000); return ()=>clearTimeout(t); },[confirmDelId]);
+  const deletedBuiltInCount=load(DELETED_RECIPES_STORAGE,[]).length;
+  function restoreDeletedDefaults(){
+    save(DELETED_RECIPES_STORAGE,[]);
+    setRecipes(mergeRecipesWithDefaults(load(RECIPE_STORAGE,[])));
   }
   // חדש לבקשת המשתמש: סימון "מועדף" ⭐ והערות אישיות חופשיות לכל מתכון — נשמרים כשדות נוספים על אובייקט
   // המתכון עצמו (fav/notes), באותו מנגנון שמירה קיים (localStorage, רק מתכונים אישיים לא-מובנים)
@@ -16673,6 +16697,9 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
           <button onClick={exportRecipes} style={{width:"100%",padding:"7px 10px",borderRadius:10,border:"1px solid #a8cfe0",background:"#eef2f7",color:"#1a6fa0",fontSize:11,cursor:"pointer",fontWeight:700,marginBottom:6}}>
             {lang==="he"?"📋 ייצוא גיבוי":"📋 Export Backup"}
           </button>
+          {deletedBuiltInCount>0&&<button onClick={restoreDeletedDefaults} style={{width:"100%",padding:"7px 10px",borderRadius:10,border:"1px solid #f0b8ac",background:"#fdecea",color:"#a6440f",fontSize:11,cursor:"pointer",fontWeight:700,marginBottom:6}}>
+            {lang==="he"?`↺ שחזר ${deletedBuiltInCount} מתכוני ברירת-מחדל שנמחקו`:`↺ Restore ${deletedBuiltInCount} deleted built-in recipes`}
+          </button>}
           <button onClick={importStarterPack} style={{width:"100%",padding:"9px 10px",borderRadius:10,border:"1px solid #ffd54f55",background:"#FBF3E0",color:"#b8860b",fontSize:11,cursor:"pointer",fontWeight:700,marginBottom:6}}>
             {starterPackState==="done"?(lang==="he"?"✅ יובאו":"✅ Imported"):(lang==="he"?`📦 ייבוא ${STARTER_RECIPES_PACK.length} מתכוני WFPB מוכנים (בלי הדבקה)`:`📦 Import ${STARTER_RECIPES_PACK.length} ready-made WFPB recipes (no paste needed)`)}
           </button>
@@ -16903,7 +16930,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
             <div style={{display:"flex",gap:6,alignItems:"center"}}>
               <span style={{fontSize:14,cursor:"pointer",color:"#7c4dff"}} onClick={()=>setExpanded(isExp?null:r.id)}>{isExp?"▲":"▼"}</span>
               <button onClick={()=>toggleFav(r.id)} style={{background:r.fav?"#ffd54f22":"#F5F2EB",border:"1px solid "+(r.fav?"#b8860b":"#c9b8e8"),borderRadius:6,color:r.fav?"#b8860b":"#5c3d99",padding:"4px 8px",fontSize:13,cursor:"pointer",lineHeight:1}} title={lang==="he"?"מועדף":"Favorite"}>{r.fav?"⭐":"☆"}</button>
-              {!isBuiltIn&&<button onClick={()=>delRec(r.id)} style={{background:"#fdecea",border:"1px solid #ff6b6b44",borderRadius:6,color:"#c1440e",padding:"4px 8px",fontSize:10,cursor:"pointer"}}>{tx.deleteRecipe}</button>}
+              <button onClick={(e)=>{e.stopPropagation(); if(confirmDelId===r.id) delRec(r.id); else setConfirmDelId(r.id);}} style={{background:confirmDelId===r.id?"#c1440e":"#fdecea",border:"1px solid #ff6b6b44",borderRadius:6,color:confirmDelId===r.id?"#fff":"#c1440e",padding:"4px 8px",fontSize:10,cursor:"pointer",fontWeight:confirmDelId===r.id?700:400}} title={isBuiltIn?(lang==="he"?"מתכון ברירת-מחדל — ניתן לשחזר מתפריט הגיבוי":"Built-in recipe — can be restored from the backup menu"):undefined}>{confirmDelId===r.id?(lang==="he"?"⚠️ שוב לאישור":"⚠️ Tap again"):tx.deleteRecipe}</button>
               <button onClick={()=>dupRec(r)} style={{background:"#eef2f7",border:"1px solid #4fc3f766",borderRadius:6,color:"#1a6fa0",padding:"4px 8px",fontSize:10,cursor:"pointer"}}>{lang==="he"?"⧉ שכפל":"⧉ Duplicate"}</button>
               <button onClick={()=>startEdit(r)} style={{background:"#E8EFE9",border:"1px solid #388e3c66",borderRadius:6,color:"#2e7d32",padding:"4px 8px",fontSize:10,cursor:"pointer"}}>{lang==="he"?"✏️ ערוך":"✏️ Edit"}</button>
             </div>
@@ -17119,10 +17146,7 @@ function AppInner(){
   const[rememberProfile,setRememberProfile]=useState(()=>load("wfpb_remember_profile",false));
   const[profile,setProfile]=useState(()=>({...DEF_PROFILE,...(load("wfpb_remember_profile",false)?load("wfpb_profile",{}):{})}));
   const[recipes,setRecipes]=useState(()=>{
-    const saved=load(RECIPE_STORAGE,[]);
-    const savedIds=new Set(saved.map(r=>r.id));
-    const merged=[...saved,...DEF_RECIPES.filter(r=>!savedIds.has(r.id))];
-    return merged;
+    return mergeRecipesWithDefaults(load(RECIPE_STORAGE,[]));
   });
   // תיקון לבעיה של "מתכונים נעלמים ואז חוזרים": אם יש כמה טאבים/מופעים פתוחים של האפליקציה (אותו localStorage
   // משותף), כל אחד מהם מחזיק תמונת-מצב ישנה משלו בזיכרון (recipes) מרגע הטעינה שלו. אם טאב אחד שומר מתכון חדש,
@@ -17132,12 +17156,9 @@ function AppInner(){
   // לטאב הזה (visibilitychange/focus) כרשת ביטחון נוספת — כדי שאף טאב לא יישאר עם תמונה ישנה שעלולה לדרוס
   useEffect(()=>{
     function resyncRecipes(){
-      const saved=load(RECIPE_STORAGE,[]);
-      const savedIds=new Set(saved.map(r=>r.id));
-      const merged=[...saved,...DEF_RECIPES.filter(r=>!savedIds.has(r.id))];
-      setRecipes(merged);
+      setRecipes(mergeRecipesWithDefaults(load(RECIPE_STORAGE,[])));
     }
-    function onStorage(e){ if(!e || e.key===RECIPE_STORAGE) resyncRecipes(); }
+    function onStorage(e){ if(!e || e.key===RECIPE_STORAGE || e.key===DELETED_RECIPES_STORAGE) resyncRecipes(); }
     function onVisible(){ if(document.visibilityState==="visible") resyncRecipes(); }
     window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisible);
@@ -18362,5 +18383,3 @@ export default function App(){
     </PasswordGate>
   );
 }
-
-
