@@ -1,0 +1,17 @@
+{
+  "name": "Plantvitalis Vegetarian",
+  "short_name": "Plantvitalis",
+  "description": "תכנון ארוחות ומעקב WFPB Vegetarian",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E8EFE9",
+  "theme_color": "#1E3A2B",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
