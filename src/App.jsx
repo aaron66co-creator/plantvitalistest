@@ -2711,6 +2711,59 @@ function enforceSoyMilkDailyCap(plan){
   }
   return plan;
 }
+// שער-קלוריות סופי (לבקשת המשתמש: "תפריט יומי ושבועי חייב לנוע בין 98 ל-100 אחוז מהיעד — זהו הכלל באפליקציה").
+// סימולציה על כל המחוללים הראתה שהכלל לא נשמר: עד רבע מהימים במחולל-המתכונים נפלו מתחת ל-98% (עד 83%), כי
+// מילוי-הרצפה הקיים מגדיל רק מזון גולמי מ-FDB ומדלג על מתכונים — שהם רוב התפריט; ובמחולל המשולב (מן החי)
+// ההחלפות מעוגלות ליחידות שלמות (ביצה) בלי שום בדיקת-קלוריות אחריהן, כך שיום יכול לחצות את 100%. השער הזה רץ
+// אחרון-ממש בכל מחולל: מתקן רק את כמות המנה (לא מוסיף/מוחק פריטים, כדי לא לשבור אף כלל-הרכב), רק במתכונים/
+// דגנים/קטניות/תבשילים שאינם ביחידות שלמות, ובמגבלות תקרת-חלק-הארוחה. יעד פנימי 99% (אמצע הטווח)
+function enforceDailyCalorieBand(plan, tgt){
+  if (!tgt || !plan) return plan;
+  const LO=tgt*0.98, HI=tgt*1.00, AIM=tgt*0.99;
+  const dayK=()=>sumNuts(Object.values(plan).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const fdOf=fk=>FDB[fk]||TEMP_FDB[fk];
+  const ADJ_CATS=new Set(["דגן","קטנית","תבשיל","מרק","מאפה"]);
+  const adjustable=it=>{
+    const fd=fdOf(it.fk); if (!fd || !(it.g>0)) return false;
+    if (wholeUnitStepG(it.fk)) return false;                       // לחם/ביצה/פרי ביחידות — לא נוגעים
+    if (["wholeWheatBread","wholePita"].includes(it.fk)) return false;
+    return !!fd._isRecipe || ADJ_CATS.has(fd.cat);
+  };
+  const MAINS=["lunch","breakfast","dinner"]; // צהריים קודם — לפי הכלל, הצהריים סופגים את השארית
+  let guard=0;
+  while (dayK()<LO && guard++<60) {
+    const need=AIM-dayK(); let acted=false;
+    for (const mk of MAINS) {
+      if (!plan[mk]) continue;
+      const room=tgt*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38)-mealKcalOfGlobal(plan,mk);
+      if (room<=3) continue;
+      const cands=plan[mk].map((it,idx)=>({it,idx})).filter(x=>adjustable(x.it)&&x.it.g<(x.it.__origG??x.it.g)*1.6-0.05);
+      if (!cands.length) continue;
+      cands.sort((a,b)=>ingNut(b.it.fk,b.it.g,b.it.soaked).kcal-ingNut(a.it.fk,a.it.g,a.it.soaked).kcal);
+      const {it,idx}=cands[0]; const base=it.__origG??it.g;
+      const k=ingNut(it.fk,it.g,it.soaked).kcal; if (!(k>0)) continue;
+      const maxG=base*1.6; const kPerG=k/it.g;
+      const addK=Math.min(need, room, (maxG-it.g)*kPerG);
+      if (addK<=0.5) continue;
+      const next={...it, g:Math.round((it.g+addK/kPerG)*10)/10}; Object.defineProperty(next,"__origG",{value:base,enumerable:false});
+      plan[mk][idx]=next; acted=true; break;
+    }
+    if (!acted) break;
+  }
+  guard=0;
+  while (dayK()>HI && guard++<60) {
+    const over=dayK()-AIM; let best=null;
+    for (const mk of MAINS) (plan[mk]||[]).forEach((it,idx)=>{
+      if (!adjustable(it)) return; const base=it.__origG??it.g; if (it.g<=base*0.6+0.05) return;
+      const k=ingNut(it.fk,it.g,it.soaked).kcal; if (!best || k>best.k) best={mk,idx,it,k,base};
+    });
+    if (!best || !(best.k>0)) break;
+    const kPerG=best.k/best.it.g; const cutK=Math.min(over,(best.it.g-best.base*0.6)*kPerG);
+    const next={...best.it, g:Math.round((best.it.g-cutK/kPerG)*10)/10}; Object.defineProperty(next,"__origG",{value:best.base,enumerable:false});
+    plan[best.mk][best.idx]=next;
+  }
+  return plan;
+}
 function enforceCalorieCeilingAndFloor(plan, tgt){
   // 11) תקרת קלוריות יומית סופית מוחלטת, בטווח 98%-100% (לבקשת המשתמש: קודם חרג מעל 100%, אחרי התיקון הראשון
   // ירד מתחת ל-98% כי הקיטוע לא עצר בגבול התחתון). כל הכללים למעלה רק נזהרים לא *להוסיף* מעבר ל-100%, אבל אף
@@ -6676,6 +6729,7 @@ function generateDayPlan(target,wKg,hp,dri,recipeIds=[],recipeUsage={},excludedF
   __p = enforceMealShareCeiling(__p, tgt);
   ensureCalorieFloor(__p, tgt);
   __p = finalTrimOnlyIfOverCeiling(__p, tgt);
+  __p = enforceDailyCalorieBand(__p, tgt); // שער 98-100% סופי
   return __p;
 }
 
@@ -6765,6 +6819,7 @@ function generateMixedDayPlan(target,wKg,hp,dri,recipeIds=[],recipeUsage={},excl
     usedAnimalFks.add(fallback.fk);
     subsDone++;
   }
+  enforceDailyCalorieBand(mixedPlan, target); // שער 98-100% סופי — אחרי ההחלפות למוצרים מן החי
   return {plantPlan, mixedPlan, subsDone};
 }
 
@@ -8541,6 +8596,7 @@ function generatePersonalDayPlan(target, recipes=[], existingMeals=null, dri=nul
   __p = enforceMealShareCeiling(__p, tgt);
   ensureCalorieFloor(__p, tgt);
   __p = finalTrimOnlyIfOverCeiling(__p, tgt);
+  __p = enforceDailyCalorieBand(__p, tgt); // שער 98-100% סופי
   return __p;
 }
 // לבקשת המשתמש: מנגנון "הצעה" שלישי, נפרד לגמרי מ-generateDayPlan (כללי) ומ-generatePersonalDayPlan (מארוחות/מתכונים
@@ -10576,6 +10632,7 @@ function generateRecipesNSFDayPlan(target, recipes=[], dri=null, wKg=0, hp=null,
   __p = enforceMealShareCeiling(__p, tgt);
   ensureCalorieFloor(__p, tgt);
   __p = finalTrimOnlyIfOverCeiling(__p, tgt);
+  __p = enforceDailyCalorieBand(__p, tgt); // שער 98-100% סופי
   return __p;
 }
 // זה לא רק פשוט יותר מבנייה של אופטימיזציה שבועית מאפס — זה גם המתמטית הבטוחה ביותר: אם כל יום בנפרד
@@ -11657,6 +11714,7 @@ function generateWeekPlan(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set()){
     enforceMealShareCeiling(day, target);
     ensureCalorieFloor(day, target);
     finalTrimOnlyIfOverCeiling(day, target);
+    enforceDailyCalorieBand(day, target); // שער 98-100% סופי לכל יום בשבוע
   });
   return week;
 }
@@ -12583,6 +12641,7 @@ function generateRecipesNSFWeekPlan(target,recipes=[],dri=null,wKg=0,hp=null,exc
     enforceMealShareCeiling(day, target);
     ensureCalorieFloor(day, target);
     finalTrimOnlyIfOverCeiling(day, target);
+    enforceDailyCalorieBand(day, target); // שער 98-100% סופי לכל יום בשבוע
   });
   return {week, updatedUsage: finalUsage};
 }
