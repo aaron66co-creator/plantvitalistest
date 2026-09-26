@@ -16256,7 +16256,7 @@ function WeeklyMicroModal({plannedTotals,actualTotals,profile,lang,onClose}){
           <span style={{fontSize:15,fontWeight:700,color:"#1E3A2B"}}>{lang==="he"?"💊 עמידה שבועית ביעדי מיקרו-נוטריאנטים":"💊 Weekly Micronutrient Adherence"}</span>
           <button onClick={onClose} style={{background:"#E8EFE9",border:"none",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",cursor:"pointer"}}>✕</button>
         </div>
-        <div style={{fontSize:11,color:"#1E3A2B",fontWeight:500,marginBottom:12,lineHeight:1.4}}>
+        <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:12,lineHeight:1.4}}>
           {lang==="he"
             ?"סך שבועי מול היעד השבועי (יעד יומי × 7) לכל מיקרו-נוטריאנט — לפי הארוחות המתוכננות (שורה עליונה) ולפי מה שנרשם בפועל ביומן השבוע הנוכחי (שורה תחתונה)"
             :"Weekly total vs weekly target (daily target × 7) for each micronutrient — from planned meals (top row) and from what was actually logged this week (bottom row)"}
@@ -16264,35 +16264,35 @@ function WeeklyMicroModal({plannedTotals,actualTotals,profile,lang,onClose}){
         {sortedRows.map(r=>(
           <div key={r.key} style={{background:"#FFFFFF",borderRadius:10,padding:"8px 10px",marginBottom:6,border:"1px solid #E2DED4"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-              <span style={{fontSize:11,fontWeight:700,color:"#1E3A2B"}}>{r.label}</span>
-              <span style={{fontSize:9,color:"#2e7d32"}}>{lang==="he"?"יעד שבועי":"Weekly target"} <span dir="ltr" style={{display:"inline-block"}}>{fmtN(r.weeklyTarget,0)}{r.unit}</span></span>
+              <span style={{fontSize:14,fontWeight:700,color:"#1E3A2B"}}>{r.label}</span>
+              <span style={{fontSize:12,color:"#2e7d32"}}>{lang==="he"?"יעד שבועי":"Weekly target"} <span dir="ltr" style={{display:"inline-block"}}>{fmtN(r.weeklyTarget,0)}{r.unit}</span></span>
             </div>
             {r.key==="manganese"&&dri.manganese?.ul!=null&&(
-              <div style={{fontSize:9,color:"#a6440f",marginBottom:5,lineHeight:1.4}}>
+              <div style={{fontSize:12,color:"#a6440f",marginBottom:5,lineHeight:1.4}}>
                 {lang==="he"
                   ?`⚠️ תקרת בטיחות שבועית (UL): ${fmtN(dri.manganese.ul*7,0)}${r.unit} (יומי: ${fmtN(dri.manganese.ul,0)}${r.unit})`
                   :`⚠️ Weekly safety ceiling (UL): ${fmtN(dri.manganese.ul*7,0)}${r.unit} (daily: ${fmtN(dri.manganese.ul,0)}${r.unit})`}
               </div>
             )}
             {r.key==="manganese"&&dri.manganese?.ul!=null&&(
-              <div style={{fontSize:9,color:"#5a6b5f",marginBottom:5,lineHeight:1.4}}>
+              <div style={{fontSize:12,color:"#1E3A2B",marginBottom:5,lineHeight:1.4}}>
                 {lang==="he"
                   ?"התקרה נקבעה בזהירות-יתר יחסית לנתוני-רעילות ישירים. בתזונה צמחית ספיגת מנגן מווסתת פיזיולוגית (הגוף מפחית ספיגה כשיש מספיק), ופיטאט בקטניות/דגנים מלאים מפחית זמינות ביולוגית בפועל — כך שחריגה מתונה בדרך כלל בתוך שולי-הביטחון של התקרה עצמה, אצל אדם עם תפקוד כבד תקין."
                   :"The UL is derived conservatively relative to direct toxicity data. In plant-based diets, manganese absorption is physiologically regulated (the body reduces absorption once levels are sufficient), and phytate in legumes/whole grains lowers actual bioavailability — so modest overage is usually within the cap's own safety margin, for someone with normal liver function."}
               </div>
             )}
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:9,marginBottom:2}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:2}}>
               <span style={{color:"#1E3A2B"}}>{lang==="he"?"מתוכנן":"Planned"}</span>
               <span dir="ltr" style={{display:"inline-block",color:r.plannedPct>=100?"#2e7d32":"#b8860b",fontWeight:700}}>{fmtN(r.plannedVal,0)}{r.unit} · {r.plannedPct}%</span>
             </div>
             <Bar value={r.plannedVal} goal={r.weeklyTarget} color={r.plannedPct>=100?"#2e7d32":"#b8860b"} h={4} trackColor="#E2DED4"/>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:9,marginTop:14,marginBottom:2}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginTop:14,marginBottom:2}}>
               <span style={{color:"#1E3A2B"}}>{lang==="he"?"בפועל":"Actual"}</span>
               <span dir="ltr" style={{display:"inline-block",color:r.actualPct>=100?"#2e7d32":"#b8860b",fontWeight:700}}>{fmtN(r.actualVal,0)}{r.unit} · {r.actualPct}%</span>
             </div>
             <Bar value={r.actualVal} goal={r.weeklyTarget} color={r.actualPct>=100?"#2e7d32":"#b8860b"} h={4} trackColor="#E2DED4"/>
             {r.key==="calcium"&&plannedTotals.calciumAbsorbedEst!=null&&(
-              <div style={{fontSize:10,color:"#3a4a42",fontWeight:500,marginTop:8,lineHeight:1.4,borderTop:"1px dashed #E2DED4",paddingTop:5}}>
+              <div style={{fontSize:13,color:"#1E3A2B",fontWeight:500,marginTop:8,lineHeight:1.4,borderTop:"1px dashed #E2DED4",paddingTop:5}}>
                 {lang==="he"
                   ?`~ספיגה משוערת: מתוכנן ${fmtN(plannedTotals.calciumAbsorbedEst,0)}מ"ג · בפועל ${fmtN(actualTotals.calciumAbsorbedEst||0,0)}מ"ג לשבוע (הערכה לא-מחייבת, טווח-ייחוס משוער כ-1750-2450מ"ג לשבוע)`
                   :`~Est. absorbed: planned ${fmtN(plannedTotals.calciumAbsorbedEst,0)}mg · actual ${fmtN(actualTotals.calciumAbsorbedEst||0,0)}mg per week (non-binding estimate, rough reference range ~1750-2450mg/week)`}
@@ -16375,18 +16375,18 @@ function WeeklyEpaDhaBar({plannedTotals,actualTotals,lang}){
   return(
     <div style={{width:"100%",background:"#FFFFFF",borderRadius:14,padding:"18px 20px",border:"1px solid #E2DED4",marginBottom:14,direction:dir,textAlign:dir==="rtl"?"right":"left",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.08)"}}>
       <div style={{fontSize:18,fontWeight:800,color:"#3a7bc8",marginBottom:10}}>{lang==="he"?"🧬 המרת ALA ל-EPA/DHA (אומדן)":"🧬 ALA→EPA/DHA Conversion (estimate)"}</div>
-      <div style={{fontSize:15,fontWeight:700,color:"#2F3B34",marginBottom:14}}>
+      <div style={{fontSize:15,fontWeight:700,color:"#1E3A2B",marginBottom:14}}>
         {lang==="he"?"יעד שבועי: ":"Weekly target: "}<bdi style={{fontWeight:800,color:"#1E3A2B"}}>{fmtN(weeklyTargetLowG,2)}–{fmtN(weeklyTargetHighG,2)}g</bdi> EPA+DHA
       </div>
       <div style={{display:"flex",gap:24,marginBottom:10}}>
         <div style={{flex:1,background:"#F5F2EB",borderRadius:10,padding:"12px 14px"}}>
-          <div style={{fontSize:15,fontWeight:800,color:"#2F3B34",marginBottom:6}}>{lang==="he"?"מתוכנן":"Planned"}</div>
+          <div style={{fontSize:15,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{lang==="he"?"מתוכנן":"Planned"}</div>
           <div style={{fontSize:19,fontWeight:800,color:"#2e7d32",marginBottom:3}}><bdi>EPA {fmtN(planned.epa,2)}g</bdi></div>
           <div style={{fontSize:19,fontWeight:800,color:"#3a7bc8",marginBottom:3}}><bdi>DHA {fmtN(planned.dha,2)}g</bdi></div>
           <div style={{fontSize:16,fontWeight:800,color:colorForCombined(planned.epa+planned.dha),marginTop:6}}>{lang==="he"?"סה״כ ":"Total "}<bdi>{fmtN(planned.epa+planned.dha,2)}g</bdi></div>
         </div>
         <div style={{flex:1,background:"#F5F2EB",borderRadius:10,padding:"12px 14px"}}>
-          <div style={{fontSize:15,fontWeight:800,color:"#2F3B34",marginBottom:6}}>{lang==="he"?"בפועל":"Actual"}</div>
+          <div style={{fontSize:15,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{lang==="he"?"בפועל":"Actual"}</div>
           <div style={{fontSize:19,fontWeight:800,color:"#2e7d32",marginBottom:3}}><bdi>EPA {fmtN(actual.epa,2)}g</bdi></div>
           <div style={{fontSize:19,fontWeight:800,color:"#3a7bc8",marginBottom:3}}><bdi>DHA {fmtN(actual.dha,2)}g</bdi></div>
           <div style={{fontSize:16,fontWeight:800,color:colorForCombined(actual.epa+actual.dha),marginTop:6}}>{lang==="he"?"סה״כ ":"Total "}<bdi>{fmtN(actual.epa+actual.dha,2)}g</bdi></div>
@@ -16553,7 +16553,7 @@ function SatFatCholPanel({totals,lang,onInfo,dayLabel}){
           <span style={{fontSize:15,fontWeight:800,color:satFatColor}}>{fmtN(satFatG,1)}g ({satFatPct}%)</span>
         </div>
         <Bar value={satFatPct} goal={10} color={satFatColor} h={8} trackColor="#CFC7B8"/>
-        <div style={{fontSize:13,color:"#1E3A2B",marginTop:3}}>{lang==="he"?"יעד: עד 10% מהקלוריות (ירוק ≤7% · צהוב 7–10% · אדום >10%)":"Target: up to 10% of calories (green ≤7% · yellow 7–10% · red >10%)"}</div>
+        <div style={{fontSize:15,color:"#1E3A2B",marginTop:3}}>{lang==="he"?"יעד: עד 10% מהקלוריות (ירוק ≤7% · צהוב 7–10% · אדום >10%)":"Target: up to 10% of calories (green ≤7% · yellow 7–10% · red >10%)"}</div>
       </div>
       <div style={{background:cholColor==="#2e7d32"?"#E8F4EA":cholColor==="#b8860b"?"#fdf3e0":"#fdecea",borderRadius:10,padding:"8px 10px",border:`1px solid ${cholColor}55`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
@@ -16561,7 +16561,7 @@ function SatFatCholPanel({totals,lang,onInfo,dayLabel}){
           <span style={{fontSize:15,fontWeight:800,color:cholColor}}>{Math.round(cholMg)}mg</span>
         </div>
         <Bar value={Math.min(cholMg,450)} goal={450} color={cholColor} h={8} trackColor="#CFC7B8"/>
-        <div style={{fontSize:13,color:"#1E3A2B",marginTop:3}}>{lang==="he"?"טווח ייחוס שמרני: ירוק ≤200mg · צהוב 200–300mg · אדום >300mg (לא תקרה רפואית רשמית — ראו ℹ️)":"Conservative reference range: green ≤200mg · yellow 200–300mg · red >300mg (not an official medical ceiling — see ℹ️)"}</div>
+        <div style={{fontSize:15,color:"#1E3A2B",marginTop:3}}>{lang==="he"?"טווח ייחוס שמרני: ירוק ≤200mg · צהוב 200–300mg · אדום >300mg (לא תקרה רפואית רשמית — ראו ℹ️)":"Conservative reference range: green ≤200mg · yellow 200–300mg · red >300mg (not an official medical ceiling — see ℹ️)"}</div>
       </div>
     </div>
   );
@@ -16578,17 +16578,17 @@ function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInf
         {onInfo&&<InfoTag infoKey="satfat" lang={lang} onClick={()=>onInfo("satfat")}/>}
       </div>
       <div style={{background:"#F5F2EB",borderRadius:8,padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-        <span style={{fontSize:13,color:"#1E3A2B"}}>{lang==="he"?"שומן רוֹווי (יעד ≤10%)":"Saturated fat (target ≤10%)"}</span>
+        <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"שומן רוֹווי (יעד ≤10%)":"Saturated fat (target ≤10%)"}</span>
         <span style={{display:"flex",gap:10}}>
-          <span style={{fontSize:13,color:"#2F3B34"}}>{lang==="he"?"מתוכנן":"Plan"} <b style={{color:triColor(plannedPct,[7,10])}}>{plannedPct}%</b></span>
-          <span style={{fontSize:13,color:"#2F3B34"}}>{lang==="he"?"בפועל":"Actual"} <b style={{color:triColor(actualPct,[7,10])}}>{actualPct}%</b></span>
+          <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"מתוכנן":"Plan"} <b style={{color:triColor(plannedPct,[7,10])}}>{plannedPct}%</b></span>
+          <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"בפועל":"Actual"} <b style={{color:triColor(actualPct,[7,10])}}>{actualPct}%</b></span>
         </span>
       </div>
       <div style={{background:"#F5F2EB",borderRadius:8,padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontSize:13,color:"#1E3A2B"}}>{lang==="he"?"כולסטרול (טווח ייחוס שבועי)":"Cholesterol (weekly reference range)"}</span>
+        <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"כולסטרול (טווח ייחוס שבועי)":"Cholesterol (weekly reference range)"}</span>
         <span style={{display:"flex",gap:10}}>
-          <span style={{fontSize:13,color:"#2F3B34"}}>{lang==="he"?"מתוכנן":"Plan"} <b style={{color:triColor(plannedTotals.cholesterol||0,[1400,2100])}}>{Math.round(plannedTotals.cholesterol||0)}mg</b></span>
-          <span style={{fontSize:13,color:"#2F3B34"}}>{lang==="he"?"בפועל":"Actual"} <b style={{color:triColor(actualTotals.cholesterol||0,[1400,2100])}}>{Math.round(actualTotals.cholesterol||0)}mg</b></span>
+          <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"מתוכנן":"Plan"} <b style={{color:triColor(plannedTotals.cholesterol||0,[1400,2100])}}>{Math.round(plannedTotals.cholesterol||0)}mg</b></span>
+          <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"בפועל":"Actual"} <b style={{color:triColor(actualTotals.cholesterol||0,[1400,2100])}}>{Math.round(actualTotals.cholesterol||0)}mg</b></span>
         </span>
       </div>
       {/* תיקון-באג (לבקשת המשתמש, אחרי ששאל למה כולסטרול שבועי של 1052mg מוצג באדום): plannedTotals/actualTotals
@@ -16598,7 +16598,7 @@ function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInf
           ביחס יומי. הטווח השבועי הנכון (לפי אותו יחס-ייחוס שמרני בדיוק, רק ×7): ירוק ≤1400mg · צהוב 1400–2100mg
           · אדום מעל 2100mg */}
       {(triColor(plannedTotals.cholesterol||0,[1400,2100])==="#c62828"||triColor(actualTotals.cholesterol||0,[1400,2100])==="#c62828")&&(
-        <div style={{background:"#fdecea",border:"1px solid #e5a08f",borderRadius:8,padding:"8px 10px",marginBottom:dailyData.length?10:0,fontSize:13,color:"#a6440f",lineHeight:1.5}}>
+        <div style={{background:"#fdecea",border:"1px solid #e5a08f",borderRadius:8,padding:"8px 10px",marginBottom:dailyData.length?10:0,fontSize:15,color:"#a6440f",lineHeight:1.5}}>
           {lang==="he"
             ?"⚠️ הכולסטרול השבועי חורג מ-2,100mg (טווח-ייחוס שמרני, לא תקרה רפואית רשמית — ההנחיות העדכניות הסירו תקרה מספרית מחייבת; שווה ערך ל-300mg/יום בממוצע לאורך השבוע). מקור אופייני: ביצים וגבינות קשות. שקול/י לצמצם את התדירות שלהם או להחליף חלק מהם במקור צמחי מקביל, ובמידת הצורך התייעץ/י עם רופא/דיאטן/ית — במיוחד אם יש היסטוריה משפחתית של מחלת לב."
             :"⚠️ Weekly cholesterol exceeds 2,100mg (a conservative reference range, not an official medical ceiling — current guidelines removed a mandatory numeric cap; equivalent to a 300mg/day average across the week). Typical source: eggs and hard cheeses. Consider reducing their frequency or swapping some for a plant-based equivalent, and consult a physician/dietitian if needed — especially with a family history of heart disease."}
@@ -16609,7 +16609,7 @@ function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInf
           ל-15% (תקרת ציור, לא יעד), צבע תלת-גוני לפי אותם ספי ירוק/צהוב/אדום של הפאנל היומי */}
       {dailyData.length>0&&(
         <div>
-          <div style={{fontSize:12,color:"#2F3B34",marginBottom:4}}>{lang==="he"?"מגמה יומית — שומן רוֹווי (% קלוריות)":"Daily trend — saturated fat (% of calories)"}</div>
+          <div style={{fontSize:14,color:"#1E3A2B",marginBottom:4}}>{lang==="he"?"מגמה יומית — שומן רוֹווי (% קלוריות)":"Daily trend — saturated fat (% of calories)"}</div>
           <div style={{display:"flex",alignItems:"flex-end",gap:4,height:44}}>
             {dailyData.map((d,i)=>{
               const h=Math.max(3,Math.min(44,Math.round(d.satFatPct/15*44)));
@@ -16623,7 +16623,7 @@ function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInf
           </div>
           <div style={{display:"flex",gap:4,marginTop:2}}>
             {dailyData.map((d,i)=>(
-              <div key={i} style={{flex:1,textAlign:"center",fontSize:10,color:"#2F3B34"}}>{WEEKDAY_SHORT[lang][d.weekday]}</div>
+              <div key={i} style={{flex:1,textAlign:"center",fontSize:13,color:"#1E3A2B"}}>{WEEKDAY_SHORT[lang][d.weekday]}</div>
             ))}
           </div>
         </div>
@@ -17130,35 +17130,35 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo}){
   return(
     <div style={{background:"#FFFFFF",borderRadius:16,padding:14,marginBottom:10,border:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)",direction:tx.dir}}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-        <span style={{fontSize:12,color:"#1E3A2B",fontWeight:700}}>{tx.vitamins}</span>
+        <span style={{fontSize:14,color:"#1E3A2B",fontWeight:700}}>{tx.vitamins}</span>
         <InfoTag infoKey="micro" lang={lang} onClick={()=>onInfo("micro")}/>
-        <span style={{marginInlineStart:"auto",fontSize:10,fontWeight:700,color:okCount===scored.length?"#2e7d32":"#b8722e"}}>{okCount}/{scored.length} {lang==="he"?"בטווח":"in range"}</span>
+        <span style={{marginInlineStart:"auto",fontSize:13,fontWeight:700,color:okCount===scored.length?"#2e7d32":"#b8722e"}}>{okCount}/{scored.length} {lang==="he"?"בטווח":"in range"}</span>
       </div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:8,fontSize:10,color:"#1E3A2B",fontWeight:600,marginBottom:5}}>
+      <div style={{display:"flex",flexWrap:"wrap",gap:8,fontSize:13,color:"#1E3A2B",fontWeight:600,marginBottom:5}}>
         <span><span style={{color:"#2e7d32"}}>●</span> {lang==="he"?"100%+ מהיעד":"100%+ of target"}</span>
         <span><span style={{color:"#b8722e"}}>●</span> {lang==="he"?"מעל EAR אך מתחת ל-100%":"Above EAR but below 100%"}</span>
         <span><span style={{color:"#c62828"}}>●</span> {lang==="he"?"מתחת ל-EAR":"Below EAR"}</span>
       </div>
-      <div style={{fontSize:11,color:"#1E3A2B",fontWeight:500,marginBottom:6,lineHeight:1.5}}>{lang==="he"?"ℹ️ מהו EAR? \"הצריכה הממוצעת הנדרשת\" (Estimated Average Requirement) — הרמה היומית שמספיקה לכ-50% מהאוכלוסייה הבריאה בקבוצת הגיל/מין. צריכה מתחת ל-EAR מצביעה על סיכון ממשי לחוסר קליני. ה-RDA (100% מהיעד כאן) גבוה יותר בכוונה — נקבע כדי לכסות כמעט את כל האוכלוסייה (כ-97-98%), לא רק את החציון.":"ℹ️ What's EAR? \"Estimated Average Requirement\" — the daily level sufficient for about 50% of healthy people in that age/sex group. Intake below EAR signals a real risk of clinical deficiency. The RDA (100% of target here) is set deliberately higher — to cover nearly the whole population (about 97-98%), not just the median."}</div>
-      <div style={{fontSize:11,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"?"⚠️ יוד: חשיבות ייחודית לבלוטת התריס בתזונה צמחית — יש לוודא צריכה עקבית ממלח מיודד/אצות ים, ולשקול תוסף אם לא מתמלא באופן קבוע.":"⚠️ Iodine: uniquely important for thyroid health on a plant-based diet — ensure consistent intake from iodized salt/seaweed, and consider a supplement if it isn't reliably met."}</div>
-      <div style={{fontSize:11,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"
+      <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:6,lineHeight:1.5}}>{lang==="he"?"ℹ️ מהו EAR? \"הצריכה הממוצעת הנדרשת\" (Estimated Average Requirement) — הרמה היומית שמספיקה לכ-50% מהאוכלוסייה הבריאה בקבוצת הגיל/מין. צריכה מתחת ל-EAR מצביעה על סיכון ממשי לחוסר קליני. ה-RDA (100% מהיעד כאן) גבוה יותר בכוונה — נקבע כדי לכסות כמעט את כל האוכלוסייה (כ-97-98%), לא רק את החציון.":"ℹ️ What's EAR? \"Estimated Average Requirement\" — the daily level sufficient for about 50% of healthy people in that age/sex group. Intake below EAR signals a real risk of clinical deficiency. The RDA (100% of target here) is set deliberately higher — to cover nearly the whole population (about 97-98%), not just the median."}</div>
+      <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"?"⚠️ יוד: חשיבות ייחודית לבלוטת התריס בתזונה צמחית — יש לוודא צריכה עקבית ממלח מיודד/אצות ים, ולשקול תוסף אם לא מתמלא באופן קבוע.":"⚠️ Iodine: uniquely important for thyroid health on a plant-based diet — ensure consistent intake from iodized salt/seaweed, and consider a supplement if it isn't reliably met."}</div>
+      <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"
         ?"ℹ️ ספיגה משוערת (ליד סידן): הערכה בלבד של הסידן שנספג בפועל — הספיגה שונה בין מקורות (תרד ~5%, ברוקולי/כרוב ~55-60%). כ-250-350 מ\"ג נספג ליום הוא טווח תקין."
         :"ℹ️ Est. absorbed (next to calcium): an estimate only of the calcium actually absorbed — absorption varies by source (spinach ~5%, broccoli/cabbage ~55-60%). About 250-350mg absorbed per day is a normal range."}</div>
       {overULRows.length>0&&(
         <div style={{background:"#fdecea",borderRadius:9,padding:"7px 10px",marginBottom:10,border:"1px solid #e5a08f"}}>
-          <div style={{fontSize:10,color:"#a6440f",fontWeight:700,marginBottom:3}}>{lang==="he"?"⚠️ מעל תקרת הבטיחות היומית (UL)":"⚠️ Above Daily Safety Ceiling (UL)"}</div>
-          <div style={{fontSize:8,color:"#a6440f",marginBottom:4,lineHeight:1.4}}>{lang==="he"?"חריגה חוזרת מעל התקרה עלולה להזיק — שקול לצמצם את המקורות העיקריים (למשל אגוזי ברזיל לסלניום, מלח/נורי/וואקמה ליוד).":"Repeated intake above this ceiling may be harmful — consider reducing the main sources (e.g. Brazil nuts for selenium, salt/nori/wakame for iodine)."}</div>
+          <div style={{fontSize:13,color:"#a6440f",fontWeight:700,marginBottom:3}}>{lang==="he"?"⚠️ מעל תקרת הבטיחות היומית (UL)":"⚠️ Above Daily Safety Ceiling (UL)"}</div>
+          <div style={{fontSize:11,color:"#a6440f",marginBottom:4,lineHeight:1.4}}>{lang==="he"?"חריגה חוזרת מעל התקרה עלולה להזיק — שקול לצמצם את המקורות העיקריים (למשל אגוזי ברזיל לסלניום, מלח/נורי/וואקמה ליוד).":"Repeated intake above this ceiling may be harmful — consider reducing the main sources (e.g. Brazil nuts for selenium, salt/nori/wakame for iodine)."}</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-            {overULRows.map(r=><span key={r.k} style={{background:"#fbdcd6",border:"1px solid #e5a08f",borderRadius:20,color:"#a6440f",fontSize:9,padding:"2px 8px"}}>{DRI_LABELS[r.k][lang]} {fmtN(r.val,1)}/{r.ul}{r.unit}</span>)}
+            {overULRows.map(r=><span key={r.k} style={{background:"#fbdcd6",border:"1px solid #e5a08f",borderRadius:20,color:"#a6440f",fontSize:12,padding:"2px 8px"}}>{DRI_LABELS[r.k][lang]} {fmtN(r.val,1)}/{r.ul}{r.unit}</span>)}
           </div>
         </div>
       )}
       {deficient.length>0&&(
         <div style={{background:"#fdecea",borderRadius:9,padding:"7px 10px",marginBottom:10,border:"1px solid #f0b8ac"}}>
-          <div style={{fontSize:10,color:"#a6440f",fontWeight:700,marginBottom:3}}>{tx.deficiencies}</div>
-          <div style={{fontSize:8,color:"#a6440f",marginBottom:4,lineHeight:1.4}}>{lang==="he"?"מתחת לסף ה-EAR (הצריכה הממוצעת הנדרשת ל-50% מהאוכלוסייה) — סיכון ממשי לחוסר קליני, לא רק מתחת ליעד המומלץ (RDA).":"Below the EAR threshold (average intake meeting 50% of the population's needs) — real risk of clinical deficiency, not just under the recommended RDA target."}</div>
+          <div style={{fontSize:13,color:"#a6440f",fontWeight:700,marginBottom:3}}>{tx.deficiencies}</div>
+          <div style={{fontSize:11,color:"#a6440f",marginBottom:4,lineHeight:1.4}}>{lang==="he"?"מתחת לסף ה-EAR (הצריכה הממוצעת הנדרשת ל-50% מהאוכלוסייה) — סיכון ממשי לחוסר קליני, לא רק מתחת ליעד המומלץ (RDA).":"Below the EAR threshold (average intake meeting 50% of the population's needs) — real risk of clinical deficiency, not just under the recommended RDA target."}</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-            {deficient.map(r=><span key={r.k} style={{background:"#fbdcd6",border:"1px solid #e5a08f",borderRadius:20,color:"#a6440f",fontSize:9,padding:"2px 8px"}}>{DRI_LABELS[r.k][lang]} {r.pct}%</span>)}
+            {deficient.map(r=><span key={r.k} style={{background:"#fbdcd6",border:"1px solid #e5a08f",borderRadius:20,color:"#a6440f",fontSize:12,padding:"2px 8px"}}>{DRI_LABELS[r.k][lang]} {r.pct}%</span>)}
           </div>
         </div>
       )}
@@ -17177,22 +17177,22 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo}){
           return(
             <div key={r.k} style={{background:r.isSkip?"#F5F2EB":"#FBFAF7",borderRadius:9,padding:"6px 8px",border:`1px solid ${color}${r.isSkip?"55":"33"}`}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
-                <span style={{fontSize:10,color,fontWeight:600}}>{DRI_LABELS[r.k][lang]}{(r.overUL||r.deficient||( r.isCeiling&&!r.ok))?" ⚠":""}</span>
-                <span style={{fontSize:10,color,fontWeight:700}}>{r.isSkip?"—":r.pct+"%"}</span>
+                <span style={{fontSize:13,color,fontWeight:600}}>{DRI_LABELS[r.k][lang]}{(r.overUL||r.deficient||( r.isCeiling&&!r.ok))?" ⚠":""}</span>
+                <span style={{fontSize:13,color,fontWeight:700}}>{r.isSkip?"—":r.pct+"%"}</span>
               </div>
               {!r.isSkip&&<Bar value={r.val} goal={r.overUL?r.ul:r.dri} color={color} h={3} trackColor="#E2DED4"/>}
               {!r.isSkip&&otherTotals&&r.otherPct!=null&&(
                 <div style={{marginTop:3}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:1}}>
-                    <span style={{fontSize:8,color:"#8a9690"}}>{otherLabel}</span>
-                    <span style={{fontSize:8,color:"#8a9690",fontWeight:700}}>{r.otherPct}%</span>
+                    <span style={{fontSize:11,color:"#1E3A2B"}}>{otherLabel}</span>
+                    <span style={{fontSize:11,color:"#1E3A2B",fontWeight:700}}>{r.otherPct}%</span>
                   </div>
                   <Bar value={r.otherVal} goal={r.overUL?r.ul:r.dri} color="#B8B0A2" h={3} trackColor="#E2DED4"/>
                 </div>
               )}
-              <div style={{fontSize:11,color:"#6B7C72",marginTop:2,fontWeight:500}}>{bottomLine}</div>
+              <div style={{fontSize:14,color:"#1E3A2B",marginTop:2,fontWeight:500}}>{bottomLine}</div>
               {r.k==="calcium"&&totals.calciumAbsorbedEst!=null&&(
-                <div style={{fontSize:9,color:"#8a9690",marginTop:3,lineHeight:1.4,borderTop:"1px dashed #E2DED4",paddingTop:3}}>
+                <div style={{fontSize:12,color:"#1E3A2B",marginTop:3,lineHeight:1.4,borderTop:"1px dashed #E2DED4",paddingTop:3}}>
                   {lang==="he"
                     ?`~ספיגה משוערת: ${fmtN(totals.calciumAbsorbedEst,0)}מ"ג נספג (הערכה לא-מחייבת${totals.calciumAbsorbedHasEstimate?", כוללת קירוב":""})`
                     :`~Est. absorbed: ${fmtN(totals.calciumAbsorbedEst,0)}mg (non-binding estimate${totals.calciumAbsorbedHasEstimate?", includes approximation":""})`}
@@ -18851,12 +18851,12 @@ function AppInner(){
   // כמו שהיה — שם אין בעיית קינון כי אין "חלון קטגוריה" חיצוני שכבר עוטף אותו)
   const dailyVitMinDetailNode=(
     <div>
-      <div style={{fontSize:10,color:"#8C6D53",fontWeight:700,marginBottom:8}}>
+      <div style={{fontSize:13,color:"#8C6D53",fontWeight:700,marginBottom:8}}>
         {lang==="he"?`מציג את היום שנבחר: ${DAYS_HE[dayIdx]}`:`Showing selected day: ${DAYS_EN[dayIdx]}`}
       </div>
       {/* לבקשת המשתמש: הסבר קבוע (לא רק כשבפועל חוצים) שמסביר שלשלושת הנוטריאנטים האלה יש גם תקרת בטיחות
           (UL), נפרדת מהיעד (RDA) — כדי שההקשר יהיה ברור גם לפני שקורה חריגה, לא רק אחרי */}
-      <div style={{fontSize:10,color:"#a6440f",fontWeight:500,marginBottom:9,lineHeight:1.5,background:"#fdf3ee",border:"1px solid #f0d9b8",borderRadius:8,padding:"6px 9px"}}>
+      <div style={{fontSize:13,color:"#a6440f",fontWeight:500,marginBottom:9,lineHeight:1.5,background:"#fdf3ee",border:"1px solid #f0d9b8",borderRadius:8,padding:"6px 9px"}}>
         {lang==="he"
           ?"⚠️ לסלניום, יוד ומנגן יש — בנוסף ליעד הרגיל (RDA) — גם תקרת בטיחות עליונה (UL): הרמה היומית המרבית שנחשבת בטוחה כמעט לכל האוכלוסייה. הערכים: סלניום 400µg · יוד 1100µg · מנגן 15mg. אלה שלושת הנוטריאנטים היחידים שניתן לחצות בפועל מתזונה צמחית רגילה (בעיקר דרך אגוזי ברזיל, מלח מיודד/אצות ים, ודגנים/עלים/אגוזים עתירי-מנגן). מעבר ה-UL מסומן באדום למטה, גם אם הערך עדיין מעל ה-RDA (יעד תקין) — והתקרה המדויקת מוצגת תמיד ליד כל אחד משלושתם, גם כשעדיין בטווח בטוח."
           :"⚠️ Selenium, iodine and manganese have — beyond the regular target (RDA) — a Tolerable Upper Intake Level (UL): the highest daily level considered safe for nearly the whole population. Values: selenium 400µg · iodine 1100µg · manganese 15mg. These are the only three nutrients realistically crossable on a typical plant-based diet (mainly via Brazil nuts, iodized salt/seaweed, and manganese-rich grains/greens/nuts). Crossing the UL is marked in red below, even while still above the RDA (a normally-good target) — and the exact ceiling is always shown next to each of the three, even while still in the safe range."}
@@ -18883,13 +18883,13 @@ function AppInner(){
     const ulRowsExist=sortedRowsW.some(r=>r.weeklyUL!=null);
     return(
       <div>
-        <div style={{fontSize:10,color:"#6B7C72",marginBottom:12}}>
+        <div style={{fontSize:13,color:"#1E3A2B",marginBottom:12}}>
           {lang==="he"
             ?"סך שבועי מול היעד השבועי (יעד יומי × 7) לכל מיקרו-נוטריאנט — לפי הארוחות המתוכננות (שורה עליונה) ולפי מה שנרשם בפועל ביומן השבוע הנוכחי (שורה תחתונה)"
             :"Weekly total vs weekly target (daily target × 7) for each micronutrient — from planned meals (top row) and from what was actually logged this week (bottom row)"}
         </div>
         {ulRowsExist&&(
-          <div style={{fontSize:10,color:"#a6440f",fontWeight:500,marginBottom:9,lineHeight:1.5,background:"#fdf3ee",border:"1px solid #f0d9b8",borderRadius:8,padding:"6px 9px"}}>
+          <div style={{fontSize:13,color:"#a6440f",fontWeight:500,marginBottom:9,lineHeight:1.5,background:"#fdf3ee",border:"1px solid #f0d9b8",borderRadius:8,padding:"6px 9px"}}>
             {lang==="he"
               ?"⚠️ לסלניום, יוד ומנגן יש גם תקרת בטיחות שבועית (UL יומי × 7) — נפרדת מהיעד השבועי הרגיל שמוצג בכל שורה. חריגה ממנה מסומנת באדום ('תקרה!') מתחת לשורה הרלוונטית, גם אם היעד השבועי הרגיל (RDA) מכוסה כהלכה."
               :"⚠️ Selenium, iodine and manganese also have a weekly safety ceiling (daily UL × 7) — separate from the regular weekly target shown in each row. Crossing it is flagged in red ('ceiling!') below the relevant row, even when the regular weekly target (RDA) is well covered."}
@@ -18898,21 +18898,21 @@ function AppInner(){
         {sortedRowsW.map(r=>(
           <div key={r.key} style={{background:"#FFFFFF",borderRadius:10,padding:"8px 10px",marginBottom:6,border:(r.plannedOverUL||r.actualOverUL)?"1px solid #e5a08f":"1px solid #E2DED4"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-              <span style={{fontSize:11,fontWeight:700,color:"#1E3A2B"}}>{r.label}</span>
-              <span style={{fontSize:9,color:"#2e7d32"}}>{lang==="he"?"יעד שבועי":"Weekly target"} <span dir="ltr" style={{display:"inline-block"}}>{fmtN(r.weeklyTarget,0)}{r.unit}</span></span>
+              <span style={{fontSize:14,fontWeight:700,color:"#1E3A2B"}}>{r.label}</span>
+              <span style={{fontSize:12,color:"#2e7d32"}}>{lang==="he"?"יעד שבועי":"Weekly target"} <span dir="ltr" style={{display:"inline-block"}}>{fmtN(r.weeklyTarget,0)}{r.unit}</span></span>
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:9,marginBottom:2}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:2}}>
               <span style={{color:"#1E3A2B"}}>{lang==="he"?"מתוכנן":"Planned"}</span>
               <span dir="ltr" style={{display:"inline-block",color:r.plannedOverUL?"#c62828":r.plannedPct>=100?"#2e7d32":"#b8860b",fontWeight:700}}>{fmtN(r.plannedVal,0)}{r.unit} · {r.plannedPct}%{r.plannedOverUL?(lang==="he"?" ⚠ תקרה!":" ⚠ ceiling!"):""}</span>
             </div>
             <Bar value={r.plannedVal} goal={r.weeklyTarget} color={r.plannedOverUL?"#c62828":r.plannedPct>=100?"#2e7d32":"#b8860b"} h={4} trackColor="#E2DED4"/>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:9,marginTop:14,marginBottom:2}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginTop:14,marginBottom:2}}>
               <span style={{color:"#1E3A2B"}}>{lang==="he"?"בפועל":"Actual"}</span>
               <span dir="ltr" style={{display:"inline-block",color:r.actualOverUL?"#c62828":r.actualPct>=100?"#2e7d32":"#b8860b",fontWeight:700}}>{fmtN(r.actualVal,0)}{r.unit} · {r.actualPct}%{r.actualOverUL?(lang==="he"?" ⚠ תקרה!":" ⚠ ceiling!"):""}</span>
             </div>
             <Bar value={r.actualVal} goal={r.weeklyTarget} color={r.actualOverUL?"#c62828":r.actualPct>=100?"#2e7d32":"#b8860b"} h={4} trackColor="#E2DED4"/>
             {r.weeklyUL!=null&&(
-              <div style={{fontSize:10,fontWeight:700,color:(r.plannedOverUL||r.actualOverUL)?"#c62828":"#a6440f",marginTop:6,background:(r.plannedOverUL||r.actualOverUL)?"#fdecea":"#fdf3ee",border:`1px solid ${(r.plannedOverUL||r.actualOverUL)?"#e5a08f":"#f0d9b8"}`,borderRadius:6,padding:"4px 8px",display:"inline-block"}}>
+              <div style={{fontSize:13,fontWeight:700,color:(r.plannedOverUL||r.actualOverUL)?"#c62828":"#a6440f",marginTop:6,background:(r.plannedOverUL||r.actualOverUL)?"#fdecea":"#fdf3ee",border:`1px solid ${(r.plannedOverUL||r.actualOverUL)?"#e5a08f":"#f0d9b8"}`,borderRadius:6,padding:"4px 8px",display:"inline-block"}}>
                 {lang==="he"?`⚠ תקרת בטיחות שבועית (UL×7): `:`⚠ Weekly safety ceiling (UL×7): `}<span dir="ltr" style={{display:"inline-block"}}>{fmtN(r.weeklyUL,0)}{r.unit}</span>
               </div>
             )}
