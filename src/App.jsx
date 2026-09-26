@@ -1,4 +1,4 @@
-import { useState,useMemo,useEffect,useCallback,Fragment } from "react";
+import { useState,useMemo,useEffect,useCallback,useRef,Fragment } from "react";
 
 
 const T={he:{title:"תכנון ארוחות ומעקב",subtitle:"🌿 WFPB Vegetarian · כולל מוצרי חלב וביצים",meals:"🥗 ארוחות",macrosTab:"🍽 אבות המזון",micro:"💊 מיקרו",clearWeek:"🗑 נקה",profile:"👤 פרופיל",height:"גובה ס״מ",weight:"משקל ק״ג",age:"גיל",male:"זכר",female:"נקבה",low:"מועטה",medium:"בינונית",high:"גבוהה",activity:"פעילות",goal:"מטרה",maintain:"שמירה",lose:"ירידה",gain:"עלייה",breakfast:"ארוחת בוקר",snack:"ארוחת ביניים",lunch:"ארוחת צהריים",dinner:"ארוחת ערב",build:"🍽 בנה וערוך",saved:"📂",suggest:"💡",buildMeal:"בנה ארוחה",saveMeal:"💾 שמור",saveLabel:"שם הארוחה...",saveBtn:"שמור",confirm:"✅ אשר",noMeals:"לחץ בנה / הצע",noSaved:"אין ארוחות שמורות",loadMeal:"✅ טען",deleteMeal:"🗑",deletePerm:"מחק לצמיתות",cancel:"ביטול",savedMeals:"ארוחות שמורות",suggestions:"הצעות",items:"פריטים",searchFood:"🔍 חפש...",all:"הכל",grams:"גר׳",per100:"לכל 100גר׳",daily:"📊 סיכום יומי",calories:"קלוריות",carb:"פח׳",prot:"חלב׳",fat:"שומן",fiber:"סיבים",carbTarget:"≤55%",protTarget:"18-20%",fatTarget:"≤30%",protPerKg:"חלבון/ק״ג",protGoal:"יעד 1.2–1.6",vitE:"ויטמין E",calcium:"סידן",omega:"אומגה",ratio:"יחס Ω6:Ω3",vitamins:"💊 ויטמינים ומינרלים",deficiencies:"⚠️ חוסרים",enterData:"הזן נתונים",footer:"🌱 פח׳≤55% · חלב׳≥18% · שומן≤30% · VitE≥15mg · Ca≥1000mg",saved_toast:"✅ נשמר!",dir:"rtl",infoEdit:"✎ ערוך",infoSave:"💾 שמור",infoCancel:"ביטול",infoPlaceholder:"הוסף טקסט כאן...",clearMeal:"🗑 נקה ארוחה",clearConfirm:"בטוח?",clearYes:"כן",clearNo:"לא",wfpbInfo:"🌿 WFPB",ndsLabel:"🏆 צפיפות נוטריאנטים",ndsScore:"ציון NDS",ndsInfo:"מדד צפיפות",swapBtn:"🔄 אופטימיזציה",swapTitle:"💡 הצעות אופטימיזציה",swapApply:"✅ החל",swapSkip:"דלג",swapNoIssues:"הארוחות מאוזנות — אין הצעות שינוי",swapExplain:"מה עושה האופטימיזציה?",disclaimer:"⚠ אזהרת שימוש",healthProfile:"🏥 פרופיל בריאותי",healthNone:"ללא",spices:"🧂 תבלינים",mealTime:"שעת ארוחה",bmi:"BMI",bmiLabel:"מדד מסת גוף",recipes:"📖 מתכונים",newRecipe:"➕ מתכון חדש",recipeName:"שם המתכון...",servings:"מנות",recipeType:"סוג",recipeTypePie:"🥧 פשטידה",recipeTypeBaked:"🍞 מאפה",recipeTypeSoup:"🍲 מרק",recipeTypeStew:"🫕 תבשיל",saveRecipe:"💾 שמור מתכון",editRecipe:"✎ ערוך",deleteRecipe:"🗑 מחק",addToMeal:"➕ הוסף לארוחה",perServing:"לכל מנה",noRecipes:"אין מתכונים עדיין",recipeAdded:"✅ נוסף!",confirmDeleteRecipe:"מחק מתכון?",generalSuggestBtn:"🔀 הצעות כלליות",generalSuggestConfirm:"האם ברצונך להשתמש באפשרות זו?",generalSuggestYes:"כן",generalSuggestNo:"לא",dayPlanBtn:"🗓️ הצע ארוחות ליום",dayPlanTitle:"🗓️ תפריט מוצע ליום",dayPlanSubtitle:"מכסה קטניות, דגנים, ירק, עלים, פרי, אגוזים, זרעים, שומן, חלבון ותבלינים בתוך תקציב הקלוריות",dayPlanApply:"✅ החל על היום",dayPlanRegenerate:"🔄 הצע שוב",dayPlanClose:"ביטול",personalDayPlanBtn:"השלם יום",personalDayPlanSubtitle:"בנוי אך ורק מהארוחות השמורות והמתכונים שלך — ארוחות שכבר בנית היום נשארות כפי שהן, ורק החלקים הריקים מושלמים",personalDayPlanEmpty:"אין עדיין ארוחות שמורות או מתכונים מתאימים למלא את החלקים הריקים — שמור כמה ארוחות או מתכונים ונסה שוב",recipesNSFDayPlanBtn:"🍓 הצע ארוחות ממתכונים ליום",recipesNSFDayPlanSubtitle:"בנוי בעיקר מהמתכונים שלך — משלים בפריטי אגוזים/זרעים/פרי/ירק/דגן/קטנית/עלים גולמיים לפי הצורך, כדי לעמוד ביעד הקלורי במדויק",recipesNSFDayPlanEmpty:"אין מספיק מתכונים או פריטי אגוזים/זרעים/פרי כדי לבנות יום שלם — הוסף מתכונים או נסה שוב",recipesNSFWeekPlanBtn:"🍓×7 הצע ארוחות ממתכונים לשבוע",weekPlanBtn:"🗓️×7 הצע ארוחות לשבוע",weekPlanTitle:"🗓️×7 תפריט מוצע לשבוע",weekPlanSubtitle:"עומד בסך הקלוריות השבועי, ב-RDA השבועי לכל מיקרו-נוטריאנט וביחסי אומגה ונתרן/אשלגן — לרוחב 7 ימים, בדיוק כמו במנגנון היומי",weekPlanApply:"✅ החל על כל השבוע",weekPlanApplyConfirm:"⚠️ לחץ שוב לאישור — יחליף את כל ארוחות השבוע",weekPlanRegenerate:"🔄 הצע שבוע חדש",weekPlanWeekly:"שבועי",weekPlanDayLabel:"יום",shoppingListBtn:"🛒 רשימת קניות",shoppingListTitle:"🛒 רשימת קניות שבועית",shoppingListSubtitle:"מרוכז מכל הארוחות שהוגדרו בכל ימות השבוע, מאורגן לפי קבוצות מזון",shoppingListEmpty:"עדיין לא הוגדרו ארוחות באף יום השבוע — הוסף ארוחות כדי לראות רשימת קניות",shoppingListCheckAll:"✅ סמן הכל",shoppingListUncheckAll:"↺ נקה סימונים",shoppingListItemsCount:"פריטים",shoppingListSortNutrition:"🥗 מיון תזונתי",shoppingListSortStore:"🏬 מיון לפי סופר",shoppingListShopModeOff:"🛍️ מצב קניה",shoppingListShopModeOn:"🛍️ מצב קניה: פעיל",shoppingListPantryTitle:"מוצרי מזווה (כנראה כבר יש בבית)",resetDayLog:"🗑 איפוס יומן היום",resetDayLogConfirm:"לאפס את כל יומן האכילה בפועל של היום הזה? זה לא ישנה את התפריט המתוכנן — הוא יישאר כפי שהוא, רק התיעוד בפועל יימחק ויחזור להציג את המתוכנן כברירת מחדל.",resetDayLogYes:"כן, אפס",resetDayLogNo:"ביטול",resetDayLogEmpty:"אין מה לאפס — עדיין לא תועד דבר ביום הזה",resetDayLogDone:"✅ יומן היום אופס",
@@ -295,8 +295,10 @@ function fmtQty(v){
 const SOAK_BIOAVAIL_BOOST = {iron:1.15, zinc:1.25, calcium:1.10};
 const SOAKABLE_CATS = new Set(["קטנית","דגן"]);
 function isSoakableFk(fk){ const fd=FDB[fk]||TEMP_FDB[fk]; return !!fd && SOAKABLE_CATS.has(fd.cat) && !fd._isRecipe; }
-function ingNut(fk,g,soaked){const fd=FDB[fk]||TEMP_FDB[fk];if(!fd)return ALL_KEYS.reduce((a,k)=>({...a,[k]:0}),{});const f=g/100;const nut=ALL_KEYS.reduce((a,k)=>({...a,[k]:(fd.per100[k]||0)*f}),{});if(soaked&&SOAKABLE_CATS.has(fd.cat)&&!fd._isRecipe){Object.keys(SOAK_BIOAVAIL_BOOST).forEach(k=>{nut[k]=(nut[k]||0)*SOAK_BIOAVAIL_BOOST[k];});}nut.kcal=calcKcalActual(nut);return nut;}
-function sumNuts(arr){return arr.reduce((acc,n)=>{ALL_KEYS.forEach(k=>{acc[k]=(acc[k]||0)+(n[k]||0);});return acc;},ALL_KEYS.reduce((a,k)=>({...a,[k]:0}),{}));}
+// ביצועים: בנייה בלולאה אחת (במקום reduce עם העתקת-אובייקט בכל צעד, שהייתה ריבועית וצרכה ~70% מזמן תכנון השבוע) — תוצאה זהה
+function zeroNut(){const o={};for(let i=0;i<ALL_KEYS.length;i++)o[ALL_KEYS[i]]=0;return o;}
+function ingNut(fk,g,soaked){const fd=FDB[fk]||TEMP_FDB[fk];if(!fd)return zeroNut();const f=g/100;const p=fd.per100;const nut={};for(let i=0;i<ALL_KEYS.length;i++){const k=ALL_KEYS[i];nut[k]=(p[k]||0)*f;}if(soaked&&SOAKABLE_CATS.has(fd.cat)&&!fd._isRecipe){Object.keys(SOAK_BIOAVAIL_BOOST).forEach(k=>{nut[k]=(nut[k]||0)*SOAK_BIOAVAIL_BOOST[k];});}nut.kcal=calcKcalActual(nut);return nut;}
+function sumNuts(arr){const acc=zeroNut();for(let j=0;j<arr.length;j++){const n=arr[j];if(!n)continue;for(let i=0;i<ALL_KEYS.length;i++){const k=ALL_KEYS[i];acc[k]=(acc[k]||0)+(n[k]||0);}}return acc;}
 // לבקשת המשתמש: "האם הספיגה המשוערת... יכולה להיות מדד משמעותי יותר מאשר עמידה ב-RDA?" — הערכה לא-מחייבת,
 // מוצגת כמידע נוסף בלבד, שלא משנה שום החלטת-תכנון בפועל (לא בוחרת מזון, לא קובעת יעד). מבוססת בחלקה על
 // מדידות-איזוטופים שפורסמו בפועל (Weaver et al., שנות ה-90) לפריטים ספציפיים, ובחלקה על קירוב-משפחתי לפריטים
@@ -3548,7 +3550,42 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
 // הבטחה שבועית (לבקשת המשתמש: "מקבל ימים מתחת ל-98% כאשר השבועי עומד בזה"): אחרי בניית כל ימי השבוע, מחשבים
 // סך שבועי לכל מיקרו-נוטריאנט; אם רכיב מתחת ל-98% מהיעד השבועי (יעד יומי × 7) — מריצים שוב את שלב-הסיום היומי
 // על הימים החלשים ביותר ברכיב הזה, עם יעד מוגבר לרכיב הזה בלבד, עד שהשבוע עומד ביעד
-function enforceWeeklyMicros(daysArr, target, dri, excl){
+// הרצה "ברקע" (לבקשת המשתמש): מחוללי השבוע כתובים כפונקציות-מחולל (function*) שמדווחות התקדמות אחרי כל יום.
+// runGenSync מריץ עד הסוף מיד (כמו קודם); runGenAsync מריץ צעד אחד בכל פעם ומשחרר את הדפדפן בין הצעדים, כך
+// שהמסך לא קופא ואפשר להציג "יום X מתוך 7". התוצאה זהה בשתי הדרכים
+function runGenSync(g){ let r=g.next(); while(!r.done) r=g.next(); return r.value; }
+function runGenAsync(g, onProgress, isCancelled){
+  return new Promise((resolve,reject)=>{
+    const step=()=>{
+      if (isCancelled&&isCancelled()) { try{ g.return(); }catch(e){} return; }
+      try { const r=g.next(); if (r.done) { resolve(r.value); return; } if (onProgress) onProgress(r.value); setTimeout(step,0); }
+      catch(e){ reject(e); }
+    };
+    setTimeout(step,0);
+  });
+}
+// אותו כלל תקרת-הערב לגיל 65+ כמו withAgeMealCaps — אבל נשמר לכל אורך הריצה המדורגת (גם בין הצעדים)
+function* withAgeMealCapsGen(dri, gen){
+  if (!((dri?._age||0)>=65)) return yield* gen;
+  const prev=GLOBAL_MEAL_SHARE_MAX.dinner; GLOBAL_MEAL_SHARE_MAX.dinner=Math.max(prev,0.32);
+  try { return yield* gen; } finally { GLOBAL_MEAL_SHARE_MAX.dinner=prev; }
+}
+function enforceWeeklyMicros(daysArr, target, dri, excl){ return runGenSync(enforceWeeklyMicrosGen(daysArr, target, dri, excl)); }
+// גרסאות "ברקע" של מחוללי השבוע: מחזירות Promise ומדווחות התקדמות ({phase:"build"|"polish"|"weekly", i})
+function generateWeekPlanAsync(onProgress, isCancelled, ...a){ return runGenAsync(withAgeMealCapsGen(a[3], generateWeekPlan__gen(...a)), onProgress, isCancelled); }
+function generateRecipesNSFWeekPlanAsync(onProgress, isCancelled, ...a){ return runGenAsync(withAgeMealCapsGen(a[2], generateRecipesNSFWeekPlan__gen(...a)), onProgress, isCancelled); }
+function generateMixedWeekPlanAsync(onProgress, isCancelled, ...a){ return runGenAsync(withAgeMealCapsGen(a[3], generateMixedWeekPlan__gen(...a)), onProgress, isCancelled); }
+// טקסט ואחוז התקדמות לחלון ההמתנה
+function weekGenProgressInfo(p, lang, mixed){
+  const he=lang==="he";
+  if (!p) return {pct:2, text:he?"מתחיל...":"Starting..."};
+  if (p.phase==="build") return {pct:Math.round((mixed?85:45)*p.i/7), text:he?`בונה יום ${p.i} מתוך 7`:`Building day ${p.i} of 7`};
+  if (p.phase==="polish") return {pct:45+Math.round(45*p.i/7), text:he?`מאזן ומלטש יום ${p.i} מתוך 7`:`Balancing day ${p.i} of 7`};
+  const n=p.n||0; // בדיקה שבועית: כל תיקון-יום נוסף מקדם מעט את הפס (עד 99%)
+  return {pct:Math.min(99,(mixed?88:90)+n), text:he?(n?`בדיקה שבועית — השלמת ויטמינים ומינרלים (תיקון ${n})`:"בדיקה שבועית של ויטמינים ומינרלים..."):(n?`Weekly check — topping up nutrients (fix ${n})`:"Weekly vitamin & mineral check...")};
+}
+function* enforceWeeklyMicrosGen(daysArr, target, dri, excl){
+  let __wn=0;
   if (!dri || !daysArr || !daysArr.length) return;
   const KEYS=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&dri[k]);
   const dayTot=d=>sumNuts(Object.values(d).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
@@ -3560,7 +3597,7 @@ function enforceWeeklyMicros(daysArr, target, dri, excl){
       const order=daysArr.map((d,i)=>i).sort((a,b)=>(tots[a][k]||0)-(tots[b][k]||0));
       for (const i of order.slice(0,7)){
         const boosted={...dri,[k]:{...dri[k],dri:dri[k].dri*1.4},_microSwap:k};
-        enforceDailyCalorieBand(daysArr[i], target, boosted, excl);
+        enforceDailyCalorieBand(daysArr[i], target, boosted, excl); yield {phase:"weekly",n:++__wn};
         const W2=sumNuts(daysArr.map(dayTot)); if ((W2[k]||0)>=dri[k].dri*daysArr.length*0.98) break;
       }
     }
@@ -7643,13 +7680,14 @@ function generateMixedDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={
 // את סך הטוטלים השבועיים משני הצדדים (צמחי-בלבד מול מעורב) — כדי שחלונית ההשוואה השבועית תוכל להציג בדיוק
 // את אותה טבלת-השפעה שכבר קיימת ליום בודד, רק על סך השבוע
 function generateMixedWeekPlan(...a){ return withAgeMealCaps(a[3], ()=>generateMixedWeekPlan__impl(...a)); }
-function generateMixedWeekPlan__impl(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set(),intensity="moderate"){
+function generateMixedWeekPlan__impl(...a){ return runGenSync(generateMixedWeekPlan__gen(...a)); }
+function* generateMixedWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set(),intensity="moderate"){
   const days=[];
   for (let d=0; d<7; d++) {
-    days.push(generateMixedDayPlan(target,wKg,hp,dri,recipeIds,{},excludedFks,intensity));
+    days.push(generateMixedDayPlan(target,wKg,hp,dri,recipeIds,{},excludedFks,intensity)); yield {phase:"build",i:days.length};
   }
-  enforceWeeklyMicros(days.map(d=>d.mixedPlan), target, dri, excludedFks);
-  enforceWeeklyMicros(days.map(d=>d.plantPlan), target, dri, excludedFks);
+  yield {phase:"weekly"}; yield* enforceWeeklyMicrosGen(days.map(d=>d.mixedPlan), target, dri, excludedFks);
+  yield* enforceWeeklyMicrosGen(days.map(d=>d.plantPlan), target, dri, excludedFks);
   const plantWeek={}, mixedWeek={};
   days.forEach((d,i)=>{ plantWeek[`d${i}`]=d.plantPlan; mixedWeek[`d${i}`]=d.mixedPlan; });
   const plantWeekTotals = sumNuts(days.flatMap(d=>Object.values(d.plantPlan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))));
@@ -12412,11 +12450,12 @@ function capVegUnitsPerMeal(day){
   });
 }
 function generateWeekPlan(...a){ return withAgeMealCaps(a[3], ()=>generateWeekPlan__impl(...a)); }
-function generateWeekPlan__impl(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set()){
+function generateWeekPlan__impl(...a){ return runGenSync(generateWeekPlan__gen(...a)); }
+function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set()){
   const week={}; const daysArr=[];
   const recipeIdSet = new Set(recipeIds);
   const recipeUsage = {};
-  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>generateDayPlan(target,wKg,hp,dri,recipeIds,recipeUsage,excludedFks), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage); }
+  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>generateDayPlan(target,wKg,hp,dri,recipeIds,recipeUsage,excludedFks), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage);  yield {phase:"build",i:d+1}; }
   // השלמת מלח מיודד ברבעי-כפית ברמת השבוע (לבקשת המשתמש): לא להשאיר מחסור שבועי בנתרן/יוד, כל עוד לא חורגים
   // מתקרת הנתרן היומית. applySodiumSaltTopup כבר עוצרת מעצמה אם היום הספציפי מגיע לתקרה או שהיוד כבר קרוב/מעל
   // היעד היומי שלו (למשל בגלל וואקמה/נורי שכבר קיימים בו) — לכן מריצים על כל הימים שיש בהם עדיין מחסור נתרן,
@@ -12513,7 +12552,7 @@ function generateWeekPlan__impl(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
   // קיימת כאן גם כן, כי generateDayPlan (שמופעל כאן לכל יום) בעצמו כן מריץ אותן, אבל בלי בדיקה חוזרת ברמת-
   // השבוע אחרי כל שאר הקריאות למעלה
   daysArr.forEach(day=>{ ensureStewRecipeUsed(day, target, {}); ensureFlaxOrChiaPresence(day, target); });
-  daysArr.forEach(day=>{
+  for (let __di=0; __di<daysArr.length; __di++) { const day=daysArr[__di]; // לולאה במקום forEach — כדי לדווח התקדמות בין הימים
     dedupOverlappingDishes(day, target);
     preferSaladOverStackedRawVeg(day, target);
     capFruitSaladVsStandaloneFruit(day, target);
@@ -12550,8 +12589,8 @@ function generateWeekPlan__impl(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
     ensureCalorieFloor(day, target);
     finalTrimOnlyIfOverCeiling(day, target);
     enforceDailyCalorieBand(day, target, dri, excludedFks); // שער 98-100% סופי לכל יום בשבוע
-  });
-  enforceWeeklyMicros(daysArr, target, dri, excludedFks);
+  yield {phase:"polish",i:__di+1}; }
+  yield {phase:"weekly"}; yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks);
   return week;
 }
 // גרסה שבועית של מחולל "הצע ארוחות ממתכונים" (generateRecipesNSFDayPlan) — לבקשת המשתמש. מריצה את אותו
@@ -12866,13 +12905,14 @@ function rebalanceLegumeWeightsAcrossWeek(daysArr, dri){
 // ציון-שימוש גבוה יותר, ולכן פחות מועדף בכל בחירה-משוקללת באותו שבוע חדש. הפונקציה מחזירה גם את מעקב-
 // השימוש-המעודכן (לא רק את השבוע עצמו), כדי שהקורא יוכל לשמור אותו כזרע לפעם הבאה
 function generateRecipesNSFWeekPlan(...a){ return withAgeMealCaps(a[2], ()=>generateRecipesNSFWeekPlan__impl(...a)); }
-function generateRecipesNSFWeekPlan__impl(target,recipes=[],dri=null,wKg=0,hp=null,excludedFks=new Set(),recentUsageSeed={}){
+function generateRecipesNSFWeekPlan__impl(...a){ return runGenSync(generateRecipesNSFWeekPlan__gen(...a)); }
+function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=null,excludedFks=new Set(),recentUsageSeed={}){
   const week={}; const daysArr=[];
   const recipeIdSet = new Set(recipes.map(r=>r.id));
   const recipeUsage = {...recentUsageSeed};
   // applySalt=false כאן: משלימים יוד (וואקמה) בכל יום כרגיל בתוך generateRecipesNSFDayPlan עצמו, אבל דוחים את
   // השלמת הנתרן-ע"י-מלח לאחרי שרואים את הנתרן הסופי של *כל* 7 הימים ביחד
-  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>generateRecipesNSFDayPlan(target,recipes,dri,wKg,hp,d,recipeUsage,excludedFks,false), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage); }
+  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>generateRecipesNSFDayPlan(target,recipes,dri,wKg,hp,d,recipeUsage,excludedFks,false), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage);  yield {phase:"build",i:d+1}; }
   const sodiumCap = hp?.sodiumMax || 3000;
   const SODIUM_TARGET_WK = 1500;
   // עדכון לבקשת המשתמש: להבטיח שלא יהיה מחסור שבועי בנתרן/יוד, כל עוד תקרת הנתרן היומית לא נחרגת — לכן במקום
@@ -13447,7 +13487,7 @@ function generateRecipesNSFWeekPlan__impl(target,recipes=[],dri=null,wKg=0,hp=nu
   // תיקון (לבקשת המשתמש: כפילויות-דגן/קטנית/מאפה עדיין הופיעו בפועל, גם אחרי הניקוי-האחרון למעלה) — אותר:
   // ensureStewRecipeUsed עצמה (ממש מעל) יכולה להוסיף עוד פריט-דגן/קטנית לארוחה שכבר יש בה כזה, ורצה *אחרי*
   // הניקוי הקודם. הניקוי חייב לרוץ ממש-אחרי-הכל, לא לפני-הצעד-האחרון-שיכול-להוסיף-כפילות
-  Object.values(week).forEach(day=>{
+  { const __days=Object.values(week); for (let __di=0; __di<__days.length; __di++) { const day=__days[__di]; // לולאה במקום forEach — כדי לדווח התקדמות בין הימים
     dedupOverlappingDishes(day, target);
     preferSaladOverStackedRawVeg(day, target);
     capFruitSaladVsStandaloneFruit(day, target);
@@ -13479,8 +13519,8 @@ function generateRecipesNSFWeekPlan__impl(target,recipes=[],dri=null,wKg=0,hp=nu
     ensureCalorieFloor(day, target);
     finalTrimOnlyIfOverCeiling(day, target);
     enforceDailyCalorieBand(day, target, dri, excludedFks); // שער 98-100% סופי לכל יום בשבוע
-  });
-  enforceWeeklyMicros(daysArr, target, dri, excludedFks);
+  yield {phase:"polish",i:__di+1}; } }
+  yield {phase:"weekly"}; yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks);
   return {week, updatedUsage: finalUsage};
 }
 // גרסה אישית לשבוע (generatePersonalWeekPlan) הוסרה לבקשת המשתמש — נותר רק המנגנון האישי היומי (generatePersonalDayPlan)
@@ -18294,6 +18334,25 @@ function AppInner(){
     save(RECIPE_USAGE_HISTORY_STORAGE, result.updatedUsage);
     return result.week;
   };
+  // אותו דבר ברקע (לבקשת המשתמש): מחזיר Promise ומדווח התקדמות — המסך לא קופא בזמן החישוב
+  const generateWeekForModeAsync=(mode,onProgress,isCancelled)=>{
+    if (mode!=="recipesNSF") return generateWeekPlanAsync(onProgress,isCancelled,target,wKg,hp,dri,recipeIds,excludedFks);
+    const rawHistory = load(RECIPE_USAGE_HISTORY_STORAGE, {});
+    const decayedSeed = {};
+    Object.keys(rawHistory).forEach(id=>{ decayedSeed[id] = rawHistory[id]*0.6; });
+    return generateRecipesNSFWeekPlanAsync(onProgress,isCancelled,target,recipes,dri,wKg,hp,excludedFks,decayedSeed)
+      .then(result=>{ if (isCancelled&&isCancelled()) return null; save(RECIPE_USAGE_HISTORY_STORAGE, result.updatedUsage); return result.week; });
+  };
+  const [weekPlanProgress,setWeekPlanProgress]=useState(null);
+  const weekGenTok=useRef(0);
+  const startWeekGen=()=>{
+    const tok=++weekGenTok.current; const cancelled=()=>weekGenTok.current!==tok;
+    setWeekPlanLoading(true); setWeekPlanProgress(null);
+    generateWeekForModeAsync(weekPlanMode,p=>{ if(!cancelled()) setWeekPlanProgress(p); },cancelled)
+      .then(w=>{ if(cancelled()) return; setWeekPlanData(w); setWeekPlanLoading(false); })
+      .catch(e=>{ console.error(e); if(!cancelled()) setWeekPlanLoading(false); });
+  };
+  const cancelWeekGen=()=>{ weekGenTok.current++; setWeekPlanLoading(false); setWeekPlanOpen(false); };
   // מנגנון "שילוב מוצרים מן החי" — קיים רק בגרסה הצמחונית (fork). ראה generateMixedDayPlan למעלה בקובץ
   const [mixedPlanOpen,setMixedPlanOpen]=useState(false);
   const [mixedPlanData,setMixedPlanData]=useState(null);
@@ -18306,15 +18365,18 @@ function AppInner(){
   const [mixedWeekPlanOpen,setMixedWeekPlanOpen]=useState(false);
   const [mixedWeekPlanData,setMixedWeekPlanData]=useState(null);
   const [mixedWeekPlanLoading,setMixedWeekPlanLoading]=useState(false);
+  const [mixedWeekProgress,setMixedWeekProgress]=useState(null);
+  const mixedGenTok=useRef(0);
+  const startMixedWeekGen=()=>{
+    const tok=++mixedGenTok.current; const cancelled=()=>mixedGenTok.current!==tok;
+    setMixedWeekPlanLoading(true); setMixedWeekProgress(null);
+    generateMixedWeekPlanAsync(p=>{ if(!cancelled()) setMixedWeekProgress(p); },cancelled,target,wKg,hp,dri,recipeIds,excludedFks)
+      .then(d=>{ if(cancelled()) return; setMixedWeekPlanData(d); setMixedWeekPlanLoading(false); })
+      .catch(e=>{ console.error(e); if(!cancelled()) setMixedWeekPlanLoading(false); });
+  };
+  const cancelMixedWeekGen=()=>{ mixedGenTok.current++; setMixedWeekPlanLoading(false); setMixedWeekPlanOpen(false); };
   useEffect(()=>{
-    if(mixedWeekPlanOpen && target){
-      setMixedWeekPlanLoading(true);
-      const t = setTimeout(()=>{
-        setMixedWeekPlanData(generateMixedWeekPlan(target,wKg,hp,dri,recipeIds,excludedFks));
-        setMixedWeekPlanLoading(false);
-      }, 50);
-      return ()=>clearTimeout(t);
-    }
+    if(mixedWeekPlanOpen && target) startMixedWeekGen(); else mixedGenTok.current++;
   },[mixedWeekPlanOpen]);
   useEffect(()=>{
     save("wfpb_remember_profile",rememberProfile);
@@ -18327,16 +18389,8 @@ function AppInner(){
     }
   },[dayPlanOpen]);
   useEffect(()=>{
-    if(weekPlanOpen && target){
-      setWeekPlanLoading(true);
-      // עיכוב-קצר כדי לתת ל-React הזדמנות-לרנדר את מצב-הטעינה *לפני* שהחישוב-הכבד-והחוסם מתחיל בפועל -
-      // JS הוא single-threaded, אז זה לא מזרז את החישוב עצמו, אבל זה כן נותן פידבק-חזותי במקום מסך-קפוא-לגמרי
-      const t = setTimeout(()=>{
-        setWeekPlanData(generateWeekForMode(weekPlanMode));
-        setWeekPlanLoading(false);
-      }, 50);
-      return ()=>clearTimeout(t);
-    }
+    // חישוב ברקע (לבקשת המשתמש): יום אחרי יום, עם התקדמות בחלון ההמתנה — המסך לא קופא
+    if(weekPlanOpen && target) startWeekGen(); else weekGenTok.current++;
   },[weekPlanOpen]);
 
   const dayKey=`d${dayIdx}`;
@@ -19402,15 +19456,22 @@ function AppInner(){
                 <line x1="55" y1="59" x2="65" y2="59" stroke="#8C6D53" strokeWidth="1"/>
               </svg>
             </div>
-            <div style={{fontSize:14,fontWeight:700,color:"#1E3A2B"}}>{lang==="he"?"בונה תפריט לשבוע שלם...":"Building a full week's menu..."}</div>
-            <div style={{fontSize:11,color:"#6B7C72",marginTop:4}}>{lang==="he"?"זה יכול לקחת כמה שניות":"This can take a few seconds"}</div>
+            <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B"}}>{lang==="he"?"בונה תפריט לשבוע שלם...":"Building a full week's menu..."}</div>
+            {(()=>{ const pi=weekGenProgressInfo(weekPlanProgress,lang,false); return (<>
+              <div style={{fontSize:14,color:"#1E3A2B",fontWeight:600,marginTop:8}}>{pi.text}</div>
+              <div style={{width:240,height:10,background:"#E2DED4",borderRadius:6,overflow:"hidden",margin:"10px auto 0"}}>
+                <div style={{width:`${pi.pct}%`,height:"100%",background:"#2e7d32",borderRadius:6,transition:"width 0.3s"}}/>
+              </div>
+              <div style={{fontSize:13,color:"#2F3B34",marginTop:4}}>{pi.pct}%</div>
+            </>); })()}
+            <button onClick={cancelWeekGen} style={{marginTop:14,padding:"8px 20px",borderRadius:10,border:"1px solid #d9c2a3",background:"#F7EFE3",color:"#8C6D53",fontSize:13,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"ביטול":"Cancel"}</button>
           </div>
         </div>
       )}
       {weekPlanOpen&&!weekPlanLoading&&(
         <WeekPlanModal week={weekPlan} target={target} wKg={wKg} profile={profile} lang={lang} recipes={recipes} mode={weekPlanMode}
           onClose={()=>setWeekPlanOpen(false)}
-          onRegenerate={()=>{ setWeekPlanLoading(true); setTimeout(()=>{ setWeekPlanData(generateWeekForMode(weekPlanMode)); setWeekPlanLoading(false); }, 50); }}
+          onRegenerate={startWeekGen}
           onApply={()=>{ if(weekPlan) handleApplyWeekPlan(weekPlan); setWeekPlanOpen(false); }}
           onClearWeek={()=>{ clearEntireWeek(); setWeekPlanOpen(false); }}/>
       )}
@@ -19440,15 +19501,22 @@ function AppInner(){
                 <line x1="55" y1="59" x2="65" y2="59" stroke="#8C6D53" strokeWidth="1"/>
               </svg>
             </div>
-            <div style={{fontSize:14,fontWeight:700,color:"#1E3A2B"}}>{lang==="he"?"בונה תפריט לשבוע שלם...":"Building a full week's menu..."}</div>
-            <div style={{fontSize:11,color:"#6B7C72",marginTop:4}}>{lang==="he"?"זה יכול לקחת כמה שניות":"This can take a few seconds"}</div>
+            <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B"}}>{lang==="he"?"בונה תפריט לשבוע שלם...":"Building a full week's menu..."}</div>
+            {(()=>{ const pi=weekGenProgressInfo(mixedWeekProgress,lang,true); return (<>
+              <div style={{fontSize:14,color:"#1E3A2B",fontWeight:600,marginTop:8}}>{pi.text}</div>
+              <div style={{width:240,height:10,background:"#E2DED4",borderRadius:6,overflow:"hidden",margin:"10px auto 0"}}>
+                <div style={{width:`${pi.pct}%`,height:"100%",background:"#2e7d32",borderRadius:6,transition:"width 0.3s"}}/>
+              </div>
+              <div style={{fontSize:13,color:"#2F3B34",marginTop:4}}>{pi.pct}%</div>
+            </>); })()}
+            <button onClick={cancelMixedWeekGen} style={{marginTop:14,padding:"8px 20px",borderRadius:10,border:"1px solid #d9c2a3",background:"#F7EFE3",color:"#8C6D53",fontSize:13,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"ביטול":"Cancel"}</button>
           </div>
         </div>
       )}
       {mixedWeekPlanOpen&&!mixedWeekPlanLoading&&(
         <MixedWeekPlanModal data={mixedWeekPlanData} target={target} wKg={wKg} hp={hp} profile={profile} lang={lang} recipes={recipes}
           onClose={()=>setMixedWeekPlanOpen(false)}
-          onRegenerate={()=>{ setMixedWeekPlanLoading(true); setTimeout(()=>{ setMixedWeekPlanData(generateMixedWeekPlan(target,wKg,hp,dri,recipeIds,excludedFks)); setMixedWeekPlanLoading(false); }, 50); }}
+          onRegenerate={startMixedWeekGen}
           onApply={()=>{ if(mixedWeekPlanData?.mixedWeek) handleApplyWeekPlan(mixedWeekPlanData.mixedWeek); setMixedWeekPlanOpen(false); }}/>
       )}
       {shoppingListOpen&&<ShoppingListModal meals={meals} recipes={recipes} lang={lang} onClose={()=>setShoppingListOpen(false)}/>}
