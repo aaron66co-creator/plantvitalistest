@@ -50,7 +50,7 @@ const CAT_COLOR={דגן:"#ffd54f",קטנית:"#a5d6a7",עלים:"#69f0ae",ירק
 const MICRO_KEYS=["vitA","vitC","vitD","vitE","vitK","vitB1","vitB2","vitB3","vitB5","vitB6","vitB9","vitB12","calcium","iron","zinc","magnesium","potassium","phosphorus","sodium","selenium","iodine","choline","copper","manganese"];
 // satFat/cholesterol נוספו כאן, לא ל-MICRO_KEYS — הם לא ויטמין/מינרל עם RDA (אין להם DRI ב-getDRI), אלא ערכי
 // מעקב עצמאיים (בדומה ל-fiber), עם תצוגה ייעודית משלהם (ראו SatFatCholPanel) במקום שורה בלוח המיקרו-נוטריאנטים
-const ALL_KEYS=["kcal","protein","carbs","fat","fiber","omega3","omega6","omega9","satFat","cholesterol",...MICRO_KEYS];
+const ALL_KEYS=["kcal","protein","carbs","fat","fiber","omega3","omega6","omega9","satFat","cholesterol",...MICRO_KEYS,"leucine","lysine"];
 
 const TEMP_FDB={};
 
@@ -100,6 +100,7 @@ function getDRI(age,sex,pregnant){
   r.selenium.ul=400;
   r.iodine.ul=1100;
   r.manganese.ul=15;
+  r._age=a; // לשימוש כללי-גיל במחוללים (סף לאוצין לארוחה)
   return r;
 }
 const DRI_LABELS={vitA:{he:"ויטמין A",en:"Vitamin A"},vitC:{he:"ויטמין C",en:"Vitamin C"},vitD:{he:"ויטמין D",en:"Vitamin D"},vitE:{he:"ויטמין E",en:"Vitamin E"},vitK:{he:"ויטמין K",en:"Vitamin K"},vitB1:{he:"B1",en:"B1"},vitB2:{he:"B2",en:"B2"},vitB3:{he:"B3",en:"B3"},vitB6:{he:"B6",en:"B6"},vitB9:{he:"פולאט B9",en:"Folate B9"},vitB12:{he:"B12 ⚠",en:"B12 ⚠"},calcium:{he:"סידן",en:"Calcium"},iron:{he:"ברזל",en:"Iron"},zinc:{he:"אבץ",en:"Zinc"},magnesium:{he:"מגנזיום",en:"Magnesium"},potassium:{he:"אשלגן",en:"Potassium"},selenium:{he:"סלניום",en:"Selenium"},iodine:{he:"יוד",en:"Iodine"},vitB5:{he:"B5",en:"B5"},choline:{he:"כולין",en:"Choline"},copper:{he:"נחושת",en:"Copper"},manganese:{he:"מנגן",en:"Manganese"},sodium:{he:"נתרן",en:"Sodium"},phosphorus:{he:"זרחן",en:"Phosphorus"}};
@@ -219,6 +220,23 @@ const FDB={
 };
 
 
+// לאוצין וליזין (גר' ל-100 גר', לבקשת המשתמש — ספט' 2026). מקור: מאגר משרד הבריאות (leucine/lysine) לפי קוד המצרך
+// שהוצלב, מותאם לחלבון של הפריט באפליקציה. נבדקה סבירות: לאוצין 2%-13% ולִיזין 1.5%-11.5% מהחלבון; ערכים מחוץ לטווח
+// (נמצאו במאגר בקטניות מבושלות: לאוצין 17%-32% מהחלבון — שגיאה ברורה) ומזונות בלי נתון — הוערכו לפי אחוז טיפוסי
+// לקבוצת המזון (קטניות 7.8%/6.8%, סויה 7.7%/6.3%, דגנים 7.8%/3.5%, אגוזים 7.2%/3.5% וכו'). מתכונים מחושבים מרכיביהם
+const AMINO_EST_FKS=new Set(["oatsCooked", "brownRiceCooked", "chickpeas", "whiteBeans", "greenPeas", "tofuCalciumSet", "kale", "lentilFlour", "oliveOil", "cocoaButter", "oatFlour", "buckwheatCooked", "bulgurCooked", "freekeh", "wholeWPasta", "redKidney", "pintoBeans", "hotPepperRed", "hotPepperGreen", "beet", "eggplant", "appleCiderVinegar", "vinegar", "lemon", "pomegranate", "raspberry", "cranberriesFresh", "blackberry", "tomatoSalsa", "soyYogurtPlain", "soyYogurtOrgPlain", "sweetPotatoCooked", "potatoCooked", "cilantroLeaf", "celeryRoot", "artichoke", "fennel", "quince", "lychee", "chickpeaFlour", "mungBeans", "splitPeas", "blackEyedPeas", "oatMilk", "saltIodized", "nori", "wakame", "rosemaryDried", "amaranth", "okra", "parsnipVeg", "jerusalem", "passionfruit", "tamarind", "mulberry", "jackfruit", "dragonfruit", "breadfruit", "sabra", "pisumPeas", "eggWhite", "nutritionalYeast"]);
+const AMINO_DATA={oatsCooked:[0.164,0.074],brownRiceCooked:[0.203,0.091],quinoaCooked:[0.319,0.291],quinoaDry:[0.839,0.765],chickpeas:[0.741,0.646],redLentils:[0.654,0.63],greenLentils:[0.654,0.63],brownLentils:[0.654,0.63],blackLentils:[0.654,0.63],blackBeans:[0.708,0.608],whiteBeans:[0.757,0.66],greenPeas:[0.413,0.36],tempeh:[1.976,1.012],edamame:[0.745,0.745],tofu:[1.291,0.814],tofuCalciumSet:[1.209,0.989],spinach:[0.223,0.174],kale:[0.217,0.174],bokChoy:[0.088,0.089],celery:[0.032,0.027],celeryWithLeaves:[0.056,0.048],parsley:[0.204,0.181],carrot:[0.102,0.101],tomato:[0.025,0.027],redPepper:[0.036,0.036],cabbageWhite:[0.041,0.044],cabbageRed:[0.046,0.049],apricot:[0.077,0.097],lentilFlour:[1.95,0.875],wholeWheatBread:[0.807,0.342],banana:[0.068,0.05],apple:[0.013,0.012],medjoolDate:[0.084,0.066],dateSilan:[0.085,0.057],flaxseed:[1.235,0.862],chiaseeds:[1.371,0.97],walnuts:[1.17,0.424],almonds:[1.473,0.568],avocado:[0.143,0.132],tahini:[1.119,0.377],oliveOil:[0,0],cocoaButter:[0,0],almondbutter:[1.483,0.612],peanutButter:[1.95,0.858],wholePita:[0.571,0.258],oatsThinRaw:[0.98,0.637],oatsMedRaw:[0.98,0.637],oatFlour:[1.147,0.515],oatsThickRaw:[0.98,0.637],buckwheatCooked:[0.265,0.119],buckwheatGreenDry:[0.832,0.672],bulgurCooked:[0.242,0.109],bulgurDry:[0.831,0.339],pearlBarleyCooked:[0.154,0.084],pearlBarleyDry:[0.672,0.369],couscous:[0.75,0.21],couscousCooked:[0.406,0.114],freekeh:[0.507,0.228],wholeWPasta:[0.413,0.185],redKidney:[0.679,0.592],pintoBeans:[0.702,0.612],natto:[1.509,1.145],lupinBeans:[1.183,0.834],broccoli:[0.129,0.135],cucumber:[0.025,0.025],yellowPepper:[0.052,0.044],greenPepper:[0.036,0.039],hotPepperRed:[0.116,0.108],hotPepperGreen:[0.124,0.116],beet:[0.105,0.099],eggplant:[0.05,0.046],zucchini:[0.071,0.067],cauliflower:[0.106,0.217],corn:[0.348,0.137],asparagus:[0.128,0.104],brusselsSp:[0.152,0.154],pumpkin:[0.046,0.054],mushroom:[0.12,0.107],onion:[0.025,0.039],garlic:[0.308,0.273],cinnamon:[0.253,0.243],appleCiderVinegar:[0,0],vinegar:[0,0],lemon:[0.061,0.057],orange:[0.023,0.047],kiwi:[0.066,0.061],mango:[0.05,0.066],pear:[0.019,0.017],pomegranate:[0.093,0.088],raspberry:[0.066,0.062],cranberriesFresh:[0.021,0.02],blueberry:[0.044,0.013],strawberry:[0.034,0.026],blackberry:[0.077,0.073],grapes:[0.022,0.027],cherries:[0.03,0.032],hazelnuts:[1.063,0.42],cashews:[1.212,0.764],pistachio:[1.604,1.138],peanuts:[1.672,0.926],brazilNuts:[1.19,0.49],sunflowerS:[1.659,0.937],pumpkinS:[2.419,1.236],sesame:[1.297,0.543],dill:[0.161,0.249],basil:[0.194,0.112],swisschard:[0.135,0.103],tomatoSauce:[0.099,0.108],tomatoSalsa:[0.098,0.063],soymilkOrgPlain:[0.216,0.152],soyYogurtPlain:[0.293,0.239],soyYogurtOrgPlain:[0.308,0.252],watermelon:[0.018,0.062],melon:[0.029,0.03],sweetPotatoRaw:[0.092,0.066],sweetPotatoCooked:[0.124,0.116],potatoRaw:[0.098,0.107],potatoCooked:[0.155,0.145],broadBeans:[0.572,0.486],peach:[0.027,0.03],lupinBeansCooked:[1.183,0.834],lettuce:[0.025,0.024],radish:[0.031,0.033],mintLeaf:[0.285,0.163],cilantroLeaf:[0.158,0.126],springOnion:[0.109,0.091],celeryRoot:[0.099,0.093],kohlrabi:[0.067,0.056],leek:[0.096,0.078],artichoke:[0.18,0.168],fennel:[0.074,0.07],gingerRoot:[0.073,0.056],persimmon:[0.042,0.033],fig:[0.033,0.03],quince:[0.022,0.021],lychee:[0.046,0.043],tahiniRaw:[1.838,0.769],chickpeaFlour:[1.747,0.784],mungBeans:[0.546,0.476],splitPeas:[0.647,0.564],blackEyedPeas:[0.601,0.524],soymilkFortified:[0.188,0.132],oatMilk:[0.077,0.063],saltIodized:[0,0],nori:[3.227,2.305],wakame:[1.308,1.224],blackPepperGround:[1.014,0.244],turmericGround:[0.81,0.38],paprikaGround:[0.923,0.692],oreganoDried:[0.78,0.5],rosemaryDried:[0.343,0.245],garlicPowder:[0.728,0.768],tahiniFullRaw:[1.58,0.533],spelledFlour:[0.989,0.378],amaranth:[0.296,0.133],okra:[0.118,0.11],turnip:[0.033,0.036],parsnipVeg:[0.143,0.133],jerusalem:[0.136,0.128],guava:[0.178,0.075],papaya:[0.016,0.025],passionfruit:[0.121,0.114],starfruit:[0.077,0.077],tamarind:[0.154,0.146],mulberry:[0.077,0.073],jackfruit:[0.093,0.088],dragonfruit:[0.066,0.062],breadfruit:[0.061,0.057],sabra:[0.04,0.038],pisumPeas:[0.445,0.388],eggWhole:[1.075,0.904],eggWhite:[0.981,0.872],milk3pct:[0.313,0.277],milk1pct:[0.312,0.276],leben:[0.341,0.301],yogurtPlain3:[0.474,0.421],yogurtGreek:[0.554,0.493],cottageCheese5:[1.054,0.882],whiteCheese5:[0.913,0.764],creamCheese5:[0.953,0.798],fetaCheese:[1.473,1.287],mozzarella:[1.565,0.827],nutritionalYeast:[2.8,2],yellowCheese:[2.22,2.102],processedCheese:[2.266,1.853],butter:[0.083,0.067],sourCream15:[0.264,0.214],sweetCream38:[0.186,0.151]};
+Object.entries(AMINO_DATA).forEach(([fk,[leu,lys]])=>{ if(FDB[fk]&&FDB[fk].per100){ FDB[fk].per100.leucine=leu; FDB[fk].per100.lysine=lys; } });
+// יעדים יומיים (מ"ג לק"ג משקל גוף) — RDA של IOM (2005): לאוצין 42, ליזין 38 למבוגרים 19+; בהריון 56 ו-51.
+// גיל 65+: ה-RDA הרשמי זהה, אך ESPEN/PROT-AGE ממליצים על 1.0-1.2 גר' חלבון לק"ג (במקום 0.8) בשל "עמידות אנבולית" —
+// לכן היעד מוגבר ב-25%. סף לאוצין לארוחה (להפעלת בניית חלבון בשריר): 2 גר' עד גיל 65, 2.5 גר' מגיל 65
+function aminoTargets(age, wKg, pregnant){
+  const a=+age||35, w=+wKg||0;
+  let leu=42, lys=38, note="RDA (IOM)";
+  if (pregnant) { leu=56; lys=51; note="RDA הריון (IOM)"; }
+  else if (a>=65) { leu=Math.round(42*1.25); lys=Math.round(38*1.25); note="RDA מוגבר לגיל 65+ (ESPEN/PROT-AGE)"; }
+  return { leuMgKg:leu, lysMgKg:lys, leuDayG:w?leu*w/1000:null, lysDayG:w?lys*w/1000:null, leuMealG:a>=65?2.5:2.0, note, age:a };
+}
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){console.error("❌ שמירה נכשלה ל-"+k+":",e.message);return false;}}
 // איפוס תפריט הארוחות בכל כניסה חדשה לאפליקציה (לבקשת המשתמש): sessionStorage נמחק אוטומטית ע"י הדפדפן כשסוגרים
@@ -3284,7 +3302,45 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
           if (SPREAD_RAW.has(fk) && !its.some(it=>isBaked(it.fk)||BREAD.has(it.fk))) continue;
           mv.push({mk,addFk:fk,g:ug}); break; } } }
     return mv; };
-  const applyMove=m=>{ if (m.remove) plan[m.mk]=plan[m.mk].filter((_,i)=>i!==m.idx); else if (m.addFk) plan[m.mk]=[...plan[m.mk],{fk:m.addFk,g:Math.round(m.g*10)/10}]; else plan[m.mk][m.idx]={...plan[m.mk][m.idx],g:Math.round(m.g*10)/10}; };
+  // ── לאוצין: לפחות 2 ארוחות עיקריות מעל הסף לגיל (לבקשת המשתמש) — 2 גר' עד גיל 65, 2.5 גר' מגיל 65 ──
+  const LEU_THR=(dri?._age||35)>=65?2.5:2.0;
+  const leuOf=mk=>sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).leucine||0;
+  const leuPenalty=()=>{ const v=["breakfast","lunch","dinner"].map(leuOf).sort((a,b)=>b-a); return Math.max(0,LEU_THR-v[0])+Math.max(0,LEU_THR-v[1]); };
+  const LEU_SRC=["lupinBeansCooked","edamame","redLentils","greenLentils","chickpeas","blackBeans","tempeh","pumpkinS","peanuts","soyYogurtPlain","soymilkFortified"];
+  const leuMoves=()=>{ const mv=[]; if (leuPenalty()<=0) return mv;
+    const u=used(); const top=["breakfast","lunch","dinner"].filter(m=>(plan[m]||[]).length).sort((a,b)=>leuOf(b)-leuOf(a)).slice(0,2).filter(m=>leuOf(m)<LEU_THR);
+    for (const mk of top) { const its=plan[mk];
+      // הפריט שיוקטן כפיצוי: דגן/מתכון דל-לאוצין עם 2+ יחידות
+      const dec=its.map((it,idx)=>({it,idx,inf:unitInfo(it)})).filter(x=>x.inf&&Math.round(x.it.g/x.inf.u)>=2&&(x.inf.recipe||x.inf.cat==="דגן"))
+        .sort((a,b)=>ingNut(b.it.fk,b.inf.u).kcal-ingNut(a.it.fk,a.inf.u).kcal)[0];
+      for (const fk of LEU_SRC) { const fd=FDB[fk]; if(!fd||u.has(fk)||blocked(fk)) continue;
+        if (isSoy(fk)&&its.some(it=>isSoy(it.fk))) continue;
+        if (fd.cat==="קטנית"&&legFams().has(legumeFamilyOf(fk))) continue;
+        if (isSeedItem(fk)&&(mealHasNut(its)||its.some(it=>isSeedItem(it.fk)))) continue;
+        if (isNutItem(fk)&&(mealHasSeed(its)||its.some(it=>isNutItem(it.fk)))) continue;
+        const ug=((fd.cat==="זרעים"||fd.cat==="אגוזים")&&!isCountedPiece(fk))?(unitG(fk)||stdG(fk)):(unitG(fk)||stdG(fk));
+        mv.push({mk,addFk:fk,g:ug});
+        if (dec) mv.push({mk,addFk:fk,g:ug,alsoDec:{idx:dec.idx,g:(Math.round(dec.it.g/dec.inf.u)-1)*dec.inf.u}});
+        // מהלך משולב: הוספת המקור + הקטנה/הסרה תואמת-קלוריות במקום אחר ביום (בדרך כלל פריט דל-לאוצין)
+        { const addK=fd.per100.kcal*ug/100;
+          const downs=genMoves(false).map(d=>{ const it=plan[d.mk][d.idx]; const k0=ingNut(it.fk,it.g,it.soaked).kcal; const k1=d.remove?0:ingNut(it.fk,d.g,it.soaked).kcal; return {d,dk:k0-k1}; })
+            .sort((a,b)=>Math.abs(a.dk-addK)-Math.abs(b.dk-addK)).slice(0,6);
+          downs.forEach(({d})=>mv.push({mk,addFk:fk,g:ug,down:d})); }
+        // החלפה: פריט דל-לאוצין (לאוצין לקלוריה נמוך מהמקור) יוצא, המקור נכנס — בלי להגדיל את הארוחה
+        const srcD=(fd.per100.leucine||0)/Math.max(1,fd.per100.kcal||1);
+        its.forEach((it,idx)=>{ const inf=unitInfo(it); if(!inf) return; const n=ingNut(it.fk,it.g,it.soaked); if(!(n.kcal>40)) return;
+          if (!(inf.recipe||["דגן","קטנית","מאפה","תבשיל"].includes(inf.cat))) return;
+          if ((n.leucine||0)/n.kcal >= srcD*0.8) return;
+          const fdOut=fdOf(it.fk); const sameFamOk = !(fd.cat==="קטנית") || !legFams().has(legumeFamilyOf(fk)) || legumeFamilyOfItem(it)===legumeFamilyOf(fk);
+          if (!sameFamOk) return;
+          mv.push({mk,addFk:fk,g:ug,removeIdx:idx}); });
+      } }
+    return mv; };
+  const applyMove=m=>{ if (m.alsoDec) plan[m.mk][m.alsoDec.idx]={...plan[m.mk][m.alsoDec.idx],g:Math.round(m.alsoDec.g*10)/10};
+    if (m.removeIdx!=null) { plan[m.mk]=[...plan[m.mk].filter((_,i)=>i!==m.removeIdx),{fk:m.addFk,g:Math.round(m.g*10)/10}]; return; }
+    if (m.down) { const d=m.down; if (d.remove) plan[d.mk]=plan[d.mk].filter((_,i)=>i!==d.idx); else plan[d.mk][d.idx]={...plan[d.mk][d.idx],g:Math.round(d.g*10)/10};
+      plan[m.mk]=[...plan[m.mk],{fk:m.addFk,g:Math.round(m.g*10)/10}]; return; }
+    if (m.remove) plan[m.mk]=plan[m.mk].filter((_,i)=>i!==m.idx); else if (m.addFk) plan[m.mk]=[...plan[m.mk],{fk:m.addFk,g:Math.round(m.g*10)/10}]; else plan[m.mk][m.idx]={...plan[m.mk][m.idx],g:Math.round(m.g*10)/10}; };
   const snapshot=()=>Object.fromEntries(Object.keys(plan).map(k=>[k,(plan[k]||[]).slice()]));
   const restoreSnap=sn=>Object.keys(sn).forEach(k=>{ plan[k]=sn[k]; });
   // מחיר משולב: חריגות (תקרות/שומן/אומגה/מנגן) > מרחק מטווח הקלוריות > חוסר מיקרו (עד 100% מהיעד)
@@ -3293,11 +3349,11 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
     const overK=Math.max(0,T.kcal-hi), underK=Math.max(0,lo-T.kcal);
     const om=(T.omega3||0)>0?Math.max(0,(T.omega6||0)/T.omega3-5):0;
     // תקרת 100% קלוריות ויחס אומגה ≤5 — כמעט-קשיחים (משקל גבוה מאוד), כך שהשלמת-מיקרו לעולם לא "קונה" חריגה בהם
-    return violation()*3+overK*40+underK*4+om*400+micro*150+Math.abs(T.kcal-tgt*0.99)*0.01; };
+    return violation()*3+overK*40+underK*4+om*400+micro*150+leuPenalty()*450+Math.abs(T.kcal-tgt*0.99)*0.01; };
   for (let guard=0; guard<60; guard++){
     const T0=dayT(); const c0=cost(), r0=rulesScore();
     let best=null;
-    for (const m of [...genMoves(true),...genMoves(false)]) {
+    for (const m of [...genMoves(true),...genMoves(false),...leuMoves()]) {
       const sn=snapshot(); applyMove(m);
       const ok=rulesScore()<=r0 && (within(dayT())||!within(T0)); const c=cost();
       restoreSnap(sn);
@@ -18598,10 +18654,76 @@ function AppInner(){
     );
   })();
 
+  // לאוצין וליזין — לבקשת המשתמש: יעד יומי לפי גיל ומשקל (aminoTargets), בפועל ביום ובממוצע השבועי, ולאוצין בכל
+  // ארוחה עיקרית מול הסף לגיל (2 / 2.5 גר'). אותו סגנון טבלה כמו "יחסים", עם הסבר מתחת לכל שורה
+  const aminoSectionNode=(()=>{
+    const he=lang==="he";
+    const tg=aminoTargets(profile.age, wKg, profile.pregnant);
+    const wk = dashSource==="actual" ? weeklyActualTotals : weeklyPlannedTotals;
+    const f1=v=>v==null?"—":`${fmtN(v,1)} ${he?"גר'":"g"}`;
+    const mark=(v,t)=> v==null||t==null ? "" : (v>=t*0.98?" ✓":" ✗");
+    const col=(v,t)=> v==null||t==null ? "#6B7C72" : (v>=t*0.98?"#2e7d32":"#c62828");
+    const mealIngs=mk=> dashSource==="actual" ? getActualMealEffective(logDate,mk) : getMeal(mk);
+    const mealLeu=mk=> sumNuts((mealIngs(mk)||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).leucine||0;
+    const cell={padding:"10px 8px",fontSize:15,color:"#1E3A2B",borderBottom:"1px solid #E2DED4",textAlign:"center",verticalAlign:"middle"};
+    const headCell={...cell,fontSize:13,fontWeight:800,color:"#FFFFFF",background:"#1E3A2B",borderBottom:"none"};
+    const txtCell={...cell,fontSize:14,lineHeight:1.6,color:"#2F3B34",textAlign:he?"right":"left",background:"#F7F5EF",borderBottom:"3px solid #E2DED4"};
+    const val=(v,t)=>(<span style={{fontWeight:800,fontSize:16,color:col(v,t)}}>{f1(v)}{mark(v,t)}</span>);
+    const dayLeu=displayTotals.leucine||0, dayLys=displayTotals.lysine||0;
+    const wkLeu=wk?(wk.leucine||0)/7:null, wkLys=wk?(wk.lysine||0)/7:null;
+    const ageNote = tg.age>=65 ? (he?`גיל ${tg.age}: היעד מוגבר ב-25% מעל ה-RDA הבסיסי, בהתאם להמלצות ESPEN/PROT-AGE לגיל 65+ (צורך מוגבר בחלבון בשל ירידה ביעילות בניית השריר).`:`Age ${tg.age}: target raised 25% above the base RDA, following ESPEN/PROT-AGE recommendations for 65+ (higher protein need due to anabolic resistance).`) : "";
+    return(
+      <div style={microSectionCardStyle}>
+        <div style={{...microSectionTitleStyle,fontSize:17}}>🧬 {he?"לאוצין וליזין":"Leucine & Lysine"}</div>
+        {!tg.leuDayG && <div style={{fontSize:14,color:"#a6440f",marginBottom:8}}>{he?"כדי לחשב יעד יומי יש להזין משקל ב\"הנתונים שלי\".":"Enter your weight in \"My data\" to calculate a daily target."}</div>}
+        <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",direction:he?"rtl":"ltr"}}>
+          <thead><tr>
+            <th style={{...headCell,textAlign:he?"right":"left"}}>{he?"חומצת אמינו":"Amino acid"}</th>
+            <th style={headCell}>{he?"יעד יומי":"Daily target"}</th>
+            <th style={headCell}>{he?"יומי":"Daily"}</th>
+            <th style={headCell}>{he?"ממוצע שבועי":"Weekly avg"}</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style={{...cell,fontWeight:800,textAlign:he?"right":"left"}}>{he?"לאוצין":"Leucine"}</td>
+              <td style={{...cell,fontSize:14}}>{f1(tg.leuDayG)}<div style={{fontSize:12,color:"#3F4A44"}}>{tg.leuMgKg} {he?"מ\"ג לק\"ג":"mg/kg"}</div></td>
+              <td style={cell}>{val(dayLeu,tg.leuDayG)}</td>
+              <td style={cell}>{val(wkLeu,tg.leuDayG)}</td>
+            </tr>
+            <tr><td colSpan={4} style={txtCell}>{he?"לאוצין הוא \"המתג\" שמפעיל בניית חלבון בשריר. בחלבון צמחי יש פחות לאוצין (כ-6%-8% מהחלבון לעומת 10%-12% במי-גבינה) והוא נספג מעט פחות, ולכן חשוב לא רק הסך היומי אלא גם כמות מספקת בכל ארוחה עיקרית. מקורות טובים: טופו, טמפה, עדשים, שעועית, גרעיני דלעת ובוטנים.":"Leucine is the 'switch' that turns on muscle protein synthesis. Plant protein has less leucine (about 6–8% of protein vs 10–12% in whey) and is slightly less digestible, so both the daily total and a sufficient amount at each main meal matter. Good sources: tofu, tempeh, lentils, beans, pumpkin seeds and peanuts."}</td></tr>
+            <tr>
+              <td style={{...cell,fontWeight:800,textAlign:he?"right":"left"}}>{he?"ליזין":"Lysine"}</td>
+              <td style={{...cell,fontSize:14}}>{f1(tg.lysDayG)}<div style={{fontSize:12,color:"#3F4A44"}}>{tg.lysMgKg} {he?"מ\"ג לק\"ג":"mg/kg"}</div></td>
+              <td style={cell}>{val(dayLys,tg.lysDayG)}</td>
+              <td style={cell}>{val(wkLys,tg.lysDayG)}</td>
+            </tr>
+            <tr><td colSpan={4} style={txtCell}>{he?"ליזין היא חומצת האמינו ה\"מגבילה\" בדגנים — בחיטה, אורז ותירס יש מעט ממנה, ובסייטן כמעט אין. קטניות וסויה עשירות בה, ולכן שילוב קטנית בכל ארוחה עם דגן (כמו שהאפליקציה מקפידה) משלים אותה. 3 מנות קטניות/סויה ביום ומעלה מספיקות כמעט תמיד.":"Lysine is the 'limiting' amino acid in grains — wheat, rice and corn contain little, and seitan almost none. Legumes and soy are rich in it, so pairing a legume with grain at each meal (as the app does) completes it. Three or more servings of legumes/soy a day are almost always enough."}</td></tr>
+          </tbody>
+        </table>
+        </div>
+        {(()=>{ const nOk=["breakfast","lunch","dinner"].filter(mk=>mealLeu(mk)>=tg.leuMealG*0.98).length; const ok=nOk>=2; return(
+        <div style={{margin:"14px 0 6px",textAlign:he?"right":"left"}}>
+          <div style={{fontSize:14,fontWeight:800,color:"#1E3A2B"}}>{he?`לאוצין בארוחות העיקריות — כלל: לפחות 2 ארוחות מעל ${tg.leuMealG} גר' (הסף לגילך)`:`Leucine at main meals — rule: at least 2 meals above ${tg.leuMealG} g (threshold for your age)`}</div>
+          <div style={{fontSize:14,fontWeight:800,color:ok?"#2e7d32":"#c62828",marginTop:4}}>{he?`${nOk} מתוך 3 ארוחות מעל הסף ${ok?"✓":"✗"}`:`${nOk} of 3 meals above threshold ${ok?"✓":"✗"}`}</div>
+          <div style={{fontSize:13,color:"#2F3B34",lineHeight:1.6,marginTop:4}}>{he?"כל ארוחה שעוברת את הסף מפעילה בניית חלבון בשריר לכמה שעות. שתי ארוחות כאלה ביום, יחד עם סך חלבון יומי מספק ואימוני כוח, נחשבות מספיקות; בחלון אכילה של שתי ארוחות — כל אחת מהן צריכה לעבור את הסף.":"Each meal above the threshold switches on muscle protein synthesis for a few hours. Two such meals a day, with adequate total protein and resistance training, are considered sufficient; with a two-meal eating window, each of them should pass the threshold."}</div>
+        </div>); })()}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+          {["breakfast","lunch","dinner"].map(mk=>{ const v=mealLeu(mk); return(
+            <div key={mk} style={{background:"#FFFFFF",border:"1px solid #E2DED4",borderRadius:10,padding:"8px 6px",textAlign:"center"}}>
+              <div style={{fontSize:13,color:"#3F4A44",fontWeight:700}}>{he?{breakfast:"בוקר",lunch:"צהריים",dinner:"ערב"}[mk]:{breakfast:"Breakfast",lunch:"Lunch",dinner:"Dinner"}[mk]}</div>
+              <div style={{fontSize:16,fontWeight:800,color:col(v,tg.leuMealG)}}>{f1(v)}{mark(v,tg.leuMealG)}</div>
+            </div>); })}
+        </div>
+        <div style={{fontSize:12,color:"#3F4A44",marginTop:10,lineHeight:1.6}}>{he?`יעד: ${tg.note}.`:`Target: ${tg.note}.`} {ageNote} {he?"ערכי לאוצין/ליזין ממאגר משרד הבריאות; לחלק מהמזונות (ובהם כמה קטניות שבהן נתון המאגר חריג) — הערכה לפי קבוצת המזון.":"Values from the Israeli MoH database; for some foods (including several legumes with implausible database values) — estimated by food group."}</div>
+      </div>
+    );
+  })();
   // הגדרת ארבע קטגוריות המיקרו — משמשת גם לשורת הכפתורים בסרגל הצד וגם לבחירת התוכן שנפתח בלחיצה
   const MICRO_CATEGORIES=[
     {k:"ratios",l:lang==="he"?"⚖️ יחסים":"⚖️ Ratios",node:ratiosSectionNode},
     {k:"omegaConv",l:lang==="he"?"🔄 המרת אומגות":"🔄 Omega Conversion",node:omegaConversionNode},
+    {k:"amino",l:lang==="he"?"🧬 לאוצין וליזין":"🧬 Leucine & Lysine",node:aminoSectionNode},
     {k:"satfat",l:lang==="he"?"🥓 שומן רוֹווי/כולסטרול":"🥓 Sat. Fat/Cholesterol",node:satFatSectionNode},
     {k:"vitminDaily",l:lang==="he"?"💊 ויטמינים ומינרלים — יומי":"💊 Vitamins & Minerals — Daily",node:dailyVitMinDetailNode},
     {k:"vitminWeekly",l:lang==="he"?"📅 ויטמינים ומינרלים — שבועי":"📅 Vitamins & Minerals — Weekly",node:weeklyVitMinDetailNode},
@@ -18903,6 +19025,7 @@ function AppInner(){
           <>
             {ratiosSectionNode /* לבקשת המשתמש: אותה טבלת יחסים פשוטה כמו ב-Desktop (במקום שלושת הכרטיסים) */}
             {omegaConversionNode}
+            {aminoSectionNode}
             {satFatSectionNode}
             {microVitSectionNode}
           </>
