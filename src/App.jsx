@@ -18692,7 +18692,8 @@ function AppInner(){
   // לבקשת המשתמש: במקום שלושה כרטיסים מפורטים — טבלה אחת פשוטה וקריאה: שם היחס · טווח רצוי · תוצאה יומית ·
   // תוצאה שבועית, ומתחת לכל יחס הסבר קצר על משמעותו. היומי לפי היום המוצג (מתוכנן/בפועל), השבועי לפי אותו מקור
   // (omegaRatioNode/knaSectionNode/capSectionNode נשארים בקוד אך כבר לא מוצגים כאן)
-  const ratiosSectionNode=(()=>{
+  // לבקשת המשתמש: יחס אומגה 6:3 מוצג בלשונית אבות המזון, ויחסי אשלגן:נתרן וסידן:זרחן — בלשונית מיקרו (יחסים)
+  const ratiosNodeFor=(which)=>{
     const he=lang==="he";
     const wk = dashSource==="actual" ? weeklyActualTotals : weeklyPlannedTotals;
     const r=(a,b)=> (b>0 ? a/b : null);
@@ -18733,10 +18734,11 @@ function AppInner(){
     ];
     const cell={padding:"10px 8px",fontSize:15,color:"#1E3A2B",borderBottom:"1px solid #E2DED4",textAlign:"center",verticalAlign:"middle"};
     const headCell={...cell,fontSize:13,fontWeight:800,color:"#FFFFFF",background:"#1E3A2B",borderBottom:"none"};
+    const rowsSel = which==="omega" ? rows.slice(0,1) : rows.slice(1);
     const val=(v,ok)=>(<span style={{fontWeight:800,fontSize:16,color:v==null?"#6B7C72":ok?"#2e7d32":"#c62828"}}>{fmtR(v)} {v==null?"":ok?"✓":"✗"}</span>);
     return(
       <div style={microSectionCardStyle}>
-        <div style={{...microSectionTitleStyle,fontSize:17}}>⚖️ {he?"יחסים תזונתיים":"Nutrient Ratios"}</div>
+        <div style={{...microSectionTitleStyle,fontSize:17}}>⚖️ {which==="omega"?(he?"יחס אומגה 6 : אומגה 3":"Omega-6 : Omega-3 Ratio"):(he?"יחסים תזונתיים":"Nutrient Ratios")}</div>
         <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",direction:he?"rtl":"ltr",borderRadius:10,overflow:"hidden"}}>
           <thead><tr>
@@ -18746,7 +18748,7 @@ function AppInner(){
             <th style={headCell}>{he?"שבועי":"Weekly"}</th>
           </tr></thead>
           <tbody>
-            {rows.map((row,i)=>(<Fragment key={i}>
+            {rowsSel.map((row,i)=>(<Fragment key={i}>
               <tr style={{background:"#FFFFFF"}}>
                 <td style={{...cell,fontWeight:800,textAlign:he?"right":"left"}}>{row.name}</td>
                 <td style={{...cell,fontSize:14}}>{row.range}</td>
@@ -18754,7 +18756,7 @@ function AppInner(){
                 <td style={cell}>{val(row.week,(row.okWeek||row.ok)(row.week))}</td>
               </tr>
               <tr style={{background:"#F7F5EF"}}>
-                <td colSpan={4} style={{...cell,fontSize:14,lineHeight:1.6,color:"#2F3B34",textAlign:he?"right":"left",borderBottom:i<rows.length-1?"3px solid #E2DED4":"none"}}>{row.text}</td>
+                <td colSpan={4} style={{...cell,fontSize:14,lineHeight:1.6,color:"#2F3B34",textAlign:he?"right":"left",borderBottom:i<rowsSel.length-1?"3px solid #E2DED4":"none"}}>{row.text}</td>
               </tr>
             </Fragment>))}
           </tbody>
@@ -18763,7 +18765,9 @@ function AppInner(){
         <div style={{fontSize:12,color:"#3F4A44",marginTop:8}}>{he?`יומי — לפי היום המוצג; שבועי — סך השבוע (${dashSource==="actual"?"בפועל":"מתוכנן"}). ✓ בטווח · ✗ מחוץ לטווח`:`Daily — the displayed day; weekly — whole-week total (${dashSource==="actual"?"actual":"planned"}). ✓ in range · ✗ out of range`}</div>
       </div>
     );
-  })();
+  };
+  const ratiosSectionNode=ratiosNodeFor("minerals");
+  const omegaRatioTableNode=ratiosNodeFor("omega");
   // שומן רוֹווי + כולסטרול — פאנל מלא (יומי+שבועי), לבקשת המשתמש. קיים רק בגרסה הצמחונית (fork)
   // לבקשת המשתמש: הקוביות תמיד אחת מתחת לשני (יומי למעלה, שבועי מתחת) — לא זו-לצד-זו גם ב-Desktop, בניגוד
   // לשאר מקטעי היומי+שבועי בעמוד הזה (אומגה/נתרן-אשלגן/סידן-זרחן) שנשארים זה-לצד-זה שם. תג היום המוצג בפאנל
@@ -18930,8 +18934,8 @@ function AppInner(){
   })();
   // הגדרת ארבע קטגוריות המיקרו — משמשת גם לשורת הכפתורים בסרגל הצד וגם לבחירת התוכן שנפתח בלחיצה
   const MICRO_CATEGORIES=[
-    // יחסים / המרת אומגות / לאוצין-ליזין — הועברו ללשונית "אבות המזון" (לבקשת המשתמש)
-    {k:"satfat",l:lang==="he"?"🥓 שומן רוֹווי/כולסטרול":"🥓 Sat. Fat/Cholesterol",node:satFatSectionNode},
+    {k:"ratios",l:lang==="he"?"⚖️ יחסים":"⚖️ Ratios",node:ratiosSectionNode},
+    // יחס אומגה 6:3 / המרת אומגות / לאוצין-ליזין / שומן רווי וכולסטרול — בלשונית "אבות המזון" (לבקשת המשתמש)
     {k:"vitminDaily",l:lang==="he"?"💊 ויטמינים ומינרלים — יומי":"💊 Vitamins & Minerals — Daily",node:dailyVitMinDetailNode},
     {k:"vitminWeekly",l:lang==="he"?"📅 ויטמינים ומינרלים — שבועי":"📅 Vitamins & Minerals — Weekly",node:weeklyVitMinDetailNode},
   ];
@@ -19218,10 +19222,11 @@ function AppInner(){
         {tab==="macros"&&!isDesktop&&(
           <>
             <MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} lang={lang} onInfo={setInfoOpen}/>
-            {/* לבקשת המשתמש: יחסים (כולל יחס האומגות), המרת אומגות ולאוצין/ליזין — בלשונית אבות המזון */}
-            {ratiosSectionNode}
+            {/* לבקשת המשתמש: יחס אומגה 6:3, המרה ל-EPA/DHA, לאוצין/ליזין, שומן רווי וכולסטרול — בלשונית אבות המזון */}
+            {omegaRatioTableNode}
             {omegaConversionNode}
             {aminoSectionNode}
+            {satFatSectionNode}
           </>
         )}
         {tab==="macros"&&isDesktop&&(
@@ -19231,16 +19236,17 @@ function AppInner(){
             </div>
             <div style={{flex:1,minWidth:0}}>
               <MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} lang={lang} onInfo={setInfoOpen}/>
-              {/* לבקשת המשתמש: יחסים (כולל יחס האומגות), המרת אומגות ולאוצין/ליזין — בלשונית אבות המזון */}
-              <div style={{marginTop:16}}>{ratiosSectionNode}</div>
+              {/* לבקשת המשתמש: יחס אומגה 6:3, המרה ל-EPA/DHA, לאוצין/ליזין, שומן רווי וכולסטרול — בלשונית אבות המזון */}
+              <div style={{marginTop:16}}>{omegaRatioTableNode}</div>
               <div style={{marginTop:16}}>{omegaConversionNode}</div>
               <div style={{marginTop:16}}>{aminoSectionNode}</div>
+              <div style={{marginTop:16}}>{satFatSectionNode}</div>
             </div>
           </div>
         )}
         {tab==="micro"&&!desktopMicroLayout&&(
           <>
-            {satFatSectionNode}
+            {ratiosSectionNode}
             {microVitSectionNode}
           </>
         )}
