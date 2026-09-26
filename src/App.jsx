@@ -16335,24 +16335,24 @@ function WeeklyEpaDhaBar({plannedTotals,actualTotals,lang}){
   return(
     <div style={{width:"100%",background:"#FFFFFF",borderRadius:14,padding:"18px 20px",border:"1px solid #E2DED4",marginBottom:14,direction:dir,textAlign:dir==="rtl"?"right":"left",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.08)"}}>
       <div style={{fontSize:18,fontWeight:800,color:"#3a7bc8",marginBottom:10}}>{lang==="he"?"🧬 המרת ALA ל-EPA/DHA (אומדן)":"🧬 ALA→EPA/DHA Conversion (estimate)"}</div>
-      <div style={{fontSize:13,fontWeight:700,color:"#4a5a52",marginBottom:14}}>
+      <div style={{fontSize:15,fontWeight:700,color:"#2F3B34",marginBottom:14}}>
         {lang==="he"?"יעד שבועי: ":"Weekly target: "}<bdi style={{fontWeight:800,color:"#1E3A2B"}}>{fmtN(weeklyTargetLowG,2)}–{fmtN(weeklyTargetHighG,2)}g</bdi> EPA+DHA
       </div>
       <div style={{display:"flex",gap:24,marginBottom:10}}>
         <div style={{flex:1,background:"#F5F2EB",borderRadius:10,padding:"12px 14px"}}>
-          <div style={{fontSize:13,fontWeight:800,color:"#4a5a52",marginBottom:6}}>{lang==="he"?"מתוכנן":"Planned"}</div>
+          <div style={{fontSize:15,fontWeight:800,color:"#2F3B34",marginBottom:6}}>{lang==="he"?"מתוכנן":"Planned"}</div>
           <div style={{fontSize:19,fontWeight:800,color:"#2e7d32",marginBottom:3}}><bdi>EPA {fmtN(planned.epa,2)}g</bdi></div>
           <div style={{fontSize:19,fontWeight:800,color:"#3a7bc8",marginBottom:3}}><bdi>DHA {fmtN(planned.dha,2)}g</bdi></div>
-          <div style={{fontSize:15,fontWeight:800,color:colorForCombined(planned.epa+planned.dha),marginTop:6}}>{lang==="he"?"סה״כ ":"Total "}<bdi>{fmtN(planned.epa+planned.dha,2)}g</bdi></div>
+          <div style={{fontSize:16,fontWeight:800,color:colorForCombined(planned.epa+planned.dha),marginTop:6}}>{lang==="he"?"סה״כ ":"Total "}<bdi>{fmtN(planned.epa+planned.dha,2)}g</bdi></div>
         </div>
         <div style={{flex:1,background:"#F5F2EB",borderRadius:10,padding:"12px 14px"}}>
-          <div style={{fontSize:13,fontWeight:800,color:"#4a5a52",marginBottom:6}}>{lang==="he"?"בפועל":"Actual"}</div>
+          <div style={{fontSize:15,fontWeight:800,color:"#2F3B34",marginBottom:6}}>{lang==="he"?"בפועל":"Actual"}</div>
           <div style={{fontSize:19,fontWeight:800,color:"#2e7d32",marginBottom:3}}><bdi>EPA {fmtN(actual.epa,2)}g</bdi></div>
           <div style={{fontSize:19,fontWeight:800,color:"#3a7bc8",marginBottom:3}}><bdi>DHA {fmtN(actual.dha,2)}g</bdi></div>
-          <div style={{fontSize:15,fontWeight:800,color:colorForCombined(actual.epa+actual.dha),marginTop:6}}>{lang==="he"?"סה״כ ":"Total "}<bdi>{fmtN(actual.epa+actual.dha,2)}g</bdi></div>
+          <div style={{fontSize:16,fontWeight:800,color:colorForCombined(actual.epa+actual.dha),marginTop:6}}>{lang==="he"?"סה״כ ":"Total "}<bdi>{fmtN(actual.epa+actual.dha,2)}g</bdi></div>
         </div>
       </div>
-      <div style={{fontSize:13,fontWeight:600,color:"#8C6D53",lineHeight:1.6,marginTop:10,background:"#FBF3E0",border:"1px solid #e8d9a3",borderRadius:10,padding:"10px 12px"}}>
+      <div style={{fontSize:15,fontWeight:600,color:"#8C6D53",lineHeight:1.6,marginTop:10,background:"#FBF3E0",border:"1px solid #e8d9a3",borderRadius:10,padding:"10px 12px"}}>
         {lang==="he"
           ?"⚠️ אומדן גס — קצב ההמרה משתנה מאוד בין אנשים ואינו ניתן למדידה מהתזונה בלבד. מבוסס על טווחי ספרות (EPA כ-8%, DHA כ-2% מה-ALA), פוחת כשיחס אומגה6:3 עולה מעל 5:1. לא תחליף לבדיקת דם או תוסף שמן אצות ישיר."
           :"⚠️ Rough estimate — conversion varies widely between people and can't be measured from diet alone. Based on literature ranges (EPA ~8%, DHA ~2% of ALA), reduced when the omega-6:3 ratio exceeds 5:1. Not a substitute for bloodwork or a direct algae-oil supplement."}
@@ -16501,27 +16501,27 @@ function SatFatCholPanel({totals,lang,onInfo,dayLabel}){
   return(
     <div style={{background:"#FFFFFF",borderRadius:16,padding:14,marginBottom:10,border:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)",direction:dir,textAlign:dir==="rtl"?"right":"left"}}>
       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-        <span style={{fontSize:12,color:"#c1440e",fontWeight:700}}>{lang==="he"?"🥓 שומן רוֹווי / כולסטרול — יומי":"🥓 Saturated Fat / Cholesterol — Daily"}</span>
+        <span style={{fontSize:14,color:"#c1440e",fontWeight:700}}>{lang==="he"?"🥓 שומן רוֹווי / כולסטרול — יומי":"🥓 Saturated Fat / Cholesterol — Daily"}</span>
         {onInfo&&<InfoTag infoKey="satfat" lang={lang} onClick={()=>onInfo("satfat")}/>}
         {/* לבקשת המשתמש: מציג במפורש לאיזה יום הפאנל היומי מתייחס — לא תמיד ברור מאליו, במיוחד כשעוברים
             בין ימים בבורר או בין "מתוכנן"/"בפועל" (שיכולים להצביע על ימים שונים בו-זמנית) */}
-        {dayLabel&&<span style={{marginInlineStart:"auto",fontSize:14,fontWeight:800,color:"#6B4E36",background:"#F7EFE3",border:"1px solid #d9c2a3",borderRadius:20,padding:"2px 9px"}}>{dayLabel}</span>}
+        {dayLabel&&<span style={{marginInlineStart:"auto",fontSize:16,fontWeight:800,color:"#6B4E36",background:"#F7EFE3",border:"1px solid #d9c2a3",borderRadius:20,padding:"2px 9px"}}>{dayLabel}</span>}
       </div>
       <div style={{background:satFatColor==="#2e7d32"?"#E8F4EA":satFatColor==="#b8860b"?"#fdf3e0":"#fdecea",borderRadius:10,padding:"8px 10px",marginBottom:8,border:`1px solid ${satFatColor}55`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-          <span style={{fontSize:13,fontWeight:700,color:"#1E3A2B",fontWeight:700}}>{lang==="he"?"שומן רוֹווי":"Saturated Fat"}</span>
-          <span style={{fontSize:13,fontWeight:800,color:satFatColor}}>{fmtN(satFatG,1)}g ({satFatPct}%)</span>
+          <span style={{fontSize:15,fontWeight:700,color:"#1E3A2B",fontWeight:700}}>{lang==="he"?"שומן רוֹווי":"Saturated Fat"}</span>
+          <span style={{fontSize:15,fontWeight:800,color:satFatColor}}>{fmtN(satFatG,1)}g ({satFatPct}%)</span>
         </div>
         <Bar value={satFatPct} goal={10} color={satFatColor} h={8} trackColor="#CFC7B8"/>
-        <div style={{fontSize:11,color:"#3F4A44",marginTop:3}}>{lang==="he"?"יעד: עד 10% מהקלוריות (ירוק ≤7% · צהוב 7–10% · אדום >10%)":"Target: up to 10% of calories (green ≤7% · yellow 7–10% · red >10%)"}</div>
+        <div style={{fontSize:13,color:"#1E3A2B",marginTop:3}}>{lang==="he"?"יעד: עד 10% מהקלוריות (ירוק ≤7% · צהוב 7–10% · אדום >10%)":"Target: up to 10% of calories (green ≤7% · yellow 7–10% · red >10%)"}</div>
       </div>
       <div style={{background:cholColor==="#2e7d32"?"#E8F4EA":cholColor==="#b8860b"?"#fdf3e0":"#fdecea",borderRadius:10,padding:"8px 10px",border:`1px solid ${cholColor}55`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-          <span style={{fontSize:13,fontWeight:700,color:"#1E3A2B",fontWeight:700}}>{lang==="he"?"כולסטרול":"Cholesterol"}</span>
-          <span style={{fontSize:13,fontWeight:800,color:cholColor}}>{Math.round(cholMg)}mg</span>
+          <span style={{fontSize:15,fontWeight:700,color:"#1E3A2B",fontWeight:700}}>{lang==="he"?"כולסטרול":"Cholesterol"}</span>
+          <span style={{fontSize:15,fontWeight:800,color:cholColor}}>{Math.round(cholMg)}mg</span>
         </div>
         <Bar value={Math.min(cholMg,450)} goal={450} color={cholColor} h={8} trackColor="#CFC7B8"/>
-        <div style={{fontSize:11,color:"#3F4A44",marginTop:3}}>{lang==="he"?"טווח ייחוס שמרני: ירוק ≤200mg · צהוב 200–300mg · אדום >300mg (לא תקרה רפואית רשמית — ראו ℹ️)":"Conservative reference range: green ≤200mg · yellow 200–300mg · red >300mg (not an official medical ceiling — see ℹ️)"}</div>
+        <div style={{fontSize:13,color:"#1E3A2B",marginTop:3}}>{lang==="he"?"טווח ייחוס שמרני: ירוק ≤200mg · צהוב 200–300mg · אדום >300mg (לא תקרה רפואית רשמית — ראו ℹ️)":"Conservative reference range: green ≤200mg · yellow 200–300mg · red >300mg (not an official medical ceiling — see ℹ️)"}</div>
       </div>
     </div>
   );
@@ -16534,21 +16534,21 @@ function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInf
   return(
     <div style={{background:"#FFFFFF",borderRadius:16,padding:14,marginBottom:10,border:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)",direction:dir,textAlign:dir==="rtl"?"right":"left"}}>
       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-        <span style={{fontSize:12,color:"#c1440e",fontWeight:700}}>{lang==="he"?"🥓 שומן רוֹווי / כולסטרול — שבועי":"🥓 Saturated Fat / Cholesterol — Weekly"}</span>
+        <span style={{fontSize:14,color:"#c1440e",fontWeight:700}}>{lang==="he"?"🥓 שומן רוֹווי / כולסטרול — שבועי":"🥓 Saturated Fat / Cholesterol — Weekly"}</span>
         {onInfo&&<InfoTag infoKey="satfat" lang={lang} onClick={()=>onInfo("satfat")}/>}
       </div>
       <div style={{background:"#F5F2EB",borderRadius:8,padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-        <span style={{fontSize:11,color:"#1E3A2B"}}>{lang==="he"?"שומן רוֹווי (יעד ≤10%)":"Saturated fat (target ≤10%)"}</span>
+        <span style={{fontSize:13,color:"#1E3A2B"}}>{lang==="he"?"שומן רוֹווי (יעד ≤10%)":"Saturated fat (target ≤10%)"}</span>
         <span style={{display:"flex",gap:10}}>
-          <span style={{fontSize:11,color:"#6B7C72"}}>{lang==="he"?"מתוכנן":"Plan"} <b style={{color:triColor(plannedPct,[7,10])}}>{plannedPct}%</b></span>
-          <span style={{fontSize:11,color:"#6B7C72"}}>{lang==="he"?"בפועל":"Actual"} <b style={{color:triColor(actualPct,[7,10])}}>{actualPct}%</b></span>
+          <span style={{fontSize:13,color:"#2F3B34"}}>{lang==="he"?"מתוכנן":"Plan"} <b style={{color:triColor(plannedPct,[7,10])}}>{plannedPct}%</b></span>
+          <span style={{fontSize:13,color:"#2F3B34"}}>{lang==="he"?"בפועל":"Actual"} <b style={{color:triColor(actualPct,[7,10])}}>{actualPct}%</b></span>
         </span>
       </div>
       <div style={{background:"#F5F2EB",borderRadius:8,padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontSize:11,color:"#1E3A2B"}}>{lang==="he"?"כולסטרול (טווח ייחוס שבועי)":"Cholesterol (weekly reference range)"}</span>
+        <span style={{fontSize:13,color:"#1E3A2B"}}>{lang==="he"?"כולסטרול (טווח ייחוס שבועי)":"Cholesterol (weekly reference range)"}</span>
         <span style={{display:"flex",gap:10}}>
-          <span style={{fontSize:11,color:"#6B7C72"}}>{lang==="he"?"מתוכנן":"Plan"} <b style={{color:triColor(plannedTotals.cholesterol||0,[1400,2100])}}>{Math.round(plannedTotals.cholesterol||0)}mg</b></span>
-          <span style={{fontSize:11,color:"#6B7C72"}}>{lang==="he"?"בפועל":"Actual"} <b style={{color:triColor(actualTotals.cholesterol||0,[1400,2100])}}>{Math.round(actualTotals.cholesterol||0)}mg</b></span>
+          <span style={{fontSize:13,color:"#2F3B34"}}>{lang==="he"?"מתוכנן":"Plan"} <b style={{color:triColor(plannedTotals.cholesterol||0,[1400,2100])}}>{Math.round(plannedTotals.cholesterol||0)}mg</b></span>
+          <span style={{fontSize:13,color:"#2F3B34"}}>{lang==="he"?"בפועל":"Actual"} <b style={{color:triColor(actualTotals.cholesterol||0,[1400,2100])}}>{Math.round(actualTotals.cholesterol||0)}mg</b></span>
         </span>
       </div>
       {/* תיקון-באג (לבקשת המשתמש, אחרי ששאל למה כולסטרול שבועי של 1052mg מוצג באדום): plannedTotals/actualTotals
@@ -16558,7 +16558,7 @@ function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInf
           ביחס יומי. הטווח השבועי הנכון (לפי אותו יחס-ייחוס שמרני בדיוק, רק ×7): ירוק ≤1400mg · צהוב 1400–2100mg
           · אדום מעל 2100mg */}
       {(triColor(plannedTotals.cholesterol||0,[1400,2100])==="#c62828"||triColor(actualTotals.cholesterol||0,[1400,2100])==="#c62828")&&(
-        <div style={{background:"#fdecea",border:"1px solid #e5a08f",borderRadius:8,padding:"8px 10px",marginBottom:dailyData.length?10:0,fontSize:11,color:"#a6440f",lineHeight:1.5}}>
+        <div style={{background:"#fdecea",border:"1px solid #e5a08f",borderRadius:8,padding:"8px 10px",marginBottom:dailyData.length?10:0,fontSize:13,color:"#a6440f",lineHeight:1.5}}>
           {lang==="he"
             ?"⚠️ הכולסטרול השבועי חורג מ-2,100mg (טווח-ייחוס שמרני, לא תקרה רפואית רשמית — ההנחיות העדכניות הסירו תקרה מספרית מחייבת; שווה ערך ל-300mg/יום בממוצע לאורך השבוע). מקור אופייני: ביצים וגבינות קשות. שקול/י לצמצם את התדירות שלהם או להחליף חלק מהם במקור צמחי מקביל, ובמידת הצורך התייעץ/י עם רופא/דיאטן/ית — במיוחד אם יש היסטוריה משפחתית של מחלת לב."
             :"⚠️ Weekly cholesterol exceeds 2,100mg (a conservative reference range, not an official medical ceiling — current guidelines removed a mandatory numeric cap; equivalent to a 300mg/day average across the week). Typical source: eggs and hard cheeses. Consider reducing their frequency or swapping some for a plant-based equivalent, and consult a physician/dietitian if needed — especially with a family history of heart disease."}
@@ -16569,7 +16569,7 @@ function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInf
           ל-15% (תקרת ציור, לא יעד), צבע תלת-גוני לפי אותם ספי ירוק/צהוב/אדום של הפאנל היומי */}
       {dailyData.length>0&&(
         <div>
-          <div style={{fontSize:10,color:"#6B7C72",marginBottom:4}}>{lang==="he"?"מגמה יומית — שומן רוֹווי (% קלוריות)":"Daily trend — saturated fat (% of calories)"}</div>
+          <div style={{fontSize:12,color:"#2F3B34",marginBottom:4}}>{lang==="he"?"מגמה יומית — שומן רוֹווי (% קלוריות)":"Daily trend — saturated fat (% of calories)"}</div>
           <div style={{display:"flex",alignItems:"flex-end",gap:4,height:44}}>
             {dailyData.map((d,i)=>{
               const h=Math.max(3,Math.min(44,Math.round(d.satFatPct/15*44)));
@@ -16583,7 +16583,7 @@ function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInf
           </div>
           <div style={{display:"flex",gap:4,marginTop:2}}>
             {dailyData.map((d,i)=>(
-              <div key={i} style={{flex:1,textAlign:"center",fontSize:8,color:"#6B7C72"}}>{WEEKDAY_SHORT[lang][d.weekday]}</div>
+              <div key={i} style={{flex:1,textAlign:"center",fontSize:10,color:"#2F3B34"}}>{WEEKDAY_SHORT[lang][d.weekday]}</div>
             ))}
           </div>
         </div>
@@ -17102,8 +17102,8 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo}){
       <div style={{fontSize:11,color:"#1E3A2B",fontWeight:500,marginBottom:6,lineHeight:1.5}}>{lang==="he"?"ℹ️ מהו EAR? \"הצריכה הממוצעת הנדרשת\" (Estimated Average Requirement) — הרמה היומית שמספיקה לכ-50% מהאוכלוסייה הבריאה בקבוצת הגיל/מין. צריכה מתחת ל-EAR מצביעה על סיכון ממשי לחוסר קליני. ה-RDA (100% מהיעד כאן) גבוה יותר בכוונה — נקבע כדי לכסות כמעט את כל האוכלוסייה (כ-97-98%), לא רק את החציון.":"ℹ️ What's EAR? \"Estimated Average Requirement\" — the daily level sufficient for about 50% of healthy people in that age/sex group. Intake below EAR signals a real risk of clinical deficiency. The RDA (100% of target here) is set deliberately higher — to cover nearly the whole population (about 97-98%), not just the median."}</div>
       <div style={{fontSize:11,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"?"⚠️ יוד: חשיבות ייחודית לבלוטת התריס בתזונה צמחית — יש לוודא צריכה עקבית ממלח מיודד/אצות ים, ולשקול תוסף אם לא מתמלא באופן קבוע.":"⚠️ Iodine: uniquely important for thyroid health on a plant-based diet — ensure consistent intake from iodized salt/seaweed, and consider a supplement if it isn't reliably met."}</div>
       <div style={{fontSize:11,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"
-        ?"ℹ️ מהי \"ספיגה משוערת\" (מוצג ליד סידן)? הערכה לא-מחייבת של כמות הסידן שהגוף כנראה סופג בפועל, לא רק מה שקיים במזון — כי ספיגה משתנה מאוד בין מקורות (למשל תרד: ~5% בלבד, עקב אוקסלט; ברוקולי/כרוב: ~55-61%, כי הם דלים באוקסלט). מבוססת בחלקה על מדידות איזוטופים שפורסמו במחקר (Weaver ואחרים), ובחלקה על קירוב-משפחתי לירקות שלא נמדדו ישירות. אינה משנה שום המלצת-תפריט בפועל — מוצגת כמידע בלבד. ה-RDA הרשמי (100% למעלה) כבר מניח ספיגה ממוצעת של כ-30% מתזונה מעורבת טיפוסית, כך שהמספרים אינם ניתנים להשוואה ישירה. טווח-ייחוס משוער (לא מדד קליני רשמי — קירוב סביר בלבד): כ-250-350 מ\"ג נספג ליום תואם בדרך כלל צריכה שעומדת ב-RDA (1000 מ\"ג גולמי) עם ספיגה ממוצעת טיפוסית. ערך נמוך משמעותית מ-200 מ\"ג עשוי להצביע שרוב הסידן הנצרך מגיע ממקורות דלי-ספיגה (למשל תרד/עלים עתירי-אוקסלט) — כדאי לבדוק אם אפשר לשלב גם מקורות עתירי-ספיגה (טופו מועשר-סידן, ירקות מצליבים). ערך גבוה מהטווח אינו מדאיג באופן דומה — הגוף מווסת את יעילות-הספיגה כלפי מטה ככל שהצריכה עולה, כך שאין 'תקרה' מקבילה לזו של צריכה גולמית."
-        :"ℹ️ What's \"est. absorbed\" (shown next to calcium)? A non-binding estimate of how much calcium the body likely actually absorbs, not just what's present in the food — since absorption varies a lot by source (e.g. spinach: only ~5%, due to oxalate; broccoli/cabbage: ~55-61%, being low in oxalate). Based partly on published isotope-study measurements (Weaver et al.), partly on family-based approximation for vegetables not directly studied. Doesn't change any actual meal recommendation — shown for information only. The official RDA (100% above) already assumes roughly 30% average absorption from a typical mixed diet, so the two numbers aren't directly comparable. Rough reference range (not an official clinical measure — a reasonable approximation only): about 250-350mg absorbed per day typically corresponds to intake meeting the RDA (1000mg raw) with typical average absorption. A value significantly below 200mg may suggest most of your calcium is coming from low-absorption sources (e.g. oxalate-rich spinach/greens) — worth checking whether you can also work in high-absorption sources (calcium-set tofu, cruciferous vegetables). A value above the range isn't a concern the same way — the body down-regulates absorption efficiency as intake rises, so there's no ceiling analogous to the one for raw intake."}</div>
+        ?"ℹ️ ספיגה משוערת (ליד סידן): הערכה בלבד של הסידן שנספג בפועל — הספיגה שונה בין מקורות (תרד ~5%, ברוקולי/כרוב ~55-60%). כ-250-350 מ\"ג נספג ליום הוא טווח תקין."
+        :"ℹ️ Est. absorbed (next to calcium): an estimate only of the calcium actually absorbed — absorption varies by source (spinach ~5%, broccoli/cabbage ~55-60%). About 250-350mg absorbed per day is a normal range."}</div>
       {overULRows.length>0&&(
         <div style={{background:"#fdecea",borderRadius:9,padding:"7px 10px",marginBottom:10,border:"1px solid #e5a08f"}}>
           <div style={{fontSize:10,color:"#a6440f",fontWeight:700,marginBottom:3}}>{lang==="he"?"⚠️ מעל תקרת הבטיחות היומית (UL)":"⚠️ Above Daily Safety Ceiling (UL)"}</div>
@@ -18650,7 +18650,7 @@ function AppInner(){
   // לשונית "מיקרו": שלושה "חלונות" (כרטיסים) נפרדים וברורים — כל אחד מרכז נושא שלם (יומי+שבועי) יחד,
   // במקום פיזור הרכיבים הקשורים זה לזה במקומות שונים בעמוד
   const microSectionCardStyle={background:"#FFFFFF",borderRadius:14,padding:"14px 16px",border:"1px solid #E2DED4",marginBottom:12,boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)"};
-  const microSectionTitleStyle={fontSize:14,fontWeight:800,color:"#1E3A2B",marginBottom:10,textAlign:lang==="he"?"right":"left",direction:lang==="he"?"rtl":"ltr"};
+  const microSectionTitleStyle={fontSize:16,fontWeight:800,color:"#1E3A2B",marginBottom:10,textAlign:lang==="he"?"right":"left",direction:lang==="he"?"rtl":"ltr"};
   const omegaRatioNode=(
     <div style={microSectionCardStyle}>
       <div style={microSectionTitleStyle}>{lang==="he"?"יחס אומגה 6:3":"Omega 6:3 Ratio"}</div>
@@ -18733,8 +18733,8 @@ function AppInner(){
           text: hasAnimal ? textAnimal : textPlant };
       })(),
     ];
-    const cell={padding:"10px 8px",fontSize:15,color:"#1E3A2B",borderBottom:"1px solid #E2DED4",textAlign:"center",verticalAlign:"middle"};
-    const headCell={...cell,fontSize:13,fontWeight:800,color:"#FFFFFF",background:"#1E3A2B",borderBottom:"none"};
+    const cell={padding:"10px 8px",fontSize:16,color:"#1E3A2B",borderBottom:"1px solid #E2DED4",textAlign:"center",verticalAlign:"middle"};
+    const headCell={...cell,fontSize:15,fontWeight:800,color:"#FFFFFF",background:"#1E3A2B",borderBottom:"none"};
     const rowsSel = which==="omega" ? rows.slice(0,1) : rows.slice(1);
     const val=(v,ok)=>(<span style={{fontWeight:800,fontSize:16,color:v==null?"#6B7C72":ok?"#2e7d32":"#c62828"}}>{fmtR(v)} {v==null?"":ok?"✓":"✗"}</span>);
     return(
@@ -18752,18 +18752,18 @@ function AppInner(){
             {rowsSel.map((row,i)=>(<Fragment key={i}>
               <tr style={{background:"#FFFFFF"}}>
                 <td style={{...cell,fontWeight:800,textAlign:he?"right":"left"}}>{row.name}</td>
-                <td style={{...cell,fontSize:14}}>{row.range}</td>
+                <td style={{...cell,fontSize:16}}>{row.range}</td>
                 <td style={cell}>{val(row.day,(row.okDay||row.ok)(row.day))}</td>
                 <td style={cell}>{val(row.week,(row.okWeek||row.ok)(row.week))}</td>
               </tr>
               <tr style={{background:"#F7F5EF"}}>
-                <td colSpan={4} style={{...cell,fontSize:14,lineHeight:1.6,color:"#2F3B34",textAlign:he?"right":"left",borderBottom:i<rowsSel.length-1?"3px solid #E2DED4":"none"}}>{row.text}</td>
+                <td colSpan={4} style={{...cell,fontSize:16,lineHeight:1.6,color:"#1E3A2B",textAlign:he?"right":"left",borderBottom:i<rowsSel.length-1?"3px solid #E2DED4":"none"}}>{row.text}</td>
               </tr>
             </Fragment>))}
           </tbody>
         </table>
         </div>
-        <div style={{fontSize:12,color:"#3F4A44",marginTop:8}}>{he?`יומי — לפי היום המוצג; שבועי — סך השבוע (${dashSource==="actual"?"בפועל":"מתוכנן"}). ✓ בטווח · ✗ מחוץ לטווח`:`Daily — the displayed day; weekly — whole-week total (${dashSource==="actual"?"actual":"planned"}). ✓ in range · ✗ out of range`}</div>
+        <div style={{fontSize:14,color:"#1E3A2B",marginTop:8}}>{he?`יומי — לפי היום המוצג; שבועי — סך השבוע (${dashSource==="actual"?"בפועל":"מתוכנן"}). ✓ בטווח · ✗ מחוץ לטווח`:`Daily — the displayed day; weekly — whole-week total (${dashSource==="actual"?"actual":"planned"}). ✓ in range · ✗ out of range`}</div>
       </div>
     );
   };
@@ -18879,9 +18879,9 @@ function AppInner(){
     const col=(v,t)=> v==null||t==null ? "#6B7C72" : (v>=t*0.98?"#2e7d32":"#c62828");
     const mealIngs=mk=> dashSource==="actual" ? getActualMealEffective(logDate,mk) : getMeal(mk);
     const mealLeu=mk=> sumNuts((mealIngs(mk)||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).leucine||0;
-    const cell={padding:"10px 8px",fontSize:15,color:"#1E3A2B",borderBottom:"1px solid #E2DED4",textAlign:"center",verticalAlign:"middle"};
-    const headCell={...cell,fontSize:13,fontWeight:800,color:"#FFFFFF",background:"#1E3A2B",borderBottom:"none"};
-    const txtCell={...cell,fontSize:14,lineHeight:1.6,color:"#2F3B34",textAlign:he?"right":"left",background:"#F7F5EF",borderBottom:"3px solid #E2DED4"};
+    const cell={padding:"10px 8px",fontSize:16,color:"#1E3A2B",borderBottom:"1px solid #E2DED4",textAlign:"center",verticalAlign:"middle"};
+    const headCell={...cell,fontSize:15,fontWeight:800,color:"#FFFFFF",background:"#1E3A2B",borderBottom:"none"};
+    const txtCell={...cell,fontSize:16,lineHeight:1.6,color:"#1E3A2B",textAlign:he?"right":"left",background:"#F7F5EF",borderBottom:"3px solid #E2DED4"};
     const val=(v,t)=>(<span style={{fontWeight:800,fontSize:16,color:col(v,t)}}>{f1(v)}{mark(v,t)}</span>);
     const dayLeu=displayTotals.leucine||0, dayLys=displayTotals.lysine||0;
     const wkLeu=wk?(wk.leucine||0)/7:null, wkLys=wk?(wk.lysine||0)/7:null;
@@ -18889,7 +18889,7 @@ function AppInner(){
     return(
       <div style={microSectionCardStyle}>
         <div style={{...microSectionTitleStyle,fontSize:17}}>🧬 {he?"לאוצין וליזין":"Leucine & Lysine"}</div>
-        {!tg.leuDayG && <div style={{fontSize:14,color:"#a6440f",marginBottom:8}}>{he?"כדי לחשב יעד יומי יש להזין משקל ב\"הנתונים שלי\".":"Enter your weight in \"My data\" to calculate a daily target."}</div>}
+        {!tg.leuDayG && <div style={{fontSize:16,color:"#a6440f",marginBottom:8}}>{he?"כדי לחשב יעד יומי יש להזין משקל ב\"הנתונים שלי\".":"Enter your weight in \"My data\" to calculate a daily target."}</div>}
         <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",direction:he?"rtl":"ltr"}}>
           <thead><tr>
@@ -18901,14 +18901,14 @@ function AppInner(){
           <tbody>
             <tr>
               <td style={{...cell,fontWeight:800,textAlign:he?"right":"left"}}>{he?"לאוצין":"Leucine"}</td>
-              <td style={{...cell,fontSize:14}}>{f1(tg.leuDayG)}<div style={{fontSize:12,color:"#3F4A44"}}>{tg.leuMgKg} {he?"מ\"ג לק\"ג":"mg/kg"}</div></td>
+              <td style={{...cell,fontSize:16}}>{f1(tg.leuDayG)}<div style={{fontSize:14,color:"#1E3A2B"}}>{tg.leuMgKg} {he?"מ\"ג לק\"ג":"mg/kg"}</div></td>
               <td style={cell}>{val(dayLeu,tg.leuDayG)}</td>
               <td style={cell}>{val(wkLeu,tg.leuDayG)}</td>
             </tr>
             <tr><td colSpan={4} style={txtCell}>{he?"לאוצין הוא \"המתג\" שמפעיל בניית חלבון בשריר. בחלבון צמחי יש פחות לאוצין (כ-6%-8% מהחלבון לעומת 10%-12% במי-גבינה) והוא נספג מעט פחות, ולכן חשוב לא רק הסך היומי אלא גם כמות מספקת בכל ארוחה עיקרית. מקורות טובים: טופו, טמפה, עדשים, שעועית, גרעיני דלעת ובוטנים.":"Leucine is the 'switch' that turns on muscle protein synthesis. Plant protein has less leucine (about 6–8% of protein vs 10–12% in whey) and is slightly less digestible, so both the daily total and a sufficient amount at each main meal matter. Good sources: tofu, tempeh, lentils, beans, pumpkin seeds and peanuts."}</td></tr>
             <tr>
               <td style={{...cell,fontWeight:800,textAlign:he?"right":"left"}}>{he?"ליזין":"Lysine"}</td>
-              <td style={{...cell,fontSize:14}}>{f1(tg.lysDayG)}<div style={{fontSize:12,color:"#3F4A44"}}>{tg.lysMgKg} {he?"מ\"ג לק\"ג":"mg/kg"}</div></td>
+              <td style={{...cell,fontSize:16}}>{f1(tg.lysDayG)}<div style={{fontSize:14,color:"#1E3A2B"}}>{tg.lysMgKg} {he?"מ\"ג לק\"ג":"mg/kg"}</div></td>
               <td style={cell}>{val(dayLys,tg.lysDayG)}</td>
               <td style={cell}>{val(wkLys,tg.lysDayG)}</td>
             </tr>
@@ -18918,25 +18918,25 @@ function AppInner(){
         </div>
         {(()=>{ const nOk=["breakfast","lunch","dinner"].filter(mk=>mealLeu(mk)>=tg.leuMealG*0.98).length; const ok=nOk>=2; return(
         <div style={{margin:"14px 0 6px",textAlign:he?"right":"left"}}>
-          <div style={{fontSize:14,fontWeight:800,color:"#1E3A2B"}}>{he?`לאוצין בארוחות העיקריות — כלל: לפחות 2 ארוחות מעל ${tg.leuMealG} גר' (הסף לגילך)`:`Leucine at main meals — rule: at least 2 meals above ${tg.leuMealG} g (threshold for your age)`}</div>
-          <div style={{fontSize:14,fontWeight:800,color:ok?"#2e7d32":"#c62828",marginTop:4}}>{he?`${nOk} מתוך 3 ארוחות מעל הסף ${ok?"✓":"✗"}`:`${nOk} of 3 meals above threshold ${ok?"✓":"✗"}`}</div>
-          <div style={{fontSize:13,color:"#2F3B34",lineHeight:1.6,marginTop:4}}>{he?"כל ארוחה שעוברת את הסף מפעילה בניית חלבון בשריר לכמה שעות. שתי ארוחות כאלה ביום, יחד עם סך חלבון יומי מספק ואימוני כוח, נחשבות מספיקות; בחלון אכילה של שתי ארוחות — כל אחת מהן צריכה לעבור את הסף.":"Each meal above the threshold switches on muscle protein synthesis for a few hours. Two such meals a day, with adequate total protein and resistance training, are considered sufficient; with a two-meal eating window, each of them should pass the threshold."}</div>
+          <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B"}}>{he?`לאוצין בארוחות העיקריות — כלל: לפחות 2 ארוחות מעל ${tg.leuMealG} גר' (הסף לגילך)`:`Leucine at main meals — rule: at least 2 meals above ${tg.leuMealG} g (threshold for your age)`}</div>
+          <div style={{fontSize:16,fontWeight:800,color:ok?"#2e7d32":"#c62828",marginTop:4}}>{he?`${nOk} מתוך 3 ארוחות מעל הסף ${ok?"✓":"✗"}`:`${nOk} of 3 meals above threshold ${ok?"✓":"✗"}`}</div>
+          <div style={{fontSize:15,color:"#1E3A2B",lineHeight:1.6,marginTop:4}}>{he?"כל ארוחה שעוברת את הסף מפעילה בניית חלבון בשריר לכמה שעות. שתי ארוחות כאלה ביום, יחד עם סך חלבון יומי מספק ואימוני כוח, נחשבות מספיקות; בחלון אכילה של שתי ארוחות — כל אחת מהן צריכה לעבור את הסף.":"Each meal above the threshold switches on muscle protein synthesis for a few hours. Two such meals a day, with adequate total protein and resistance training, are considered sufficient; with a two-meal eating window, each of them should pass the threshold."}</div>
         </div>); })()}
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
           {["breakfast","lunch","dinner"].map(mk=>{ const v=mealLeu(mk); return(
             <div key={mk} style={{background:"#FFFFFF",border:"1px solid #E2DED4",borderRadius:10,padding:"8px 6px",textAlign:"center"}}>
-              <div style={{fontSize:13,color:"#3F4A44",fontWeight:700}}>{he?{breakfast:"בוקר",lunch:"צהריים",dinner:"ערב"}[mk]:{breakfast:"Breakfast",lunch:"Lunch",dinner:"Dinner"}[mk]}</div>
+              <div style={{fontSize:15,color:"#1E3A2B",fontWeight:700}}>{he?{breakfast:"בוקר",lunch:"צהריים",dinner:"ערב"}[mk]:{breakfast:"Breakfast",lunch:"Lunch",dinner:"Dinner"}[mk]}</div>
               <div style={{fontSize:16,fontWeight:800,color:col(v,tg.leuMealG)}}>{f1(v)}{mark(v,tg.leuMealG)}</div>
             </div>); })}
         </div>
-        <div style={{fontSize:12,color:"#3F4A44",marginTop:10,lineHeight:1.6}}>{he?`יעד: ${tg.note}.`:`Target: ${tg.note}.`} {ageNote} {he?"ערכי לאוצין/ליזין ממאגר משרד הבריאות; לחלק מהמזונות (ובהם כמה קטניות שבהן נתון המאגר חריג) — הערכה לפי קבוצת המזון.":"Values from the Israeli MoH database; for some foods (including several legumes with implausible database values) — estimated by food group."}</div>
+        <div style={{fontSize:14,color:"#1E3A2B",marginTop:10,lineHeight:1.6}}>{he?`יעד: ${tg.note}.`:`Target: ${tg.note}.`} {ageNote} {he?"ערכי לאוצין/ליזין ממאגר משרד הבריאות; לחלק מהמזונות (ובהם כמה קטניות שבהן נתון המאגר חריג) — הערכה לפי קבוצת המזון.":"Values from the Israeli MoH database; for some foods (including several legumes with implausible database values) — estimated by food group."}</div>
         {/* לבקשת המשתמש, אחרי בדיקה מול הספרות: בתזונה צמחית ליזין ולאוצין הן החומצות המגבילות; עמידה בהן בתפריט מגוון שמצמיד
             דגנים לקטניות מכסה בפועל גם את 7 החיוניות האחרות (Mariotti & Gardner 2019; Nutrients / PLOS One 2025, טבעונים בניו זילנד) */}
-        <div style={{fontSize:13,color:"#1E3A2B",background:"#EEF5EC",border:"1px solid #CFE3CB",borderRadius:10,padding:"10px 12px",marginTop:12,lineHeight:1.7}}>
+        <div style={{fontSize:15,color:"#1E3A2B",background:"#EEF5EC",border:"1px solid #CFE3CB",borderRadius:10,padding:"10px 12px",marginTop:12,lineHeight:1.7}}>
           {he
             ? "למה רק לאוצין וליזין? בתזונה צמחית אלה שתי החומצות האמיניות החיוניות שנוטות להיות הראשונות בחסר: ליזין — כי הוא נמוך בדגנים, ולאוצין — כי יעדו הגבוה ביותר. במחקרים על צמחונים וטבעונים, מי שעומד בהן ובצריכת החלבון הכוללת עומד כמעט תמיד גם ב-7 החומצות החיוניות האחרות (היסטידין, איזולאוצין, ואלין, מתיונין+ציסטאין, פנילאלנין+טירוזין, תראונין וטריפטופן). החריג האפשרי היחיד הוא מתיונין+ציסטאין בתפריט המבוסס כמעט רק על קטניות — ולכן האפליקציה מצמידה תמיד דגנים לקטניות, שמשלימים זה את זה בדיוק בנקודה הזו. לכן עמידה ביעדי הלאוצין והליזין כאן היא סימן טוב לכך שכל דרישות החומצות החיוניות מכוסות."
             : "Why only leucine and lysine? In plant-based diets these are the two indispensable amino acids most likely to fall short first: lysine because it is low in grains, and leucine because its requirement is the highest. Studies of vegetarians and vegans show that people who meet these two, along with total protein, almost always meet the other 7 indispensable amino acids too (histidine, isoleucine, valine, methionine+cysteine, phenylalanine+tyrosine, threonine, tryptophan). The only possible exception is methionine+cysteine in a menu built almost entirely on legumes — which is why the app always pairs grains with legumes, since they complement each other exactly there. So meeting the leucine and lysine targets here is a good sign that all indispensable amino acid needs are covered."}
-          <div style={{marginTop:8,fontSize:12,lineHeight:1.7,direction:"ltr",textAlign:"left"}}>
+          <div style={{marginTop:8,fontSize:14,lineHeight:1.7,direction:"ltr",textAlign:"left"}}>
             <div style={{fontWeight:700,direction:he?"rtl":"ltr",textAlign:he?"right":"left"}}>{he?"סימוכין:":"References:"}</div>
             <div><a href="https://www.mdpi.com/2072-6643/11/11/2661" target="_blank" rel="noopener noreferrer" style={{color:"#1f5f8b"}}>Mariotti F, Gardner CD. Dietary Protein and Amino Acids in Vegetarian Diets—A Review. Nutrients 2019;11(11):2661</a></div>
             <div><a href="https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0314889" target="_blank" rel="noopener noreferrer" style={{color:"#1f5f8b"}}>Evaluation of protein intake and protein quality in New Zealand vegans. PLOS One</a></div>
@@ -19368,8 +19368,8 @@ function AppInner(){
         lang={lang} recipes={recipes} excludedFks={excludedFks} onToggleExclude={toggleExcludedFk}/>}
       {savedOpen&&<SavedMealsModal mealKey={savedOpen} onClose={()=>setSavedOpen(null)}
         onLoad={ings=>{setMeal(savedOpen,ings.map(x=>({...x,_id:x._id||uid()})));setSavedOpen(null);}} lang={lang}/>}
-      {showWelcome&&<WelcomeModal lang={lang} onClose={dismissWelcome} onStartTour={()=>{dismissWelcome();setTab("meals");setInfoOpen(null);fillDemoDayIfEmpty();setOnboardActive(true);}}/>}
-      {onboardActive&&<OnboardTour lang={lang} onDone={()=>{setDayPlanOpen(false);setOnboardActive(false);}} setTab={setTab} setDayPlanMode={setDayPlanMode} setDayPlanOpen={setDayPlanOpen}/>}
+      {showWelcome&&<WelcomeModal lang={lang} onClose={()=>{dismissWelcome();setTab("meals");}} onStartTour={()=>{dismissWelcome();setTab("meals");setInfoOpen(null);fillDemoDayIfEmpty();setOnboardActive(true);}}/>}
+      {onboardActive&&<OnboardTour lang={lang} onDone={()=>{setDayPlanOpen(false);setOnboardActive(false);setTab("meals");}} setTab={setTab} setDayPlanMode={setDayPlanMode} setDayPlanOpen={setDayPlanOpen}/>}
       {savedDaysOpen&&<SavedDaysModal onClose={()=>setSavedDaysOpen(false)}
         onLoad={dayData=>{loadSavedDayTemplate(dayData);setSavedDaysOpen(false);}} lang={lang}/>}
       {swapOpen&&<SwapModal allMeals={allDayMeals} target={target} wKg={wKg} profile={profile}
