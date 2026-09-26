@@ -2867,17 +2867,24 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   const bcat=fk=>{ const fd=fdOf(fk); if(!fd||!fd._isRecipe) return null; return bookCategoryOf({name:fd.he||"",foodGroup:fd._foodGroup||"",type:fd._recipeType||"",ings:fd._ings||[]}); };
   const isSoy=fk=>{ if (SOYF.has(fk)) return true; const fd=fdOf(fk); return !!(fd&&fd._isRecipe&&(fd._ings||[]).some(i=>SOYF.has(i.fk))); };
   const hasGrain=its=>its.some(it=>{ const c=catsInFoodGlobal(it.fk)||[]; return c.includes("דגן")||c.includes("מאפה"); });
-  const hasLeg=its=>its.some(it=>capCatOf(it.fk)==="קטנית"||SOY_PROT.has(it.fk));
+  // מתכון שיש בו מנת סויה של ממש (≥80 גר' למנה — יוגורט/משקה סויה, טופו) נחשב גם הוא "קטנית" לצורך הצמדת דגן-קטנית
+  // (למשל קערת יוגורט סויה + שיבולת שועל: הדגן והסויה כבר באותה מנה)
+  const soyRecipe=fk=>{ const fd=fdOf(fk); if(!fd||!fd._isRecipe) return false; const ings=fd._ings||[]; const tot=ings.reduce((a,i)=>a+(i.g||0),0); if(!(tot>0)) return false;
+    const soyG=ings.filter(i=>SOY_PROT.has(i.fk)||i.fk==="tofu"||i.fk==="tofuCalciumSet").reduce((a,i)=>a+(i.g||0),0); return soyG/tot*(fd._servingG||0)>=80; };
+  const hasLeg=its=>its.some(it=>capCatOf(it.fk)==="קטנית"||SOY_PROT.has(it.fk)||soyRecipe(it.fk));
   const isSpread=fk=>bcat(fk)==="ממרחים"||SPREAD_RAW.has(fk);
   const isBaked=fk=>bcat(fk)==="מאפים";
   const used=()=>{ const u=new Set(Object.values(plan).flat().filter(x=>x&&x.fk).map(x=>x.fk)); if (excl) excl.forEach(f=>u.add(f)); return u; };
   const legFams=()=>new Set(Object.values(plan).flat().filter(x=>x&&x.fk).map(it=>legumeFamilyOfItem(it)).filter(Boolean));
-  const stdG=fk=>getServingUnit(fk,fdOf(fk),"he")?.g||100;
-  const unitG=fk=>{ const fd=fdOf(fk); const su=getServingUnit(fk,fd,"he"); return su&&!su.weightOnly&&su.g?su.g/(su.count||1):null; };
+  // ביצועים: זיכרון-מטמון מקומי לשלב-הסיום (אותן תוצאות בדיוק) — ערכים תזונתיים לפי פריט+כמות, ויחידת-הגשה לפי פריט
+  const __nc=new Map(); const nutC=(fk,g,soaked)=>{ const k=fk+"|"+g+"|"+(soaked?1:0); let v=__nc.get(k); if(v===undefined){ v=ingNut(fk,g,soaked); __nc.set(k,v); } return v; };
+  const __sg=new Map(), __ug=new Map();
+  const stdG=fk=>{ if(__sg.has(fk)) return __sg.get(fk); const v=getServingUnit(fk,fdOf(fk),"he")?.g||100; __sg.set(fk,v); return v; };
+  const unitG=fk=>{ if(__ug.has(fk)) return __ug.get(fk); const fd=fdOf(fk); const su=getServingUnit(fk,fd,"he"); const v=su&&!su.weightOnly&&su.g?su.g/(su.count||1):null; __ug.set(fk,v); return v; };
   // "לעולם לא להציע": מזון חסום, או מתכון שמכיל מרכיב חסום — לא מוסיפים בשום שלב
   const blocked=fk=>(RECIPE_ONLY_FKS.has(fk)&&!fdOf(fk)?._isRecipe) || (!!excl&&(excl.has(fk)||((fdOf(fk)?._ings)||[]).some(i=>excl.has(i.fk))));
   const add=(mk,fk,g)=>{ if (blocked(fk)) return false; plan[mk]=[...(plan[mk]||[]),{fk,g:Math.round(g*10)/10}]; return true; };
-  const dayT=()=>sumNuts(Object.values(plan).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
+  const dayT=()=>sumNuts(Object.values(plan).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>nutC(fk,g,soaked)));
   const hasCat=(its,cat)=>its.some(it=>(catsInFoodGlobal(it.fk)||[]).includes(cat));
 
   // ── הצמדות ──
@@ -2969,7 +2976,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     return stdG(fk);
   };
   const saltToday=()=>Object.values(plan).flat().filter(x=>x&&x.fk==="saltIodized").reduce((a,x)=>a+x.g,0);
-  const mealKc=mk=>sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const mealKc=mk=>{ let a=0; for (const it of (plan[mk]||[])) a+=(nutC(it.fk,it.g,it.soaked).kcal||0); return a; };
   const pickMeal=(fk,addKcal=0)=>{
     const fd=FDB[fk]; if(!fd) return null;
     const order = fd.cat==="פרי"||isNutItem(fk)||isSeedItem(fk)||SOY_PROT.has(fk) ? ["breakfast","lunch","dinner"] : ["lunch","dinner","breakfast"];
@@ -2989,7 +2996,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   // פיצוי קלורי מיידי לכל תוספת: מקטינים דגנים/מתכונים/קטניות באותה ארוחה (ואז בשאר הארוחות) עד 35% מהכמות
   // המקורית — כך שהתוספת "מחליפה" קלוריות ריקות-יחסית במזון עשיר, במקום לדחוף את היום ואת הארוחה מעל התקרה
   const ADJC=new Set(["דגן","קטנית","תבשיל","מרק","מאפה"]);
-  const shrinkable=it=>{ const fd=fdOf(it.fk); return fd&&it.g>0&&!BREAD.has(it.fk)&&!(wholeUnitStepG(it.fk)&&fd.cat!=="דגן")&&(fd._isRecipe||ADJC.has(fd.cat)); };
+  const shrinkable=it=>{ if (it._keep) return false; const fd=fdOf(it.fk); return fd&&it.g>0&&!BREAD.has(it.fk)&&!(wholeUnitStepG(it.fk)&&fd.cat!=="דגן")&&(fd._isRecipe||ADJC.has(fd.cat)); };
   const compensate=(mkFirst,kcal,protectFk,onlyThisMeal)=>{
     let left=kcal;
     for (const mk of (onlyThisMeal?[mkFirst]:[mkFirst,...MAINS.filter(m=>m!==mkFirst)])){
@@ -3201,7 +3208,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   };
   // סבבים עד התייצבות: מיקרו → הצמדות → תקרות-ארוחה ויום (הקטנה בלבד) → שער 98-100%. כל סבב יכול לשנות את
   // קודמו (קיצוץ-קלוריות מוריד רכיבים, תוספת-מיקרו מוסיפה קלוריות), לכן חוזרים עד שאין חוסר ואין חריגה
-  const mealK=mk=>sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const mealK=mk=>{ let a=0; for (const it of (plan[mk]||[])) a+=(nutC(it.fk,it.g,it.soaked).kcal||0); return a; };
   const closure=()=>{
     MAINS.forEach(mk=>{ const over=mealK(mk)-tgt*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38); if (over>0) compensate(mk,over,null,true); });
     const dk=dayT().kcal; if (dk>tgt) compensate("lunch",dk-tgt*0.99,null,false);
@@ -3275,7 +3282,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     for (let idx=its.length-1; idx>=0; idx--){
       const it=its[idx]; const inf=it&&it.fk?unitInfo(it):null; if(!inf) continue;
       const n=it.g/inf.u; let k=Math.round(n);
-      if (k<1) { if (mk!=="snack") { const r0=rulesScore(); const saved=plan[mk]; plan[mk]=plan[mk].filter((_,i)=>i!==idx); if (rulesScore()<=r0) continue; plan[mk]=saved; } k=1; }
+      if (k<1) { if (mk!=="snack" && !it._keep) { const r0=rulesScore(); const saved=plan[mk]; plan[mk]=plan[mk].filter((_,i)=>i!==idx); if (rulesScore()<=r0) continue; plan[mk]=saved; } k=1; }
       const g=Math.round(k*inf.u*10)/10; if (Math.abs(g-it.g)>0.05) plan[mk][idx]={...it,g};
     }
   }
@@ -3301,7 +3308,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
       else { if (it.g-st>=st-0.01) mv.push({mk,idx,g:it.g-st}); else mv.push({mk,idx,remove:true}); } });
     for (const mk of ["breakfast","lunch","dinner"]) (plan[mk]||[]).forEach((it,idx)=>{
       const inf=unitInfo(it); if(!inf) return; const n=Math.round(it.g/inf.u);
-      if (!wantUp) { if (n>=2) mv.push({mk,idx,g:(n-1)*inf.u}); else mv.push({mk,idx,remove:true}); }
+      if (!wantUp) { if (n>=2) mv.push({mk,idx,g:(n-1)*inf.u}); else if (!it._keep) mv.push({mk,idx,remove:true}); } // _keep: מתכון שהוכנס לכיסוי קטגוריות השבוע — לא מוסרים
       else if (n+1<=capUnits(it,inf)) mv.push({mk,idx,g:(n+1)*inf.u});
     });
     if (wantUp) { const u=used();
@@ -3324,7 +3331,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     return mv; };
   // ── לאוצין: לפחות 2 ארוחות עיקריות מעל הסף לגיל (לבקשת המשתמש) — 2 גר' עד גיל 65, 2.5 גר' מגיל 65 ──
   const LEU_THR=(dri?._age||35)>=65?2.5:2.0;
-  const leuOf=mk=>sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).leucine||0;
+  const leuOf=mk=>{ let a=0; for (const it of (plan[mk]||[])) a+=(nutC(it.fk,it.g,it.soaked).leucine||0); return a; };
   const leuPenalty=()=>{ const v=["breakfast","lunch","dinner"].map(leuOf).sort((a,b)=>b-a); return Math.max(0,LEU_THR-v[0])+Math.max(0,LEU_THR-v[1]); };
   const LEU_SRC=["lupinBeansCooked","edamame","redLentils","greenLentils","chickpeas","blackBeans","tempeh","pumpkinS","peanuts","soyYogurtPlain","soymilkFortified"];
   const leuMoves=()=>{ const mv=[]; if (leuPenalty()<=0) return mv;
@@ -3348,7 +3355,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
           downs.forEach(({d})=>mv.push({mk,addFk:fk,g:ug,down:d})); }
         // החלפה: פריט דל-לאוצין (לאוצין לקלוריה נמוך מהמקור) יוצא, המקור נכנס — בלי להגדיל את הארוחה
         const srcD=(fd.per100.leucine||0)/Math.max(1,fd.per100.kcal||1);
-        its.forEach((it,idx)=>{ const inf=unitInfo(it); if(!inf) return; const n=ingNut(it.fk,it.g,it.soaked); if(!(n.kcal>40)) return;
+        its.forEach((it,idx)=>{ if (it._keep) return; const inf=unitInfo(it); if(!inf) return; const n=ingNut(it.fk,it.g,it.soaked); if(!(n.kcal>40)) return;
           if (!(inf.recipe||["דגן","קטנית","מאפה","תבשיל"].includes(inf.cat))) return;
           if ((n.leucine||0)/n.kcal >= srcD*0.8) return;
           const fdOut=fdOf(it.fk); const sameFamOk = !(fd.cat==="קטנית") || !legFams().has(legumeFamilyOf(fk)) || legumeFamilyOfItem(it)===legumeFamilyOf(fk);
@@ -3399,7 +3406,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
       // קודם כול החלפה: קטנית/תבשיל-קטניות דל-לאוצין בארוחה מוחלף במנה מרוכזת (תורמוס/טמפה/אדממה) — מוסיף לאוצין
       // בלי להוסיף קלוריות (לרוב אף חוסך), ורק אם כללי-ההרכב לא נפגעים
       { const its=plan[pm]; let bestS=null; const r0=rulesScore(); const u=used();
-        its.forEach((it,idx)=>{ const n=ingNut(it.fk,it.g,it.soaked); if(!(n.kcal>60)) return;
+        its.forEach((it,idx)=>{ if (it._keep) return; const n=ingNut(it.fk,it.g,it.soaked); if(!(n.kcal>60)) return;
           if (!(catsInFoodGlobal(it.fk)||[]).includes("קטנית")) return; const d0=(n.leucine||0)/n.kcal;
           for (const fk of ["lupinBeansCooked","tempeh","edamame"]) { const fd=FDB[fk]; if(!fd||blocked(fk)||u.has(fk)) continue;
             if (isSoy(fk)&&its.some((x,i)=>i!==idx&&isSoy(x.fk))) continue;
@@ -3438,7 +3445,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
         const its=plan[pm]; let bestR=null;
         if (freed>=packK-20 && mealKc(pm)<=capK) break; // מפנים בערך את מה שהחבילה הוסיפה, ולפחות עד תקרת הארוחה
         const r0=rulesScore();
-        its.forEach((it,idx)=>{ if (packAdded[pm].has(it.fk)) return;
+        its.forEach((it,idx)=>{ if (packAdded[pm].has(it.fk) || it._keep) return;
           const inf=unitInfo(it); const n=ingNut(it.fk,it.g,it.soaked); if(!(n.kcal>15)) return;
           { const sv=plan[pm]; const un=inf?Math.round(it.g/inf.u):1; // לא מסירים/מקטינים סלט/פרי/דגן שכלל-הרכב צריך
             plan[pm]=(inf&&un>=2)?sv.map((x,i)=>i===idx?{...x,g:Math.round((un-1)*inf.u*10)/10}:x):sv.filter((_,i)=>i!==idx);
@@ -3524,11 +3531,13 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   // השלמה שבועית ממוקדת (נקרא מ-enforceWeeklyMicros עם _microSwap): החלפת פריט גולמי בפריט מאותה קבוצה עם יותר
   // מהרכיב החסר ובקלוריות דומות (למשל משקה סויה רגיל → מועשר, תפוח → תפוז, אורז → כוסמת) — בלי לשבור שום כלל
   if (dri && dri._microSwap) { const k=dri._microSwap;
+    // רק פריטים שכבר מוכרים למנגנון כהשלמות תקינות (לא טופו קשה עצמאי, לא גרסאות יבשות/גולמיות)
+    const SWAP_OK=[...new Set([...SMALL_ADD,...Object.values(SOURCES).flat(),...LEU_SRC])];
     for (let g=0; g<4; g++) { const T0=dayT(); if ((T0[k]||0)>=dri[k].dri) break;
       const r0=rulesScore(), l0=Math.min(2,leuMealsOk()), u=used(); let best=null;
       for (const mk of ["breakfast","lunch","dinner"]) (plan[mk]||[]).forEach((it,idx)=>{ const fd=FDB[it.fk]; if(!fd||fd._isRecipe||it.fk==="saltIodized") return;
         const n0=ingNut(it.fk,it.g,it.soaked); if(!(n0.kcal>15)) return;
-        for (const fk of Object.keys(FDB)) { const f2=FDB[fk]; if(!f2||f2._isRecipe||f2.cat!==fd.cat||fk===it.fk||u.has(fk)||blocked(fk)) continue;
+        for (const fk of SWAP_OK) { const f2=FDB[fk]; if(!f2||f2._isRecipe||f2.cat!==fd.cat||fk===it.fk||u.has(fk)||blocked(fk)||TOFU_RAW.has(fk)) continue;
           if ((f2.per100?.[k]||0)<=(fd.per100?.[k]||0)) continue;
           const g2=unitG(fk)||stdG(fk); if(!g2) continue; const n2=ingNut(fk,g2); if (!(n2.kcal>0)||n2.kcal>n0.kcal*1.15+5) continue;
           if ((n2[k]||0)<=(n0[k]||0)) continue;
@@ -3553,6 +3562,121 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
 // הרצה "ברקע" (לבקשת המשתמש): מחוללי השבוע כתובים כפונקציות-מחולל (function*) שמדווחות התקדמות אחרי כל יום.
 // runGenSync מריץ עד הסוף מיד (כמו קודם); runGenAsync מריץ צעד אחד בכל פעם ומשחרר את הדפדפן בין הצעדים, כך
 // שהמסך לא קופא ואפשר להציג "יום X מתוך 7". התוצאה זהה בשתי הדרכים
+// כיסוי קטגוריות מתכונים בשבוע (לבקשת המשתמש: "כל קטגוריות המתכונים נגישות למנגנוני התכנון"): אחרי בניית השבוע,
+// כל קטגוריה שיש בה מתכונים זמינים ולא הופיעה אף פעם בשבוע — מקבלת מקום אחד: מתכון ממנה נכנס לארוחה המתאימה
+// (דייסה/קערה/משקה/סלט פירות — בוקר, ארוחת סלט — צהריים במקום סלט ירקות, חביתות/שקשוקה/פשטידה/מרק — ערב) במקום
+// המתכון הקרוב לו בקלוריות באותה ארוחה, מסומן _keep (שלב-הסיום לא מסיר אותו), ושער 98-100% מאזן את היום מחדש
+function recipeCatOfFk(fk){ const fd=TEMP_FDB[fk]||FDB[fk]; if(!fd||!fd._isRecipe) return null; return bookCategoryOf({name:fd.he||"",foodGroup:fd._foodGroup||"",type:fd._recipeType||"",ings:fd._ings||[]}); }
+function* recipeCategoryCoverageGen(daysArr, target, dri, excl, poolIds, opts={}){
+  if (!daysArr||!daysArr.length||!poolIds||!poolIds.length) return;
+  const HOME={"דייסות":"breakfast","קערות":"breakfast","משקאות":"breakfast","סלטי פירות":"breakfast","מאפים":"breakfast","ממרחים":"breakfast",
+    "ארוחות סלט":"lunch","תבשילי דגנים":"lunch","תבשילי קטניות":"lunch","סלטי ירקות":"lunch","אחר":"dinner","פשטידות":"dinner","מרקים":"dinner"};
+  const usedWeek=new Set(daysArr.flatMap(d=>Object.values(d).flat().filter(x=>x&&x.fk).map(x=>x.fk)));
+  const present=new Set([...usedWeek].map(recipeCatOfFk).filter(Boolean));
+  const blockedR=fk=>{ const fd=TEMP_FDB[fk]; if(!fd) return true; if ((fd.he||"").includes("משקה מי תפוח")) return true; return !!excl&&(fd._ings||[]).some(i=>excl.has(i.fk)); };
+  const kc=it=>ingNut(it.fk,it.g,it.soaked).kcal;
+  const byCat={}; poolIds.forEach(fk=>{ const c=recipeCatOfFk(fk); if(!c||blockedR(fk)) return; (byCat[c]=byCat[c]||[]).push(fk); });
+  let missing=(opts.cats?shuffleArr(opts.cats):Object.keys(byCat)).filter(c=>byCat[c]&&!present.has(c)&&HOME[c]);
+  if (opts.max) missing=missing.slice(0,opts.max);
+  const takenSlot=new Set(); let k=0;
+  for (const c of missing) {
+    const mk=HOME[c];
+    const cands=shuffleArr(byCat[c].filter(fk=>!usedWeek.has(fk)).filter(fk=>{ const fd=TEMP_FDB[fk]; const n=ingNut(fk,fd._servingG||150); return n.kcal>0 && n.kcal<=target*0.28; }));
+    if (!cands.length) continue;
+    let di=-1; for (let t=0;t<7;t++){ const d=(k*3+1+t)%daysArr.length; if(!takenSlot.has(d+mk)&&(daysArr[d][mk]||[]).length){ di=d; break; } } k++;
+    if (di<0) continue;
+    const day=daysArr[di], fk=cands[0], fd=TEMP_FDB[fk], item={fk,g:Math.round((fd._servingG||150)*10)/10,_keep:true}; const newK=kc(item);
+    const its=day[mk]||[];
+    // מחליפים: לארוחת סלט — סלט ירקות; אחרת — המתכון הקרוב בקלוריות (לא סלט ירקות, אם יש חלופה)
+    const recIdx=its.map((it,i)=>({it,i,c:recipeCatOfFk(it.fk)})).filter(x=>x.c&&!x.it._keep);
+    let pool=c==="ארוחות סלט"?recIdx.filter(x=>x.c==="סלטי ירקות"):recIdx.filter(x=>x.c!=="סלטי ירקות");
+    if (!pool.length) pool=recIdx;
+    const rep=pool.sort((a,b)=>Math.abs(kc(a.it)-newK)-Math.abs(kc(b.it)-newK))[0];
+    const snap=Object.fromEntries(Object.keys(day).map(m=>[m,(day[m]||[]).map(x=>({...x}))]));
+    day[mk]=rep? its.map((x,i)=>i===rep.i?item:x) : [...its,item];
+    enforceDailyCalorieBand(day, target, dri, excl);
+    // אם היום לא חוזר לטווח 98-100% (או שהמתכון לא שרד) — מבטלים את ההחלפה ומנסים יום אחר בפעם הבאה
+    const T=sumNuts(Object.values(day).flat().filter(x=>x&&x.fk).map(x=>ingNut(x.fk,x.g,x.soaked))); const dk=calcKcalActual(T);
+    const mealK=(day[mk]||[]).reduce((a,x)=>a+ingNut(x.fk,x.g,x.soaked).kcal,0);
+    const ok=dk>=target*0.98-0.5 && dk<=target*1.0+0.5 && Object.values(day).flat().some(x=>x&&x.fk===fk)
+      && mealK<=target*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38)*1.01+1 && (T.manganese||0)<=(dri?.manganese?.ul||15) && (T.fat||0)*9<=dk*0.30+0.5;
+    if (!ok) { Object.keys(day).forEach(m=>{ day[m]=snap[m]; }); Object.keys(snap).forEach(m=>{ day[m]=snap[m]; }); }
+    else { takenSlot.add(di+mk); usedWeek.add(fk); }
+    yield {phase:"weekly"};
+  }
+}
+// מכסות מתכונים שבועיות (לבקשת המשתמש): מנות "מעשה מחבת" (חביתות/שקשוקה — עשירות בחלבון) במקום תבשילי קטניות,
+// ארוחות סלט קטנות/בינוניות במקום סלט ירקות, וקערת יוגורט סויה-שיבולת שועל-פשתן לפחות בשני ערבים בשבוע.
+// כל שיבוץ: מחליף פריט באותה ארוחה, מסומן _keep, השער מאזן את היום — ואם היום לא חוזר ל-98-100%, השיבוץ מבוטל
+const SOY_FKS_ALL=new Set(["edamame","tofu","tempeh","natto","soymilkOrgPlain","soymilkFortified","soyYogurtPlain","soyYogurtOrgPlain"]);
+const recipeHasSoy=fk=>{ const fd=TEMP_FDB[fk]||FDB[fk]; if(!fd) return false; if(SOY_FKS_ALL.has(fk)) return true; return (fd._ings||[]).some(i=>SOY_FKS_ALL.has(i.fk)); };
+const PAN_DISH_RE=/חביתה|חביתת|שקשוקה|לביבות|פנקייק|מחבת/;
+function placeRecipeInDay(day, mk, fk, replaceCats, strict, target, dri, excl, asMain){
+  const its=day[mk]||[]; if(!its.length) return false;
+  const kc=it=>ingNut(it.fk,it.g,it.soaked).kcal;
+  const fd=TEMP_FDB[fk]; if(!fd) return false;
+  const item={fk,g:Math.round((fd._servingG||150)*10)/10,_keep:true}; const newK=kc(item);
+  const recIdx=its.map((it,i)=>({it,i,c:recipeCatOfFk(it.fk)})).filter(x=>x.c&&!x.it._keep);
+  let pool=replaceCats?recIdx.filter(x=>replaceCats.includes(x.c)):[];
+  if (!pool.length) { if (strict) return false; pool=recIdx.filter(x=>x.c!=="סלטי ירקות"); if(!pool.length) pool=recIdx; }
+  const rep=pool.sort((a,b)=>Math.abs(kc(a.it)-newK)-Math.abs(kc(b.it)-newK))[0];
+  if (!asMain && recipeHasSoy(fk) && its.some((x,i)=>(!rep||i!==rep.i)&&recipeHasSoy(x.fk))) return false; // מוצר סויה אחד בארוחה
+  const snap=Object.fromEntries(Object.keys(day).map(m=>[m,(day[m]||[]).map(x=>({...x}))]));
+  if (asMain) {
+    // המתכון הוא המנה העיקרית של הארוחה (למשל קערת יוגורט-שיבולת שועל: דגן+סויה בתוכה) — מוציאים את שאר מרכיבי
+    // הבסיס (דגנים, קטניות, תבשילים/מרקים/פשטידות/מאפים/ממרחים), ומשאירים ירקות, סלטים, פירות, אגוזים וזרעים
+    const KEEP_REC=new Set(["סלטי ירקות","ארוחות סלט","סלטי פירות"]);
+    day[mk]=[...its.filter(x=>{ if(x._keep) return true; const c=recipeCatOfFk(x.fk); if(c) return KEEP_REC.has(c); const f=FDB[x.fk]; return !(f&&(f.cat==="דגן"||f.cat==="קטנית"||SOY_FKS_ALL.has(x.fk))); }), item];
+  } else day[mk]=rep? its.map((x,i)=>i===rep.i?item:x) : [...its,item];
+  enforceDailyCalorieBand(day, target, dri, excl);
+  const T=sumNuts(Object.values(day).flat().filter(x=>x&&x.fk).map(x=>ingNut(x.fk,x.g,x.soaked))); const dk=calcKcalActual(T);
+  const T0=sumNuts(Object.values(snap).flat().filter(x=>x&&x.fk).map(x=>ingNut(x.fk,x.g,x.soaked)));
+  const mealK=(day[mk]||[]).reduce((a,x)=>a+ingNut(x.fk,x.g,x.soaked).kcal,0);
+  const mnUL=dri?.manganese?.ul||15;
+  // תנאי קבלה: טווח קלוריות, תקרת הארוחה, מנגן עד ה-UL ושומן עד 30% (אם היום עמד בהם לפני השיבוץ) — אחרת מבטלים
+  const ok=dk>=target*0.98-0.5 && dk<=target+0.5 && (day[mk]||[]).some(x=>x&&x.fk===fk)
+    && mealK<=target*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38)*1.01+1
+    && ((T.manganese||0)<=mnUL || (T.manganese||0)<=(T0.manganese||0))
+    && ((T.fat||0)*9<=dk*0.30+0.5 || (T.fat||0)*9/Math.max(1,dk)<=(T0.fat||0)*9/Math.max(1,calcKcalActual(T0)));
+  if (!ok) { Object.keys(day).forEach(m=>{ day[m]=snap[m]; }); Object.keys(snap).forEach(m=>{ day[m]=snap[m]; }); }
+  return ok;
+}
+function recipeQuotaSpecs(){
+  const nm=fk=>(TEMP_FDB[fk]?.he||"");
+  return {
+    bowl:{match:fk=>nm(fk).includes("קערת יוגורט סויה, שיבולת שועל וזרעי פשתן"), meals:["dinner"], replace:["תבשילי קטניות","תבשילי דגנים","קערות","פשטידות","מרקים","אחר"], strict:false, repeat:true, asMain:true},
+    pan:{match:fk=>recipeCatOfFk(fk)==="אחר"&&PAN_DISH_RE.test(nm(fk)), meals:["dinner","lunch","breakfast"], replace:["תבשילי קטניות"], strict:true, fallbackReplace:["תבשילי דגנים","מרקים","פשטידות","קערות"]},
+    mealSalad:{match:fk=>/סלט ארוחה (קטן|בינוני)/.test(nm(fk)), meals:["lunch","dinner"], replace:["סלטי ירקות"], strict:false},
+  };
+}
+function* recipeQuotaGen(daysArr, target, dri, excl, poolIds, quotas){
+  if (!daysArr||!daysArr.length||!poolIds||!poolIds.length) return;
+  const SP=recipeQuotaSpecs();
+  const okFk=fk=>{ const fd=TEMP_FDB[fk]; if(!fd||!fd._isRecipe) return false; if(excl&&(fd._ings||[]).some(i=>excl.has(i.fk))) return false; const n=ingNut(fk,fd._servingG||150); return n.kcal>0&&n.kcal<=target*0.28; };
+  let rot=0;
+  for (const [key,n] of Object.entries(quotas)) {
+    const sp=SP[key]; const cands=poolIds.filter(fk=>sp.match(fk)&&okFk(fk)); if(!cands.length) continue;
+    const count=()=>daysArr.reduce((a,d)=>a+sp.meals.filter(m=>(d[m]||[]).some(x=>x&&sp.match(x.fk))).length,0);
+    // שני סבבים: קודם החלפה של הקטגוריה המועדפת בלבד (למשל תבשיל קטניות), ואם אין די מקומות — גם קטגוריות חלופיות.
+    // ניסיון אחד לכל יום בכל סבב (כל ניסיון מריץ את שער-הסיום — שומרים על זמן תכנון קצר)
+    for (const pass of (sp.fallbackReplace?[0,1]:[0])) {
+      for (let t=0; t<daysArr.length && count()<n; t++) {
+        const di=(rot*3+t)%daysArr.length; const day=daysArr[di];
+        if (sp.meals.some(m=>(day[m]||[]).some(x=>x&&sp.match(x.fk)))) continue;
+        const repl=pass===0?sp.replace:sp.fallbackReplace;
+        const mk=sp.meals.find(m=>(day[m]||[]).some(x=>repl.includes(recipeCatOfFk(x.fk))&&!x._keep)) || (sp.strict&&pass===0?null:sp.meals[0]);
+        if (!mk) continue;
+        const usedWeek=new Set(daysArr.flatMap(d=>Object.values(d).flat().filter(x=>x&&x.fk).map(x=>x.fk)));
+        const opts=shuffleArr(cands.filter(fk=>sp.repeat||!usedWeek.has(fk)));
+        if (!opts.length) break;
+        const kcOf=fk=>ingNut(fk,TEMP_FDB[fk]._servingG||150).kcal; opts.sort((a,b)=>kcOf(a)-kcOf(b)); // הקטנה בקלוריות קודם — סיכוי גבוה יותר להיכנס
+        const fk=target<1800?opts[0]:opts[Math.floor(Math.random()*opts.length)];
+        if (placeRecipeInDay(day,mk,fk,repl,pass===0?sp.strict:true,target,dri,excl,sp.asMain)) yield {phase:"weekly"};
+      }
+    }
+    rot++;
+  }
+}
 function runGenSync(g){ let r=g.next(); while(!r.done) r=g.next(); return r.value; }
 function runGenAsync(g, onProgress, isCancelled){
   return new Promise((resolve,reject)=>{
@@ -7581,6 +7705,12 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
   ensureCalorieFloor(__p, tgt);
   __p = finalTrimOnlyIfOverCeiling(__p, tgt);
   __p = enforceDailyCalorieBand(__p, tgt, dri, excludedFks); // שער 98-100% סופי
+  // גיוון קטגוריות (לבקשת המשתמש): בחצי מהימים משלבים קטגוריה שבדרך כלל כמעט לא נבחרת (ארוחת סלט / קערה / דייסה /
+  // חביתה-שקשוקה / משקה) — כך שכל קטגוריות המתכונים נגישות גם בתכנון יומי; נכנס רק אם היום נשאר בטווח 98-100%
+  { const __r=Math.random(); // גיוון יומי: מעשה-מחבת במקום תבשיל קטניות / ארוחת סלט קטנה-בינונית / קטגוריה נדירה אחרת
+    if (__r<0.35) runGenSync(recipeQuotaGen([__p], tgt, dri, excludedFks, recipeIds, {pan:1}));
+    else if (__r<0.55) runGenSync(recipeQuotaGen([__p], tgt, dri, excludedFks, recipeIds, {mealSalad:1}));
+    else if (__r<0.8) runGenSync(recipeCategoryCoverageGen([__p], tgt, dri, excludedFks, recipeIds, {cats:["ארוחות סלט","קערות","דייסות","אחר","משקאות"], max:1})); }
   return __p;
 }
 
@@ -7686,7 +7816,7 @@ function* generateMixedWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=
   for (let d=0; d<7; d++) {
     days.push(generateMixedDayPlan(target,wKg,hp,dri,recipeIds,{},excludedFks,intensity)); yield {phase:"build",i:days.length};
   }
-  yield {phase:"weekly"}; yield* enforceWeeklyMicrosGen(days.map(d=>d.mixedPlan), target, dri, excludedFks);
+  yield {phase:"weekly"}; yield* recipeQuotaGen(days.map(d=>d.mixedPlan), target, dri, excludedFks, recipeIds, {bowl:2, pan:3, mealSalad:2}); yield* recipeCategoryCoverageGen(days.map(d=>d.mixedPlan), target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(days.map(d=>d.mixedPlan), target, dri, excludedFks);
   yield* enforceWeeklyMicrosGen(days.map(d=>d.plantPlan), target, dri, excludedFks);
   const plantWeek={}, mixedWeek={};
   days.forEach((d,i)=>{ plantWeek[`d${i}`]=d.plantPlan; mixedWeek[`d${i}`]=d.mixedPlan; });
@@ -9454,6 +9584,12 @@ function generatePersonalDayPlan__impl(target, recipes=[], existingMeals=null, d
   ensureCalorieFloor(__p, tgt);
   __p = finalTrimOnlyIfOverCeiling(__p, tgt);
   __p = enforceDailyCalorieBand(__p, tgt, dri, excludedFks); // שער 98-100% סופי
+  // גיוון קטגוריות (לבקשת המשתמש): בחצי מהימים משלבים קטגוריה שבדרך כלל כמעט לא נבחרת (ארוחת סלט / קערה / דייסה /
+  // חביתה-שקשוקה / משקה) — כך שכל קטגוריות המתכונים נגישות גם בתכנון יומי; נכנס רק אם היום נשאר בטווח 98-100%
+  if (!(existingMeals&&Object.values(existingMeals).some(a=>(a||[]).length))) { const __r=Math.random(); // גיוון יומי: מעשה-מחבת במקום תבשיל קטניות / ארוחת סלט קטנה-בינונית / קטגוריה נדירה אחרת
+    if (__r<0.35) runGenSync(recipeQuotaGen([__p], tgt, dri, excludedFks, recipes.map(r=>r.id), {pan:1}));
+    else if (__r<0.55) runGenSync(recipeQuotaGen([__p], tgt, dri, excludedFks, recipes.map(r=>r.id), {mealSalad:1}));
+    else if (__r<0.8) runGenSync(recipeCategoryCoverageGen([__p], tgt, dri, excludedFks, recipes.map(r=>r.id), {cats:["ארוחות סלט","קערות","דייסות","אחר","משקאות"], max:1})); }
   return __p;
 }
 // לבקשת המשתמש: מנגנון "הצעה" שלישי, נפרד לגמרי מ-generateDayPlan (כללי) ומ-generatePersonalDayPlan (מארוחות/מתכונים
@@ -11505,6 +11641,12 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
   ensureCalorieFloor(__p, tgt);
   __p = finalTrimOnlyIfOverCeiling(__p, tgt);
   __p = enforceDailyCalorieBand(__p, tgt, dri, excludedFks); // שער 98-100% סופי
+  // גיוון קטגוריות (לבקשת המשתמש): בחצי מהימים משלבים קטגוריה שבדרך כלל כמעט לא נבחרת (ארוחת סלט / קערה / דייסה /
+  // חביתה-שקשוקה / משקה) — כך שכל קטגוריות המתכונים נגישות גם בתכנון יומי; נכנס רק אם היום נשאר בטווח 98-100%
+  { const __r=Math.random(); // גיוון יומי: מעשה-מחבת במקום תבשיל קטניות / ארוחת סלט קטנה-בינונית / קטגוריה נדירה אחרת
+    if (__r<0.35) runGenSync(recipeQuotaGen([__p], tgt, dri, excludedFks, recipes.map(r=>r.id), {pan:1}));
+    else if (__r<0.55) runGenSync(recipeQuotaGen([__p], tgt, dri, excludedFks, recipes.map(r=>r.id), {mealSalad:1}));
+    else if (__r<0.8) runGenSync(recipeCategoryCoverageGen([__p], tgt, dri, excludedFks, recipes.map(r=>r.id), {cats:["ארוחות סלט","קערות","דייסות","אחר","משקאות"], max:1})); }
   return __p;
 }
 // זה לא רק פשוט יותר מבנייה של אופטימיזציה שבועית מאפס — זה גם המתמטית הבטוחה ביותר: אם כל יום בנפרד
@@ -12590,7 +12732,7 @@ function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
     finalTrimOnlyIfOverCeiling(day, target);
     enforceDailyCalorieBand(day, target, dri, excludedFks); // שער 98-100% סופי לכל יום בשבוע
   yield {phase:"polish",i:__di+1}; }
-  yield {phase:"weekly"}; yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks);
+  yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipeIds, {bowl:2, pan:3, mealSalad:2}); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks);
   return week;
 }
 // גרסה שבועית של מחולל "הצע ארוחות ממתכונים" (generateRecipesNSFDayPlan) — לבקשת המשתמש. מריצה את אותו
@@ -13520,7 +13662,7 @@ function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=nu
     finalTrimOnlyIfOverCeiling(day, target);
     enforceDailyCalorieBand(day, target, dri, excludedFks); // שער 98-100% סופי לכל יום בשבוע
   yield {phase:"polish",i:__di+1}; } }
-  yield {phase:"weekly"}; yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks);
+  yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id), {bowl:2, pan:3, mealSalad:2}); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id)); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks);
   return {week, updatedUsage: finalUsage};
 }
 // גרסה אישית לשבוע (generatePersonalWeekPlan) הוסרה לבקשת המשתמש — נותר רק המנגנון האישי היומי (generatePersonalDayPlan)
@@ -14221,7 +14363,7 @@ function RecipeBookModal({recipes,lang,onClose,profile}){
         {r.instructions && (
           <>
             <div style={{fontSize:12,fontWeight:700,marginBottom:6,color:"#5a4a30"}}>{lang==="he"?"📝 דרך הכנה":"📝 Instructions"}</div>
-            <div style={{fontSize:12,lineHeight:1.8,whiteSpace:"pre-wrap",marginBottom:16}}>{r.instructions}</div>
+            <div style={{fontSize:16,fontWeight:600,color:"#1f170d",lineHeight:1.9,whiteSpace:"pre-wrap",marginBottom:16}}>{r.instructions}</div>
           </>
         )}
         <div style={{fontSize:12,fontWeight:700,marginBottom:6,color:"#5a4a30"}}>{lang==="he"?"💊 ויטמינים ומינרלים (למנה)":"💊 Vitamins & Minerals (per serving)"}</div>
@@ -17556,7 +17698,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
   }
 
   function startNew(){setName("");setServings(4);setIngs([]);setInstructions("");setPendFk(null);setEditId(null);setShowNew(true);setExpanded(null);setPreferredMeal("any");setFoodGroup("");}
-  function startEdit(r){setName(r.name);setServings(r.servings);setIngs(r.ings.map(x=>({...x,_id:x._id||uid()})));setInstructions(r.instructions||"");setPendFk(null);setEditId(r.id);setShowNew(true);setExpanded(null);setPreferredMeal(r.preferredMeal||"any");setFoodGroup(r.foodGroup||"");setTimeout(()=>{try{document.querySelector('[data-recipe-form]')?.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},50);}
+  function startEdit(r){lastRecIdRef.current=r.id;setName(r.name);setServings(r.servings);setIngs(r.ings.map(x=>({...x,_id:x._id||uid()})));setInstructions(r.instructions||"");setPendFk(null);setEditId(r.id);setShowNew(true);setExpanded(null);setPreferredMeal(r.preferredMeal||"any");setFoodGroup(r.foodGroup||"");setTimeout(()=>{try{document.querySelector('[data-recipe-form]')?.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},50);}
   function addIng(){if(!pendFk)return;setIngs(prev=>[...prev,{fk:pendFk,g:Math.max(1,parseFloat(pendG)||100),_id:uid()}]);setPendFk(null);setPendG("100");setPendUseGrams(false);}
   function remIng(id){setIngs(prev=>prev.filter(x=>x._id!==id));}
   function saveRec(){
@@ -17573,6 +17715,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
     const rec={id:editId||uid(),name:name.trim(),servings:Math.max(1,+servings||1),type:existingType||"תבשיל",preferredMeal:preferredMeal||"any",foodGroup:foodGroup||"",ings:ings.map(x=>({fk:x.fk,g:x.g,...(x.soaked?{soaked:true}:{})})),instructions:instructions.trim()};
     const next=editId?recipes.map(r=>r.id===editId?rec:r):[rec,...recipes];
     setRecipes(next);save(RECIPE_STORAGE,next);setShowNew(false);setEditId(null);
+    lastRecIdRef.current=rec.id; scrollBackToRecipe();
   }
   function delRec(id){
     // מתכון מובנה: נרשם ברשימת-המחוקים כדי שלא יחזור בטעינה הבאה (גם אם נערך קודם ונשמר ב-RECIPE_STORAGE)
@@ -17619,6 +17762,11 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
   }
   const filtered=Object.entries(FDB).filter(([,f])=>{const n=lang==="he"?f.he:f.en;const matchesSearch=!search||n.toLowerCase().includes(search.toLowerCase());const matchesCat=catFilter==="הכל"||f.cat===catFilter||(f.tags&&f.tags.includes(catFilter));return matchesSearch&&matchesCat;}).slice(0,40);
   const[bookOpen,setBookOpen]=useState(()=>recipes.length>0);
+  // צפייה במתכון בלי עריכה (לבקשת המשתמש) + חזרה למקום ברשימה אחרי יציאה מעריכה (לא לקפוץ לראש הרשימה)
+  const[viewId,setViewId]=useState(null);
+  const lastRecIdRef=useRef(null);
+  const scrollBackToRecipe=()=>{ const id=lastRecIdRef.current; if(!id) return; setTimeout(()=>{ try{ document.querySelector(`[data-recipe-card="${id}"]`)?.scrollIntoView({behavior:"auto",block:"center"}); }catch(e){} },80); };
+  const closeRecipeForm=()=>{ setShowNew(false); setEditId(null); scrollBackToRecipe(); };
 
   return(
     <div style={{direction:tx.dir}}>
@@ -17632,6 +17780,34 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
         </button>
       )}
       {bookOpen&&<RecipeBookModal recipes={recipes} lang={lang} profile={profile} onClose={()=>setBookOpen(false)}/>}
+      {viewId&&(()=>{ const r=recipes.find(x=>x.id===viewId); if(!r) return null;
+        const entry=recipeToFdbEntry(r); const sg=entry._servingG||100; const kcal=Math.round(calcKcalActual(ALL_KEYS.reduce((a,k)=>{a[k]=(entry.per100[k]||0)*sg/100;return a;},{})));
+        const closeView=()=>{ setViewId(null); scrollBackToRecipe(); };
+        return(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:120,display:"flex",alignItems:"center",justifyContent:"center",padding:12}} onClick={closeView}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#FFFFFF",borderRadius:16,maxWidth:640,width:"100%",maxHeight:"90vh",overflowY:"auto",padding:"18px 20px",direction:tx.dir,border:"1px solid #d9cdee"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:6}}>
+              <div style={{fontSize:21,fontWeight:800,color:"#1E3A2B",unicodeBidi:"plaintext"}}>{r.name}</div>
+              <button onClick={closeView} style={{flexShrink:0,padding:"6px 14px",borderRadius:9,border:"1px solid #c9b8e8",background:"#F5F2EB",color:"#4527a0",fontSize:14,fontWeight:800,cursor:"pointer"}}>✕ {lang==="he"?"סגור":"Close"}</button>
+            </div>
+            <div style={{fontSize:14,color:"#4527a0",fontWeight:700,marginBottom:14}}>{BOOK_CATEGORY_LABELS[lang][bookCategoryOf(r)]} · {r.servings} {lang==="he"?"מנות":"servings"} · <span style={{color:"#c1440e"}}>{kcal} kcal</span> {lang==="he"?"למנה":"/ serving"}</div>
+            <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{lang==="he"?"🧾 רכיבים":"🧾 Ingredients"}</div>
+            <div style={{marginBottom:16}}>
+              {(r.ings||[]).map((ing,i)=>{ const fd=FDB[ing.fk]; if(!fd) return null; const su=getServingUnit(ing.fk,fd,lang);
+                const qty=su&&!su.weightOnly&&su.g?fmtN(ing.g/su.g,1)+" "+(lang==="he"?su.he:su.en)+" ("+ing.g+(lang==="he"?" גר'":" g")+")":ing.g+(lang==="he"?" גר'":" g");
+                return(<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px dotted #d9cdee"}}>
+                  <span style={{fontSize:17}}>{fd.emoji}</span>
+                  <span style={{flex:1,fontSize:15,color:"#1E3A2B",fontWeight:600}}>{lang==="he"?fd.he:fd.en}{ing.soaked?(lang==="he"?" (מושרה)":" (soaked)"):""}</span>
+                  <span style={{fontSize:14,color:"#8a5a00",fontWeight:700}}>{qty}</span>
+                </div>); })}
+            </div>
+            {r.instructions&&(<>
+              <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{lang==="he"?"📝 דרך הכנה":"📝 Instructions"}</div>
+              <div style={{background:"#F5F2EB",borderRadius:10,padding:"12px 14px",fontSize:16,fontWeight:600,color:"#111a14",lineHeight:1.9,whiteSpace:"pre-wrap"}}>{r.instructions}</div>
+            </>)}
+            {r.notes&&(<div style={{marginTop:12,fontSize:15,color:"#1E3A2B"}}><b>{lang==="he"?"🗒️ הערות: ":"🗒️ Notes: "}</b>{r.notes}</div>)}
+          </div>
+        </div>); })()}
       <div style={{marginBottom:12}}>
         <button onClick={()=>setBackupMenuOpen(v=>!v)} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:"1px solid #c9b8e8",background:backupMenuOpen?"#F5F2EB":"#F7F3FC",color:"#7c5cbf",fontSize:11,cursor:"pointer",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           📦 {lang==="he"?"גיבוי / ייבוא / ייצוא":"Backup / Import / Export"}
@@ -17693,7 +17869,10 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
 
       {showNew&&(
         <div data-recipe-form="1" style={{background:"#FFFFFF",borderRadius:14,padding:14,marginBottom:14,border:`1px solid ${editId?"#65792f":"#c9b8e8"}`}}>
-          <div style={{fontSize:12,fontWeight:700,color:editId?"#2e7d32":"#7c5cbf",marginBottom:8}}>{editId?(lang==="he"?"✏️ עריכת מתכון":"✏️ Edit Recipe"):(lang==="he"?"➕ מתכון חדש":"➕ New Recipe")}</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{fontSize:14,fontWeight:800,color:editId?"#2e7d32":"#5c3d99"}}>{editId?(lang==="he"?"✏️ עריכת מתכון":"✏️ Edit Recipe"):(lang==="he"?"➕ מתכון חדש":"➕ New Recipe")}</div>
+            <button onClick={closeRecipeForm} style={{padding:"5px 12px",borderRadius:8,border:"1px solid #c9b8e8",background:"#F5F2EB",color:"#5c3d99",fontSize:12,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"✕ יציאה בלי שמירה":"✕ Exit without saving"}</button>
+          </div>
           <input placeholder={tx.recipeName} value={name} onChange={e=>setName(e.target.value)} style={{width:"100%",background:"#F5F2EB",border:"1px solid #c9b8e8",borderRadius:9,padding:"8px 10px",color:"#1E3A2B",fontSize:13,outline:"none",boxSizing:"border-box",marginBottom:8,direction:tx.dir}}/>
           <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
             <span style={{fontSize:11,color:"#7c5cbf"}}>{tx.servings}:</span>
@@ -17829,7 +18008,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
           </div>
           <div style={{display:"flex",gap:6}}>
             <button onClick={saveRec} style={{flex:1,padding:"10px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#7c4dff,#651fff)",color:"white",fontSize:12,fontWeight:700,cursor:"pointer"}}>{editId?(lang==="he"?"💾 עדכן מתכון":"💾 Update Recipe"):tx.saveRecipe}</button>
-            <button onClick={()=>setShowNew(false)} style={{padding:"10px 14px",borderRadius:10,border:"1px solid #c9b8e8",background:"transparent",color:"#7c5cbf",fontSize:12,cursor:"pointer"}}>{tx.cancel}</button>
+            <button onClick={closeRecipeForm} style={{padding:"10px 14px",borderRadius:10,border:"1px solid #c9b8e8",background:"transparent",color:"#7c5cbf",fontSize:12,cursor:"pointer"}}>{tx.cancel}</button>
           </div>
         </div>
       )}
@@ -17858,8 +18037,8 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
         const cat=bookCategoryOf(r);
         const showCatHeader=i===0||bookCategoryOf(filteredRecipes[i-1])!==cat;
         return(<Fragment key={r.id}>
-        {showCatHeader&&<div style={{fontSize:12,fontWeight:800,color:"#7c5cbf",margin:i===0?"0 0 8px":"18px 0 8px",paddingBottom:6,borderBottom:"1px solid #7c4dff33",gridColumn:isDesktop?"1 / -1":undefined}}>{BOOK_CATEGORY_LABELS[lang][cat]}</div>}
-        <div style={{background:"#FFFFFF",borderRadius:14,padding:"12px 14px",marginBottom:10,border:"1px solid #d9cdee"}}>
+        {showCatHeader&&<div style={{fontSize:18,fontWeight:800,color:"#4527a0",margin:i===0?"0 0 8px":"18px 0 8px",paddingBottom:6,borderBottom:"1px solid #7c4dff33",gridColumn:isDesktop?"1 / -1":undefined}}>{BOOK_CATEGORY_LABELS[lang][cat]}</div>}
+        <div data-recipe-card={r.id} style={{background:"#FFFFFF",borderRadius:14,padding:"12px 14px",marginBottom:10,border:"1px solid #d9cdee"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
             <div style={{flex:1,cursor:"pointer",display:"flex",gap:8,alignItems:"flex-start"}} onClick={()=>setExpanded(isExp?null:r.id)}>
               <span style={{flexShrink:0,background:"#F5F2EB",border:"1px solid #c9b8e8",color:"#7c5cbf",borderRadius:7,minWidth:22,height:22,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{i+1}</span>
@@ -17877,6 +18056,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
               <button onClick={()=>toggleFav(r.id)} style={{background:r.fav?"#ffd54f22":"#F5F2EB",border:"1px solid "+(r.fav?"#b8860b":"#c9b8e8"),borderRadius:6,color:r.fav?"#b8860b":"#5c3d99",padding:"4px 8px",fontSize:13,cursor:"pointer",lineHeight:1}} title={lang==="he"?"מועדף":"Favorite"}>{r.fav?"⭐":"☆"}</button>
               <button onClick={(e)=>{e.stopPropagation(); if(confirmDelId===r.id) delRec(r.id); else setConfirmDelId(r.id);}} style={{background:confirmDelId===r.id?"#c1440e":"#fdecea",border:"1px solid #ff6b6b44",borderRadius:6,color:confirmDelId===r.id?"#fff":"#c1440e",padding:"4px 8px",fontSize:10,cursor:"pointer",fontWeight:confirmDelId===r.id?700:400}} title={isBuiltIn?(lang==="he"?"מתכון ברירת-מחדל — ניתן לשחזר מתפריט הגיבוי":"Built-in recipe — can be restored from the backup menu"):undefined}>{confirmDelId===r.id?(lang==="he"?"⚠️ שוב לאישור":"⚠️ Tap again"):tx.deleteRecipe}</button>
               <button onClick={()=>dupRec(r)} style={{background:"#eef2f7",border:"1px solid #4fc3f766",borderRadius:6,color:"#1a6fa0",padding:"4px 8px",fontSize:10,cursor:"pointer"}}>{lang==="he"?"⧉ שכפל":"⧉ Duplicate"}</button>
+              <button onClick={()=>{ lastRecIdRef.current=r.id; setViewId(r.id); }} style={{background:"#F3EEFB",border:"1px solid #7c4dff66",borderRadius:6,color:"#4527a0",padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"👁 צפייה":"👁 View"}</button>
               <button onClick={()=>startEdit(r)} style={{background:"#E8EFE9",border:"1px solid #388e3c66",borderRadius:6,color:"#2e7d32",padding:"4px 8px",fontSize:10,cursor:"pointer"}}>{lang==="he"?"✏️ ערוך":"✏️ Edit"}</button>
             </div>
           </div>
@@ -17937,7 +18117,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
             </div>
             {r.instructions&&(<div>
               <div style={{fontSize:11,color:"#7c5cbf",fontWeight:700,marginBottom:6}}>{lang==="he"?"📝 דרך הכנה:":"📝 Instructions:"}</div>
-              <div style={{background:"#F5F2EB",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#1E3A2B",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{r.instructions}</div>
+              <div style={{background:"#F5F2EB",borderRadius:10,padding:"12px 14px",fontSize:16,fontWeight:600,color:"#111a14",lineHeight:1.9,whiteSpace:"pre-wrap"}}>{r.instructions}</div>
             </div>)}
             <div style={{marginTop:10}}>
               <div style={{fontSize:11,color:"#7c5cbf",fontWeight:700,marginBottom:6}}>{lang==="he"?"🗒️ הערות אישיות:":"🗒️ Personal notes:"}</div>
