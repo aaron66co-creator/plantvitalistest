@@ -2718,6 +2718,15 @@ function enforceSeedsDailyCap(plan){
 // ארוחת בוקר לא אמורה לחרוג מ~38% מהיעד היומי) בנוסף לתקרת-היום-כולו, כי רשתות הביטחון החדשות בדקו עד כה
 // רק את תקרת היום הכוללת ולא ידעו שהארוחה הספציפית שאליה הן מוסיפות כבר "מלאה" ביחס לחלק שמגיע לה
 const GLOBAL_MEAL_SHARE_MAX = {breakfast:0.38, lunch:0.38, dinner:0.28, snack:0.08};
+// גיל 65+ (לבקשת המשתמש): ארוחת הערב היא אחת משתי "ארוחות החלבון" — התקרה שלה עולה מ-28% ל-32% כדי שתוכל לשאת
+// מנת חלבון מרוכזת + דגן + ירק + פרי ביחידות שלמות. לשאר המשתמשים נשארת 28% (ארוחת ערב קלה). מופעל סביב כל מחולל
+// ברוקולי וכרובית (לבקשת המשתמש): לעולם לא כרכיב בפני עצמו — רק כחלק ממתכון
+const RECIPE_ONLY_FKS = new Set(["broccoli","cauliflower"]);
+function withAgeMealCaps(dri, fn){
+  if (!((dri?._age||0)>=65)) return fn();
+  const prev=GLOBAL_MEAL_SHARE_MAX.dinner; GLOBAL_MEAL_SHARE_MAX.dinner=Math.max(prev,0.32);
+  try { return fn(); } finally { GLOBAL_MEAL_SHARE_MAX.dinner=prev; }
+}
 function mealKcalOfGlobal(plan, mk){ return sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal; }
 // תיקון (לבקשת המשתמש: "רוצה לחזור ל-98 עד 100 אחוז... גרסת הביניים") — נוסף פרמטר אופציונלי, relaxMargin,
 // שברירת-המחדל שלו (1.15) שומרת על ההתנהגות הרגילה בכל מקום שכבר קורא לפונקציה הזו. רק שלב-מילוי-הרצפה
@@ -2842,7 +2851,8 @@ function calorieBandOnly(plan, tgt, allowGrow){
 // 98-100% (ושוב מיקרו, כי קיצוץ-הקלוריות יכול להוריד רכיבים). כל תוספת מכבדת: בלי חזרה על מרכיב באותו יום,
 // מוצר-סויה אחד לארוחה, אגוזים וזרעים לא באותה ארוחה, משפחת-קטנית אחת ביום, עד 2 יחידות ירק גולמי לארוחה,
 // ותקרות UL לסלניום/יוד/מנגן
-function enforceDailyCalorieBand(plan, tgt, dri, excl){
+function enforceDailyCalorieBand(plan, tgt, dri, excl){ return withAgeMealCaps(dri, ()=>enforceDailyCalorieBand__impl(plan, tgt, dri, excl)); }
+function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   if (!tgt || !plan) return plan;
   calorieBandOnly(plan, tgt); // כולל אכיפת תקרות-הכמות
   if (!dri) return plan;
@@ -2863,7 +2873,7 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
   const stdG=fk=>getServingUnit(fk,fdOf(fk),"he")?.g||100;
   const unitG=fk=>{ const fd=fdOf(fk); const su=getServingUnit(fk,fd,"he"); return su&&!su.weightOnly&&su.g?su.g/(su.count||1):null; };
   // "לעולם לא להציע": מזון חסום, או מתכון שמכיל מרכיב חסום — לא מוסיפים בשום שלב
-  const blocked=fk=>!!excl&&(excl.has(fk)||((fdOf(fk)?._ings)||[]).some(i=>excl.has(i.fk)));
+  const blocked=fk=>(RECIPE_ONLY_FKS.has(fk)&&!fdOf(fk)?._isRecipe) || (!!excl&&(excl.has(fk)||((fdOf(fk)?._ings)||[]).some(i=>excl.has(i.fk))));
   const add=(mk,fk,g)=>{ if (blocked(fk)) return false; plan[mk]=[...(plan[mk]||[]),{fk,g:Math.round(g*10)/10}]; return true; };
   const dayT=()=>sumNuts(Object.values(plan).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
   const hasCat=(its,cat)=>its.some(it=>(catsInFoodGlobal(it.fk)||[]).includes(cat));
@@ -3130,6 +3140,14 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
   // ── טופו קשה רק בתוך מתכון (לבקשת המשתמש) ──
   // טופו כפריט עצמאי מוחלף במתכון שמכיל טופו (שלא הופיע היום), בערך קלורי דומה; אם אין מתכון מתאים — מוסר
   const TOFU_RAW=new Set(["tofu","tofuCalciumSet"]);
+  // ברוקולי/כרובית כפריט עצמאי → מוחלף בירק אחר (יחידה שלמה) שעוד לא הופיע היום, או מוסר
+  const recipeOnlyVegPass=()=>{
+    const ALT=["cucumber","tomato","carrot","redPepper","yellowPepper","zucchini","cabbageRed","radish","beet","mushroom"];
+    for (const mk of Object.keys(plan)) (plan[mk]||[]).forEach((it,idx)=>{ if (!it||!RECIPE_ONLY_FKS.has(it.fk)) return;
+      const u=used(); const alt=shuffleArr(ALT).find(f=>FDB[f]&&!u.has(f)&&!blocked(f));
+      plan[mk][idx]=alt?{fk:alt,g:Math.round((unitG(alt)||stdG(alt))*10)/10}:null; });
+    for (const mk of Object.keys(plan)) plan[mk]=(plan[mk]||[]).filter(Boolean);
+  };
   const tofuPass=()=>{
     for (const mk of Object.keys(plan)) {
       (plan[mk]||[]).forEach((it,idx)=>{
@@ -3192,7 +3210,7 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
     fruitPass();
     microPass();
     pairingPass(); // תוספות-מיקרו יכולות ליצור צורך בהצמדה חדשה (למשל קטנית בלי דגן)
-    tofuPass();
+    tofuPass(); recipeOnlyVegPass();
     nutDedupPass();
     omegaPass();
     closure();
@@ -3350,21 +3368,180 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
     const om=(T.omega3||0)>0?Math.max(0,(T.omega6||0)/T.omega3-5):0;
     // תקרת 100% קלוריות ויחס אומגה ≤5 — כמעט-קשיחים (משקל גבוה מאוד), כך שהשלמת-מיקרו לעולם לא "קונה" חריגה בהם
     return violation()*3+overK*40+underK*4+om*400+micro*150+leuPenalty()*450+Math.abs(T.kcal-tgt*0.99)*0.01; };
-  for (let guard=0; guard<60; guard++){
+  const runDiscrete=(protect,post)=>{ for (let guard=0; guard<60; guard++){
     const T0=dayT(); const c0=cost(), r0=rulesScore();
     let best=null;
     for (const m of [...genMoves(true),...genMoves(false),...leuMoves()]) {
+      if (protect && protect(m)) continue;
       const sn=snapshot(); applyMove(m);
-      const ok=rulesScore()<=r0 && (within(dayT())||!within(T0)); const c=cost();
+      const ok=rulesScore()<=r0 && (within(dayT())||!within(T0)) && (!post||post()); const c=cost();
       restoreSnap(sn);
       if (ok && c<c0-1e-6 && (!best||c<best.c)) best={m,c};
     }
     if (!best) break;
     applyMove(best.m);
+  } };
+  runDiscrete();
+  // ── "ארוחת חלבון" לגיל 65+ בתקציב קלורי נמוך (לבקשת המשתמש — אפשרות ג) ──
+  // אם גם אחרי כל המהלכים פחות מ-2 ארוחות עוברות את סף הלאוצין (2.5 גר'), והיעד היומי מתחת ל-1,800 קק"ל: הארוחה
+  // השנייה בדירוג הלאוצין הופכת ל"ארוחת חלבון" — מוסיפים לה יחידות שלמות של תורמוס/אדממה/טמפה/גרעיני דלעת עד
+  // הסף, ומפנים קלוריות מאותה ארוחה בהקטנה/הסרה של הפריטים הדלים-בלאוצין. בארוחה הזו מוותרים על חלק מכללי
+  // ההרכב (למשל חזרה על קטנית שהופיעה היום), אבל שומרים: דגן אחד ליד הקטנית, יחידת פרי אחת, מוצר-סויה אחד
+  const leuMealsOk=()=>["breakfast","lunch","dinner"].filter(m=>leuOf(m)>=LEU_THR*0.98).length;
+  if ((dri?._age||0)>=65 && leuMealsOk()<2) {
+    const ranked=["lunch","dinner","breakfast"].filter(m=>(plan[m]||[]).length).sort((a,b)=>leuOf(b)-leuOf(a));
+    const PACK=["lupinBeansCooked","edamame","tempeh","pumpkinS","redLentils","chickpeas","blackBeans","greenPeas","soymilkFortified","soyYogurtPlain","peanuts"];
+    const packAdded={};
+    const makeProteinMeal=pm=>{
+      packAdded[pm]=new Set(); const k0=mealKc(pm);
+      // קודם כול החלפה: קטנית/תבשיל-קטניות דל-לאוצין בארוחה מוחלף במנה מרוכזת (תורמוס/טמפה/אדממה) — מוסיף לאוצין
+      // בלי להוסיף קלוריות (לרוב אף חוסך), ורק אם כללי-ההרכב לא נפגעים
+      { const its=plan[pm]; let bestS=null; const r0=rulesScore(); const u=used();
+        its.forEach((it,idx)=>{ const n=ingNut(it.fk,it.g,it.soaked); if(!(n.kcal>60)) return;
+          if (!(catsInFoodGlobal(it.fk)||[]).includes("קטנית")) return; const d0=(n.leucine||0)/n.kcal;
+          for (const fk of ["lupinBeansCooked","tempeh","edamame"]) { const fd=FDB[fk]; if(!fd||blocked(fk)||u.has(fk)) continue;
+            if (isSoy(fk)&&its.some((x,i)=>i!==idx&&isSoy(x.fk))) continue;
+            const g=unitG(fk)||stdG(fk); const m=ingNut(fk,g); if (!(m.kcal>0) || (m.leucine||0)/m.kcal<=d0*1.2) continue;
+            const sv=plan[pm]; plan[pm]=[...sv.filter((_,i)=>i!==idx),{fk,g:Math.round(g*10)/10}];
+            const TT=dayT(); const ok=rulesScore()<=r0 && (TT.fat||0)*9<=TT.kcal*0.30; const sc=leuOf(pm)-mealKc(pm)*0.004; plan[pm]=sv;
+            if (ok && (!bestS||sc>bestS.sc)) bestS={idx,fk,g,sc}; } });
+        if (bestS) { plan[pm]=[...plan[pm].filter((_,i)=>i!==bestS.idx),{fk:bestS.fk,g:Math.round(bestS.g*10)/10}]; packAdded[pm].add(bestS.fk); } }
+      // בחירה חסכונית: אם מקור יחיד סוגר את הפער — הזול ביותר בקלוריות מבין אלה שסוגרים; אחרת הצפוף ביותר
+      // בלאוצין-לקלוריה, ושוב. כך לא נוצרת "חבילה" גדולה מהנדרש שאחר כך דוחפת את היום מעל 100%
+      for (const relax of [false,true]) for (let step=0; step<3 && leuOf(pm)<LEU_THR*1.03; step++) {
+        const its=plan[pm]; const need=LEU_THR*1.04-leuOf(pm); const cands=[];
+        for (const fk of PACK) {
+          const fd=FDB[fk]; if(!fd||blocked(fk)) continue;
+          if (its.some(it=>it.fk===fk)) continue;
+          if (!relax && Object.keys(packAdded).some(m=>m!==pm&&packAdded[m].has(fk))) continue;
+          if (isSoy(fk)&&its.some(it=>isSoy(it.fk))) continue;
+          if (isSeedItem(fk)&&(mealHasNut(its)||its.some(it=>isSeedItem(it.fk)))) continue;
+          if (isNutItem(fk)&&(mealHasSeed(its)||its.some(it=>isNutItem(it.fk)))) continue;
+          const g=unitG(fk)||stdG(fk); const n=ingNut(fk,g); if(!(n.kcal>0)) continue;
+          { const T=dayT(); const f1=((T.fat||0)+(n.fat||0))*9/(T.kcal+n.kcal); if (f1>0.30 && f1>(T.fat||0)*9/T.kcal) continue; } // לא לדחוף את השומן מעל 30%
+          cands.push({fk,g,k:n.kcal,l:n.leucine||0}); }
+        if (!cands.length) break;
+        // שובר-שוויון: כשהסידן היומי מתחת ליעד (נפוץ בגיל 65+, יעד 1,200 מ"ג) — עדיפות למקור שמביא גם סידן (משקה סויה מועשר)
+        const caDef=Math.max(0,(dri?.calcium?.dri||0)-(dayT().calcium||0));
+        cands.forEach(c=>{ c.eff=c.k-Math.min(caDef,(ingNut(c.fk,c.g).calcium||0))*0.15; });
+        const closers=cands.filter(c=>c.l>=need).sort((a,b)=>a.eff-b.eff);
+        const pick=closers[0]||cands.sort((a,b)=>b.l/b.k-a.l/a.k)[0];
+        add(pm,pick.fk,pick.g); packAdded[pm].add(pick.fk);
+      }
+      const packK=mealKc(pm)-k0; let freed=0;
+      // פינוי קלוריות מאותה ארוחה: הפריט הדל-לאוצין ביותר (לא מהחבילה, לא הדגן האחרון ליד קטנית, לא הפרי האחרון),
+      // עד שהארוחה חוזרת לגודלה המקורי בערך
+      const capK=tgt*(GLOBAL_MEAL_SHARE_MAX[pm]||0.38);
+      for (let g=0; g<20; g++){
+        const its=plan[pm]; let bestR=null;
+        if (freed>=packK-20 && mealKc(pm)<=capK) break; // מפנים בערך את מה שהחבילה הוסיפה, ולפחות עד תקרת הארוחה
+        const r0=rulesScore();
+        its.forEach((it,idx)=>{ if (packAdded[pm].has(it.fk)) return;
+          const inf=unitInfo(it); const n=ingNut(it.fk,it.g,it.soaked); if(!(n.kcal>15)) return;
+          { const sv=plan[pm]; const un=inf?Math.round(it.g/inf.u):1; // לא מסירים/מקטינים סלט/פרי/דגן שכלל-הרכב צריך
+            plan[pm]=(inf&&un>=2)?sv.map((x,i)=>i===idx?{...x,g:Math.round((un-1)*inf.u*10)/10}:x):sv.filter((_,i)=>i!==idx);
+            const TT=dayT(); const bad=rulesScore()>r0 || (TT.fat||0)*9>TT.kcal*0.30; plan[pm]=sv; if (bad) return; }
+          const isGr=(catsInFoodGlobal(it.fk)||[]).some(c=>c==="דגן"||c==="מאפה"); const grains=its.filter(x=>(catsInFoodGlobal(x.fk)||[]).some(c=>c==="דגן"||c==="מאפה")).length;
+          if (isGr && grains<=1 && hasLeg(its)) return;
+          if (FDB[it.fk]?.cat==="פרי" && fruitUnitsOf(its)<=1) return;
+          const dens=(n.leucine||0)/n.kcal; if(!bestR||dens<bestR.dens) bestR={idx,it,inf,dens}; });
+        if (!bestR) break;
+        const units=bestR.inf?Math.round(bestR.it.g/bestR.inf.u):1; const kBefore=mealKc(pm); const savedMeal=plan[pm].slice();
+        if (bestR.inf && units>=2) plan[pm][bestR.idx]={...bestR.it,g:Math.round((units-1)*bestR.inf.u*10)/10};
+        else plan[pm]=plan[pm].filter((_,i)=>i!==bestR.idx);
+        if (leuOf(pm)<LEU_THR) { plan[pm]=savedMeal; break; } // לא לרדת מתחת לסף — את היתרה מפנים משאר הארוחות בכיוונון
+        freed+=kBefore-mealKc(pm);
+      }
+    };
+    // ארוחות החלבון: צהריים וערב (שם שובצה מראש מנת החלבון ותקרת הערב הוגדלה); אם הבוקר כבר עומד בסף בעצמו —
+    // הוא אחת משתיים, והשנייה היא החזקה מבין צהריים/ערב
+    const okAlready=ranked.filter(m=>leuOf(m)>=LEU_THR*0.98);
+    const LD=["lunch","dinner"].filter(m=>(plan[m]||[]).length).sort((a,b)=>leuOf(b)-leuOf(a));
+    const protTargets=okAlready.includes("breakfast") ? ["breakfast",LD[0]] : (LD.length>=2?LD:ranked.slice(0,2));
+    for (const pm of protTargets) if (pm && leuOf(pm)<LEU_THR*0.98) makeProteinMeal(pm);
+    // כיוונון אחרון — בלי לגעת בפריטי החבילה בארוחות החלבון
+    const isPackIdx=(mk,idx)=>idx!=null&&packAdded[mk]&&packAdded[mk].has((plan[mk][idx]||{}).fk);
+    const leuAfterPack=Math.min(2,leuMealsOk());
+    const protMeals=Object.keys(packAdded).filter(m=>leuOf(m)>=LEU_THR*0.98);
+    runDiscrete(m=>(m.mk&&isPackIdx(m.mk,m.idx))||(m.down&&isPackIdx(m.down.mk,m.down.idx))||(m.removeIdx!=null&&isPackIdx(m.mk,m.removeIdx)),
+      ()=>protMeals.every(m=>leuOf(m)>=LEU_THR*0.98) && leuMealsOk()>=leuAfterPack); // מהלך שמוריד ארוחת-חלבון מתחת לסף — נדחה
   }
+  // תקרת 100% קלוריות — כלל-יסוד: אם עדיין יש חריגה (בדרך כלל אחרי הוספת ארוחת-חלבון), מורידים/מסירים יחידות שלמות
+  // שלא שוברות כללי-הרכב, תחילה בלי לפגוע בכלל הלאוצין ורק אם אין ברירה — גם על חשבונו (הקלוריות קודמות)
+  { const leuN0=leuMealsOk();
+    const capPass=keepLeu=>{ for (let g=0; g<30; g++){ const T=dayT(); if (T.kcal<=tgt*0.999) return;
+      const r0=rulesScore(); let best=null;
+      const fatP=X=>(X.fat||0)*9/Math.max(1,X.kcal);
+      const okNow=T1=>T1.kcal<T.kcal-1 && T1.kcal>=tgt*0.98 && rulesScore()<=r0 && (within(T1)||!within(T)) && (fatP(T1)<=0.30||fatP(T1)<=fatP(T)) && (!keepLeu||leuMealsOk()>=Math.min(2,leuN0));
+      const score=T1=>(T1.kcal>tgt*0.999?(T1.kcal-tgt*0.999)*3:0)+(cost()-leuPenalty()*450)*0.05+(keepLeu?0:leuPenalty()*50);
+      const downs=genMoves(false);
+      // גם מהלכי-לאוצין (החלפת פריט דל-לאוצין במקור מרוכז / הוספה+הורדה) — כשהם מורידים קלוריות ושומרים את הסף
+      for (const m of leuMoves()) { const sn=snapshot(); applyMove(m); const T1=dayT(); if (okNow(T1)) { const sc=score(T1); if (!best||sc<best.sc) best={ms:[m],sc}; } restoreSnap(sn); }
+      // החלפה ליחידה קטנה יותר מאותה קבוצה (פיתה → פרוסת לחם, בננה → קיווי, אפונה → תורמוס...) — שומר על כללי-ההרכב
+      { const u=used(); const SWAP={"דגן":["wholeWheatBread","bulgurCooked","oatsCooked","brownRiceCooked","buckwheatCooked","quinoaCooked"],
+          "פרי":["kiwi","apricot","plum","clementine","apple","peach","orange"],"קטנית":["lupinBeansCooked","edamame","greenPeas","redLentils"]};
+        for (const mk of ["breakfast","lunch","dinner"]) (plan[mk]||[]).forEach((it,idx)=>{ const fd=FDB[it.fk]; if(!fd||fd._isRecipe) return; const pool=SWAP[fd.cat]; if(!pool) return;
+          const k0=ingNut(it.fk,it.g,it.soaked).kcal;
+          for (const fk of pool) { if (fk===it.fk||u.has(fk)||blocked(fk)||!FDB[fk]) continue; const g=unitG(fk)||stdG(fk); if (!(ingNut(fk,g).kcal<k0-5)) continue;
+            if (isSoy(fk)&&(plan[mk]||[]).some((x,i)=>i!==idx&&isSoy(x.fk))) continue;
+            const m={mk,addFk:fk,g,removeIdx:idx}; const sn=snapshot(); applyMove(m); const T1=dayT();
+            if (okNow(T1)) { const sc=score(T1); if (!best||sc<best.sc) best={ms:[m],sc}; } restoreSnap(sn); } }); }
+      for (const m of downs) { const sn=snapshot(); applyMove(m); const T1=dayT();
+        if (okNow(T1)) { const sc=score(T1); if (!best||sc<best.sc) best={ms:[m],sc}; }
+        else if (T1.kcal<tgt*0.98 || (T1.kcal<T.kcal-5 && rulesScore()>r0)) { // ירידה חדה מדי, או הסרה ששוברת כלל-הרכב —
+          // מנסים "החלפה": השלמה ביחידה קטנה אחרת (למשל פרי קטן במקום בננה) שמחזירה את הכלל ונוחתת בטווח
+          for (const u of genMoves(true)) { const sn2=snapshot(); applyMove(u); const T2=dayT();
+            if (okNow(T2)) { const sc=score(T2); if (!best||sc<best.sc) best={ms:[m,u],sc}; }
+            restoreSnap(sn2); } }
+        restoreSnap(sn); }
+      if (!best) return; best.ms.forEach(applyMove); } };
+    capPass(true); capPass(false); }
+  // תקרות-ארוחה (בוקר/צהריים 38%, ערב 28% או 32% בגיל 65+): אם ארוחה חורגת — מעבירים פריט בודד ממנה לארוחה שיש בה מקום
+  // (למשל משקה סויה/פרי/זרעים מהערב לבוקר), רק אם כללי-ההרכב, סף הלאוצין, השומן/אומגה/מנגן לא נפגעים
+  for (let g=0; g<8; g++) {
+    const capOf=m=>tgt*(GLOBAL_MEAL_SHARE_MAX[m]||0.38);
+    const overM=["breakfast","lunch","dinner"].map(m=>({m,o:mealKc(m)-capOf(m)})).filter(x=>x.o>3).sort((a,b)=>b.o-a.o)[0];
+    if (!overM) break;
+    const src=overM.m, r0=rulesScore(), l0=Math.min(2,leuMealsOk()), T0=dayT(); let best=null;
+    (plan[src]||[]).forEach((it,idx)=>{ const fd=fdOf(it.fk); if(!fd||it.fk==="saltIodized") return; const k=ingNut(it.fk,it.g,it.soaked).kcal; if(!(k>10)) return;
+      for (const dst of ["breakfast","lunch","dinner"]) { if (dst===src) continue; const its2=plan[dst]||[]; if(!its2.length) continue;
+        if (mealKc(dst)+k>capOf(dst)) continue;
+        if (its2.some(x=>x.fk===it.fk)) continue;
+        if (dst==="breakfast" && (fd.cat==="ירק"||fd.cat==="עלים")) continue;
+        if (fd.cat==="פרי" && fruitItemsOf(its2)>=2) continue;
+        if (isSoy(it.fk)&&its2.some(x=>isSoy(x.fk))) continue;
+        if (isSeedItem(it.fk)&&(mealHasNut(its2)||its2.some(x=>isSeedItem(x.fk)))) continue;
+        if (isNutItem(it.fk)&&(mealHasSeed(its2)||its2.some(x=>isNutItem(x.fk)))) continue;
+        const sn=snapshot(); plan[src]=plan[src].filter((_,i)=>i!==idx); plan[dst]=[...its2,it];
+        const ok=rulesScore()<=r0 && leuMealsOk()>=l0 && (within(dayT())||!within(T0));
+        const gain=Math.min(k,overM.o); restoreSnap(sn);
+        if (ok && (!best||gain>best.gain)) best={idx,dst,gain}; } });
+    if (!best) break;
+    const it=plan[src][best.idx]; plan[src]=plan[src].filter((_,i)=>i!==best.idx); plan[best.dst]=[...plan[best.dst],it];
+  }
+  // השלמה שבועית ממוקדת (נקרא מ-enforceWeeklyMicros עם _microSwap): החלפת פריט גולמי בפריט מאותה קבוצה עם יותר
+  // מהרכיב החסר ובקלוריות דומות (למשל משקה סויה רגיל → מועשר, תפוח → תפוז, אורז → כוסמת) — בלי לשבור שום כלל
+  if (dri && dri._microSwap) { const k=dri._microSwap;
+    for (let g=0; g<4; g++) { const T0=dayT(); if ((T0[k]||0)>=dri[k].dri) break;
+      const r0=rulesScore(), l0=Math.min(2,leuMealsOk()), u=used(); let best=null;
+      for (const mk of ["breakfast","lunch","dinner"]) (plan[mk]||[]).forEach((it,idx)=>{ const fd=FDB[it.fk]; if(!fd||fd._isRecipe||it.fk==="saltIodized") return;
+        const n0=ingNut(it.fk,it.g,it.soaked); if(!(n0.kcal>15)) return;
+        for (const fk of Object.keys(FDB)) { const f2=FDB[fk]; if(!f2||f2._isRecipe||f2.cat!==fd.cat||fk===it.fk||u.has(fk)||blocked(fk)) continue;
+          if ((f2.per100?.[k]||0)<=(fd.per100?.[k]||0)) continue;
+          const g2=unitG(fk)||stdG(fk); if(!g2) continue; const n2=ingNut(fk,g2); if (!(n2.kcal>0)||n2.kcal>n0.kcal*1.15+5) continue;
+          if ((n2[k]||0)<=(n0[k]||0)) continue;
+          if (isSoy(fk)&&(plan[mk]||[]).some((x,i)=>i!==idx&&isSoy(x.fk))) continue;
+          const sn=snapshot(); plan[mk]=[...plan[mk].filter((_,i)=>i!==idx),{fk,g:Math.round(g2*10)/10}]; const T1=dayT();
+          const ok=rulesScore()<=r0 && leuMealsOk()>=l0 && within(T1) && T1.kcal<=tgt*0.999 && T1.kcal>=tgt*0.982 && mealKc(mk)<=tgt*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38)+2;
+          const gain=(T1[k]||0)-(T0[k]||0); restoreSnap(sn);
+          if (ok && gain>0 && (!best||gain>best.gain)) best={mk,idx,fk,g:g2,gain}; } });
+      if (!best) break;
+      plan[best.mk]=[...plan[best.mk].filter((_,i)=>i!==best.idx),{fk:best.fk,g:Math.round(best.g*10)/10}]; } }
   // חריגה זעירה מעל 100% (שארית-עיגול): קיצוץ בגרמים של אגוז/זרע (מותר חלקי) — הפריט הקלורי ביותר מהם
-  { const over=dayT().kcal-tgt*0.999;
-    if (over>0) { let bestNS=null; ["breakfast","lunch","dinner"].forEach(mk=>(plan[mk]||[]).forEach((it,idx)=>{ if(!fineNS(it)) return; const k=ingNut(it.fk,it.g).kcal; if(!bestNS||k>bestNS.k) bestNS={mk,idx,it,k}; }));
+  for (let gTrim=0; gTrim<6; gTrim++) { const over=dayT().kcal-tgt*0.999;
+    if (over<=0) break;
+    { let bestNS=null; ["breakfast","lunch","dinner"].forEach(mk=>(plan[mk]||[]).forEach((it,idx)=>{ if(!fineNS(it)||it.g<=2.05) return; const k=ingNut(it.fk,it.g).kcal; if(!bestNS||k>bestNS.k) bestNS={mk,idx,it,k}; }));
+      if (!bestNS) break;
       if (bestNS && bestNS.k>0) { const kpg=bestNS.k/bestNS.it.g; const ng=Math.max(2,bestNS.it.g-over/kpg); plan[bestNS.mk][bestNS.idx]={...bestNS.it,g:Math.round(ng*10)/10}; } } }
   return plan;
 }
@@ -3382,7 +3559,7 @@ function enforceWeeklyMicros(daysArr, target, dri, excl){
     for (const k of short){
       const order=daysArr.map((d,i)=>i).sort((a,b)=>(tots[a][k]||0)-(tots[b][k]||0));
       for (const i of order.slice(0,7)){
-        const boosted={...dri,[k]:{...dri[k],dri:dri[k].dri*1.4}};
+        const boosted={...dri,[k]:{...dri[k],dri:dri[k].dri*1.4},_microSwap:k};
         enforceDailyCalorieBand(daysArr[i], target, boosted, excl);
         const W2=sumNuts(daysArr.map(dayTot)); if ((W2[k]||0)>=dri[k].dri*daysArr.length*0.98) break;
       }
@@ -5033,7 +5210,8 @@ const LOW_PROTEIN_SUB = {};
 // עצמה גורמת לאיבוד חלבון, ותחליף דל-חלבון שם היה פוגע ולא עוזר.
 const needsLowProteinPriority = hp => !!hp && hp.protPerKgMax!=null && hp.protPerKgMax<=0.8;
 
-function generateDayPlan(target,wKg,hp,dri,recipeIds=[],recipeUsage={},excludedFks=new Set()) {
+function generateDayPlan(...a){ return withAgeMealCaps(a[3], ()=>generateDayPlan__impl(...a)); }
+function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},excludedFks=new Set()) {
   const tgt = target || 2000;
   const plan = {breakfast:[],lunch:[],snack:[],dinner:[]};
   const usedFks = new Set(excludedFks); // "לעולם לא להציע": נראה כבר-בשימוש מהרגע הראשון, כך שלא נבחר בשום שלב
@@ -5092,7 +5270,7 @@ function generateDayPlan(target,wKg,hp,dri,recipeIds=[],recipeUsage={},excludedF
     "springOnion","mintLeaf","spinach","parsley","cilantroLeaf","dill","basil","swisschard"]);
   // בוטנים לא קלויים: לעולם לא כרכיב עצמאי (לבקשת המשתמש, שוב) — נחסם כאן ישירות בתוך addItem, לא רק ברשימות
   // המועדפות של הארכיטיפים, כי סבבי ההשלמה הכלליים (12/13) יכולים עדיין לבחור אותם ישירות מכל מאגר המזון
-  const NEVER_STANDALONE_FKS = new Set(["peanuts"]);
+  const NEVER_STANDALONE_FKS = new Set(["peanuts",...RECIPE_ONLY_FKS]);
   // מזהה מתכוני "סלט בסיס" (המותרים לחזור על עצמם בין ארוחות/ימים) לעומת כל מתכון אחר, שלא אמור לחזור על
   // עצמו פעמיים באותו יום גם אם נשמרו כשני מתכונים נפרדים בעלי שם זהה/דומה
   const isBaseSaladName = (name, fd) => /סלט בסיס/.test(name||"") || fd?._saladKind==="סלט_בסיס";
@@ -5250,6 +5428,17 @@ function generateDayPlan(target,wKg,hp,dri,recipeIds=[],recipeUsage={},excludedF
   // בדיוק (addItem), ולעולם לא אותו מתכון פעמיים (usedFks) — ומכיוון שזה חלק מ-generateDayPlan, זה חל אוטומטית
   // גם על ×7 ימי "הצע ארוחות לשבוע" (generateWeekPlan קורא לפונקציה הזו פעם אחת לכל יום)
   const guaranteedRecipeFks = new Set();
+  // גיל 65+ (לבקשת המשתמש): שיבוץ מוקדם של מנת קטנית מרוכזת-לאוצין בצהריים ובערב — לפני המתכונים ולפני כל
+  // שלב אחר, כך ששאר הארוחה (דגן, ירק, פרי) נבנית סביבה ושלב התיקון בסוף רק סוגר פערים קטנים. סבב בין תורמוס,
+  // טמפה ואדממה (usedFks מונע אותו פריט פעמיים ביום), ועדשים/שעועית כגיבוי. לא בפרופיל שמגביל קטניות (CKD)
+  if ((dri?._age||0)>=65 && !(hp?.protPerKgMax!=null && hp.protPerKgMax<=1.0)) {
+    const DENSE=shuffleArr(["lupinBeansCooked","tempeh","edamame"]), BACKUP=shuffleArr(["redLentils","greenLentils","blackBeans"]);
+    for (const mk of ["lunch","dinner"]) {
+      if ((plan[mk]||[]).some(it=>catOf(it.fk)==="קטנית")) continue;
+      let ok=false; for (const fk of DENSE) { if (FDB[fk]&&!usedFks.has(fk)&&addItem(mk,fk)) { ok=true; break; } }
+      if (!ok) for (const fk of BACKUP) { if (FDB[fk]&&!usedFks.has(fk)&&addItem(mk,fk)) break; }
+    }
+  }
   if (recipeIds.length) {
     const mealOrderEarly = shuffleArr(["breakfast","lunch","dinner"]);
     for (const mk of mealOrderEarly) {
@@ -7383,7 +7572,8 @@ const MIXED_FALLBACK_ITEMS=[
   {fk:"cottageCheese5", preferMeals:["breakfast","lunch"]},
   {fk:"yellowCheese", preferMeals:["lunch","dinner"]},
 ];
-function generateMixedDayPlan(target,wKg,hp,dri,recipeIds=[],recipeUsage={},excludedFks=new Set(),intensity="moderate"){
+function generateMixedDayPlan(...a){ return withAgeMealCaps(a[3], ()=>generateMixedDayPlan__impl(...a)); }
+function generateMixedDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},excludedFks=new Set(),intensity="moderate"){
   // "intensity" — כמה החלפות לבצע לכל היותר: moderate (ברירת מחדל) = עד 2, generous = עד 4. minSubs=2 קבוע
   // (לבקשת המשתמש: "לפחות שתי מנות מן החי בכל יום") — גם ב-moderate וגם ב-generous, לעולם לא פחות משתיים,
   // ורק ה"תקרה" (maxSubs) משתנה ביניהם
@@ -7452,7 +7642,8 @@ function generateMixedDayPlan(target,wKg,hp,dri,recipeIds=[],recipeUsage={},excl
 // generateWeekPlan שעוטף את generateDayPlan). מחזירה גם מערך של 7 הימים המעורבים (להצגה/עריכה לפי יום) וגם
 // את סך הטוטלים השבועיים משני הצדדים (צמחי-בלבד מול מעורב) — כדי שחלונית ההשוואה השבועית תוכל להציג בדיוק
 // את אותה טבלת-השפעה שכבר קיימת ליום בודד, רק על סך השבוע
-function generateMixedWeekPlan(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set(),intensity="moderate"){
+function generateMixedWeekPlan(...a){ return withAgeMealCaps(a[3], ()=>generateMixedWeekPlan__impl(...a)); }
+function generateMixedWeekPlan__impl(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set(),intensity="moderate"){
   const days=[];
   for (let d=0; d<7; d++) {
     days.push(generateMixedDayPlan(target,wKg,hp,dri,recipeIds,{},excludedFks,intensity));
@@ -7470,7 +7661,8 @@ function generateMixedWeekPlan(target,wKg,hp,dri,recipeIds=[],excludedFks=new Se
 // מצב 1 (יום ריק לגמרי): מציע יום שלם, אך ורק מתוך הארוחות השמורות והמתכונים שהמשתמש עצמו בנה ושמר.
 // מצב 2 (חלק מהיום כבר נבנה): משאיר בדיוק את מה שכבר נבנה כפי שהוא (לא נוגע בזה), ומשלים רק את הסלוטים הריקים
 // מתוך אותה תשתית אישית — בלי שום ארכיטיפ מובנה, בלי חיפוש כללי במאגר המזון, ובלי המצאת שילובים חדשים.
-function generatePersonalDayPlan(target, recipes=[], existingMeals=null, dri=null, wKg=0, hp=null, excludedFks=new Set()) {
+function generatePersonalDayPlan(...a){ return withAgeMealCaps(a[3], ()=>generatePersonalDayPlan__impl(...a)); }
+function generatePersonalDayPlan__impl(target, recipes=[], existingMeals=null, dri=null, wKg=0, hp=null, excludedFks=new Set()) {
   const tgt = target || 2000;
   const servingG = fk => { const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return 100; return fd._isRecipe?fd._servingG:(getServingUnit(fk,fd,"he")?.g||100); };
   // "לעולם לא להציע": מתכון שמכיל מרכיב מסומן-כנמנע מוצא לגמרי מהמאגר הזמין למחולל הזה (לא רק המרכיב עצמו) —
@@ -9342,7 +9534,8 @@ function applySodiumSaltTopup(plan, sodiumCap, iodineTarget) {
   }
   return dosesAdded>0;
 }
-function generateRecipesNSFDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, dayIdx=null, recipeUsage={}, excludedFks=new Set(), applySalt=true) {
+function generateRecipesNSFDayPlan(...a){ return withAgeMealCaps(a[2], ()=>generateRecipesNSFDayPlan__impl(...a)); }
+function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp=null, dayIdx=null, recipeUsage={}, excludedFks=new Set(), applySalt=true) {
   const tgt = target || 2000;
   const hardCapKcal = tgt * 1.00; // תקרה קשיחה (הודקה לבקשת המשתמש): לעולם לא לחרוג מ-100%
   // "לעולם לא להציע": מתכון שמכיל מרכיב נמנע מוצא כליל, לא רק המרכיב הגולמי עצמו
@@ -9371,7 +9564,7 @@ function generateRecipesNSFDayPlan(target, recipes=[], dri=null, wKg=0, hp=null,
   // לבקשת המשתמש: יוגורט סויה ביתי (מקבוצת "חלבון") מוכנס גם הוא למאגר הגולמי, בנוסף לשלוש הקטגוריות הרגילות
   // (אגוזים/זרעים/פרי) — פריט בודד ספציפי, לא כל קבוצת "חלבון" נפתחת
   const SPECIAL_INCLUDED_FKS = new Set(["soyYogurtPlain"]);
-  const rawPool = Object.keys(FDB).filter(fk=>(ALLOWED_CATS.has(FDB[fk]?.cat)||SPECIAL_INCLUDED_FKS.has(fk)) && !FDB[fk]?._isRecipe && !EXCLUDED_FKS.has(fk));
+  const rawPool = Object.keys(FDB).filter(fk=>(ALLOWED_CATS.has(FDB[fk]?.cat)||SPECIAL_INCLUDED_FKS.has(fk)) && !FDB[fk]?._isRecipe && !EXCLUDED_FKS.has(fk) && !RECIPE_ONLY_FKS.has(fk));
   // תיקון (לבקשת המשתמש: "יחס 2/3 תבשילי-קטניות/דגנים ולא קטניות/דגנים מבושלות גולמיות" — נמצא ב-סימולציה
   // שהתיקון הקודם, שנגע רק במנגנון-מילוי-הפער המאוחר, לא הספיק בכלל (יחס בפועל נשאר ~10%/~5%): מתברר
   // שהמנגנון הראשי והתדיר-ביותר שממלא ארוחות (כמה לולאות "combined = [...rawPool, ...recipePool]" בהמשך
@@ -9424,6 +9617,8 @@ function generateRecipesNSFDayPlan(target, recipes=[], dri=null, wKg=0, hp=null,
   const plan = {breakfast:[],snack:[],lunch:[],dinner:[]};
   // חלוקת תקציב בין הארוחות: בוקר מוגדל (יעד ≥700 קק"ל בהמשך), צהריים מוגדל מעט, ערב מצומצם, ביניים ללא שינוי
   const SHARE = {breakfast:.34, snack:.06, lunch:.34, dinner:.25};
+  // גיל 65+: ארוחת הערב היא ארוחת חלבון — מקבלת מעט יותר מתקציב היום (על חשבון הבוקר)
+  if ((dri?._age||0)>=65) { SHARE.dinner=.29; SHARE.breakfast=.30; }
   // כלל 9: ארוחת ביניים מטופלת בנפרד לגמרי בהמשך (אך ורק פרי) — כל שאר השלבים (מתכונים/ירק/משקה סויה+קינמון/
   // מילוי כללי) פועלים רק על שלוש הארוחות האחרות
   const NON_SNACK_MEALS = ["breakfast","lunch","dinner"];
@@ -9519,7 +9714,7 @@ function generateRecipesNSFDayPlan(target, recipes=[], dri=null, wKg=0, hp=null,
   // תיקון (לבקשת המשתמש: מציאת "תפוח אדמה טרי" בפועל בסימולציה) — המאגר הזה נבנה דינמית מכל פריטי-FDB עם
   // cat="ירק", בלי לעבור דרך EXCLUDED_FKS (שמשמש רק ל-rawPool במקום אחר) — כך שפקעות-גולמיות חמקו מהתיקון
   // הקודם. מוחרגות כאן גם הן במפורש, לא רק wakame/springOnion
-  const vegPool = Object.keys(FDB).filter(fk=>FDB[fk]?.cat==="ירק" && fk!=="wakame" && fk!=="springOnion" && fk!=="potatoRaw" && fk!=="sweetPotatoRaw" && !FDB[fk]?._isRecipe);
+  const vegPool = Object.keys(FDB).filter(fk=>FDB[fk]?.cat==="ירק" && fk!=="wakame" && fk!=="springOnion" && fk!=="potatoRaw" && fk!=="sweetPotatoRaw" && !RECIPE_ONLY_FKS.has(fk) && !FDB[fk]?._isRecipe);
   // כלל 1+2+6: מנסים למקם מתכון בכל אחת משלוש הארוחות הראשיות (לא בארוחת ביניים — כלל 9). מעדיפים בסדר הבא:
   // (א) "סלט ארוחה גדול" עם וואקמה — אך ורק פעם אחת קבועה בשבוע (ראה isWakameSaladDay למטה), (ב) מתכוני
   // "סלט" בעלי שם מועדף במפורש — סלט בסיס / סלט כרובים / סלט ארוחה קטן / סלט ארוחה בינוני, (ג) כל מתכון סלט
@@ -9634,7 +9829,7 @@ function generateRecipesNSFDayPlan(target, recipes=[], dri=null, wKg=0, hp=null,
   // "תפסה" עגבנייה/מלפפון וכו', לארוחות מאוחרות יותר לא נשאר אף מועמד ולא נוסף שום ירק. ירק גולמי בסיסי (עגבנייה,
   // מלפפון וכו') הגיוני לגמרי שיחזור על עצמו כמה פעמים באותו יום (גם בצהריים וגם בערב) — אז addFallbackVeg בכוונה
   // לא מסמן usedFks, כדי שאותו ירק יישאר זמין לארוחה הבאה. הרשימה עצמה גם הורחבה משמעותית.
-  const VEG_FALLBACK_POOL = ["cucumber","tomato","carrot","redPepper","yellowPepper","greenPepper","cabbageRed","radish","zucchini","cauliflower","broccoli","beet"];
+  const VEG_FALLBACK_POOL = ["cucumber","tomato","carrot","redPepper","yellowPepper","greenPepper","cabbageRed","radish","zucchini","beet"];
   const addFallbackVeg = (mk) => {
     for (const fk of shuffleArr(VEG_FALLBACK_POOL)) {
       if ((plan[mk]||[]).some(it=>it.fk===fk)) continue; // כבר קיים בדיוק באותה ארוחה
@@ -9748,6 +9943,18 @@ function generateRecipesNSFDayPlan(target, recipes=[], dri=null, wKg=0, hp=null,
       if (bCand) tryAdd("dinner", bCand);
       const spCand = usageWeightedOrder(spreadPoolCat.filter(fk=>!usedFks.has(fk)), recipeUsage)[0];
       if (spCand) tryAdd("dinner", spCand);
+    }
+  }
+  // גיל 65+ (לבקשת המשתמש): ארוחות החלבון — צהריים וערב. אם התבשילים שנבחרו לא מביאים את הארוחה לסף הלאוצין
+  // (2.5 גר'), משבצים כבר כאן (לפני שלבי המילוי) מנה מרוכזת: תורמוס/טמפה/אדממה, או יוגורט סויה כגיבוי
+  if ((dri?._age||0)>=65) {
+    const leuMeal=mk=>sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).leucine||0;
+    const DENSE=[...shuffleArr(["lupinBeansCooked","tempeh","edamame"]),"soyYogurtPlain"];
+    for (const mk of ["lunch","dinner"]) {
+      if (leuMeal(mk)>=2.5) continue;
+      for (const fk of DENSE) { if (!FDB[fk]||usedFks.has(fk)) continue;
+        if (isSoyFamilyItem(fk)&&soyFamilyAlreadyInMeal(mk)) continue;
+        if (tryAdd(mk, fk, 1.6)) break; }
     }
   }
 
@@ -12204,7 +12411,8 @@ function capVegUnitsPerMeal(day){
     if (dropIdxSet.size) day[mk] = items.filter((it,idx)=>!dropIdxSet.has(idx));
   });
 }
-function generateWeekPlan(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set()){
+function generateWeekPlan(...a){ return withAgeMealCaps(a[3], ()=>generateWeekPlan__impl(...a)); }
+function generateWeekPlan__impl(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set()){
   const week={}; const daysArr=[];
   const recipeIdSet = new Set(recipeIds);
   const recipeUsage = {};
@@ -12657,7 +12865,8 @@ function rebalanceLegumeWeightsAcrossWeek(daysArr, dri){
 // ומאתחל איתו את recipeUsage הפנימי במקום אובייקט ריק. מתכון שהיה בשימוש בשבועות אחרונים "נכנס" כבר עם
 // ציון-שימוש גבוה יותר, ולכן פחות מועדף בכל בחירה-משוקללת באותו שבוע חדש. הפונקציה מחזירה גם את מעקב-
 // השימוש-המעודכן (לא רק את השבוע עצמו), כדי שהקורא יוכל לשמור אותו כזרע לפעם הבאה
-function generateRecipesNSFWeekPlan(target,recipes=[],dri=null,wKg=0,hp=null,excludedFks=new Set(),recentUsageSeed={}){
+function generateRecipesNSFWeekPlan(...a){ return withAgeMealCaps(a[2], ()=>generateRecipesNSFWeekPlan__impl(...a)); }
+function generateRecipesNSFWeekPlan__impl(target,recipes=[],dri=null,wKg=0,hp=null,excludedFks=new Set(),recentUsageSeed={}){
   const week={}; const daysArr=[];
   const recipeIdSet = new Set(recipes.map(r=>r.id));
   const recipeUsage = {...recentUsageSeed};
@@ -18721,9 +18930,7 @@ function AppInner(){
   })();
   // הגדרת ארבע קטגוריות המיקרו — משמשת גם לשורת הכפתורים בסרגל הצד וגם לבחירת התוכן שנפתח בלחיצה
   const MICRO_CATEGORIES=[
-    {k:"ratios",l:lang==="he"?"⚖️ יחסים":"⚖️ Ratios",node:ratiosSectionNode},
-    {k:"omegaConv",l:lang==="he"?"🔄 המרת אומגות":"🔄 Omega Conversion",node:omegaConversionNode},
-    {k:"amino",l:lang==="he"?"🧬 לאוצין וליזין":"🧬 Leucine & Lysine",node:aminoSectionNode},
+    // יחסים / המרת אומגות / לאוצין-ליזין — הועברו ללשונית "אבות המזון" (לבקשת המשתמש)
     {k:"satfat",l:lang==="he"?"🥓 שומן רוֹווי/כולסטרול":"🥓 Sat. Fat/Cholesterol",node:satFatSectionNode},
     {k:"vitminDaily",l:lang==="he"?"💊 ויטמינים ומינרלים — יומי":"💊 Vitamins & Minerals — Daily",node:dailyVitMinDetailNode},
     {k:"vitminWeekly",l:lang==="he"?"📅 ויטמינים ומינרלים — שבועי":"📅 Vitamins & Minerals — Weekly",node:weeklyVitMinDetailNode},
@@ -19009,7 +19216,13 @@ function AppInner(){
           </div>
         )}
         {tab==="macros"&&!isDesktop&&(
-          <MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} lang={lang} onInfo={setInfoOpen}/>
+          <>
+            <MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} lang={lang} onInfo={setInfoOpen}/>
+            {/* לבקשת המשתמש: יחסים (כולל יחס האומגות), המרת אומגות ולאוצין/ליזין — בלשונית אבות המזון */}
+            {ratiosSectionNode}
+            {omegaConversionNode}
+            {aminoSectionNode}
+          </>
         )}
         {tab==="macros"&&isDesktop&&(
           <div style={{display:"flex",gap:20,alignItems:"flex-start"}}>
@@ -19018,14 +19231,15 @@ function AppInner(){
             </div>
             <div style={{flex:1,minWidth:0}}>
               <MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} lang={lang} onInfo={setInfoOpen}/>
+              {/* לבקשת המשתמש: יחסים (כולל יחס האומגות), המרת אומגות ולאוצין/ליזין — בלשונית אבות המזון */}
+              <div style={{marginTop:16}}>{ratiosSectionNode}</div>
+              <div style={{marginTop:16}}>{omegaConversionNode}</div>
+              <div style={{marginTop:16}}>{aminoSectionNode}</div>
             </div>
           </div>
         )}
         {tab==="micro"&&!desktopMicroLayout&&(
           <>
-            {ratiosSectionNode /* לבקשת המשתמש: אותה טבלת יחסים פשוטה כמו ב-Desktop (במקום שלושת הכרטיסים) */}
-            {omegaConversionNode}
-            {aminoSectionNode}
             {satFatSectionNode}
             {microVitSectionNode}
           </>
