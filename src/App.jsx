@@ -18207,6 +18207,7 @@ function AppInner(){
   const [weeklyOmegaOpen,setWeeklyOmegaOpen]=useState(false);
   // לבקשת המשתמש: לשונית "מיקרו" הייתה עמוסה מדי (5 כרטיסים מוצגים תמיד יחד) — עכשיו הפירוט נגיש לפי דרישה
   // דרך שורת כפתורים בסרגל הצד (ראו microCategoryButtonsNode), וכפתור בודד פותח קטגוריה אחת בכל פעם
+  const [macroSub,setMacroSub]=useState("macro"); // לשונית אבות המזון: מסך-משנה פעיל (מאקרו / אומגות / אמינו / שומן רווי)
   const [microDetailOpen,setMicroDetailOpen]=useState(null); // 'ratios' | 'omegaConv' | 'satfat' | 'vitmin' | null
   const weeklyPlannedTotals=useMemo(()=>{
     const allItems=[];
@@ -18929,6 +18930,18 @@ function AppInner(){
             </div>); })}
         </div>
         <div style={{fontSize:12,color:"#3F4A44",marginTop:10,lineHeight:1.6}}>{he?`יעד: ${tg.note}.`:`Target: ${tg.note}.`} {ageNote} {he?"ערכי לאוצין/ליזין ממאגר משרד הבריאות; לחלק מהמזונות (ובהם כמה קטניות שבהן נתון המאגר חריג) — הערכה לפי קבוצת המזון.":"Values from the Israeli MoH database; for some foods (including several legumes with implausible database values) — estimated by food group."}</div>
+        {/* לבקשת המשתמש, אחרי בדיקה מול הספרות: בתזונה צמחית ליזין ולאוצין הן החומצות המגבילות; עמידה בהן בתפריט מגוון שמצמיד
+            דגנים לקטניות מכסה בפועל גם את 7 החיוניות האחרות (Mariotti & Gardner 2019; Nutrients / PLOS One 2025, טבעונים בניו זילנד) */}
+        <div style={{fontSize:13,color:"#1E3A2B",background:"#EEF5EC",border:"1px solid #CFE3CB",borderRadius:10,padding:"10px 12px",marginTop:12,lineHeight:1.7}}>
+          {he
+            ? "למה רק לאוצין וליזין? בתזונה צמחית אלה שתי החומצות האמיניות החיוניות שנוטות להיות הראשונות בחסר: ליזין — כי הוא נמוך בדגנים, ולאוצין — כי יעדו הגבוה ביותר. במחקרים על צמחונים וטבעונים, מי שעומד בהן ובצריכת החלבון הכוללת עומד כמעט תמיד גם ב-7 החומצות החיוניות האחרות (היסטידין, איזולאוצין, ואלין, מתיונין+ציסטאין, פנילאלנין+טירוזין, תראונין וטריפטופן). החריג האפשרי היחיד הוא מתיונין+ציסטאין בתפריט המבוסס כמעט רק על קטניות — ולכן האפליקציה מצמידה תמיד דגנים לקטניות, שמשלימים זה את זה בדיוק בנקודה הזו. לכן עמידה ביעדי הלאוצין והליזין כאן היא סימן טוב לכך שכל דרישות החומצות החיוניות מכוסות."
+            : "Why only leucine and lysine? In plant-based diets these are the two indispensable amino acids most likely to fall short first: lysine because it is low in grains, and leucine because its requirement is the highest. Studies of vegetarians and vegans show that people who meet these two, along with total protein, almost always meet the other 7 indispensable amino acids too (histidine, isoleucine, valine, methionine+cysteine, phenylalanine+tyrosine, threonine, tryptophan). The only possible exception is methionine+cysteine in a menu built almost entirely on legumes — which is why the app always pairs grains with legumes, since they complement each other exactly there. So meeting the leucine and lysine targets here is a good sign that all indispensable amino acid needs are covered."}
+          <div style={{marginTop:8,fontSize:12,lineHeight:1.7,direction:"ltr",textAlign:"left"}}>
+            <div style={{fontWeight:700,direction:he?"rtl":"ltr",textAlign:he?"right":"left"}}>{he?"סימוכין:":"References:"}</div>
+            <div><a href="https://www.mdpi.com/2072-6643/11/11/2661" target="_blank" rel="noopener noreferrer" style={{color:"#1f5f8b"}}>Mariotti F, Gardner CD. Dietary Protein and Amino Acids in Vegetarian Diets—A Review. Nutrients 2019;11(11):2661</a></div>
+            <div><a href="https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0314889" target="_blank" rel="noopener noreferrer" style={{color:"#1f5f8b"}}>Evaluation of protein intake and protein quality in New Zealand vegans. PLOS One</a></div>
+          </div>
+        </div>
       </div>
     );
   })();
@@ -18941,6 +18954,34 @@ function AppInner(){
   ];
   // שורת כפתורי הקטגוריות בסרגל הצד, מתחת לכפתור "מיקרו" — לבקשת המשתמש, כדי לצמצם עומס בלשונית עצמה:
   // במקום שכל 5 הכרטיסים מוצגים תמיד יחד, לחיצה על כפתור פותחת קטגוריה אחת בכל פעם בחלון נפרד
+  // מסכי-משנה בלשונית "אבות המזון" (לבקשת המשתמש): מאקרו+חלבון / יחס אומגות+המרת ALA / חומצות אמינו חיוניות / שומן רווי וכולסטרול
+  const MACRO_SUBS=[
+    {k:"macro",l:lang==="he"?"🍽 מאקרו":"🍽 Macros",node:(<MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} lang={lang} onInfo={setInfoOpen}/>)},
+    {k:"omega",l:lang==="he"?"⚖️ יחס אומגות והמרת ALA":"⚖️ Omega Ratio & ALA Conversion",node:(<>{omegaRatioTableNode}<div style={{marginTop:16}}>{omegaConversionNode}</div></>)},
+    {k:"amino",l:lang==="he"?"🧬 חומצות אמינו חיוניות":"🧬 Essential Amino Acids",node:aminoSectionNode},
+    {k:"satfat",l:lang==="he"?"🥓 שומן רווי וכולסטרול":"🥓 Sat. Fat & Cholesterol",node:satFatSectionNode},
+  ];
+  const macroSubCur=MACRO_SUBS.find(x=>x.k===macroSub)||MACRO_SUBS[0];
+  const macroSubButtonsNode=(
+    <div style={{display:"flex",flexDirection:"column",gap:4,width:"100%"}}>
+      {MACRO_SUBS.map(({k,l})=>(
+        <button key={k} onClick={()=>setMacroSub(k)}
+          style={{width:"100%",padding:"8px 12px",borderRadius:10,border:macroSub===k?"1px solid #1E3A2B":"1px solid #E2DED4",background:macroSub===k?"#DCEAD9":"#F5F2EB",color:"#1E3A2B",fontSize:12,fontWeight:macroSub===k?800:600,cursor:"pointer",textAlign:lang==="he"?"right":"left"}}>
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+  const macroSubChipsNode=(
+    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12,direction:lang==="he"?"rtl":"ltr"}}>
+      {MACRO_SUBS.map(({k,l})=>(
+        <button key={k} onClick={()=>setMacroSub(k)}
+          style={{padding:"8px 12px",borderRadius:20,border:macroSub===k?"1px solid #1E3A2B":"1px solid #E2DED4",background:macroSub===k?"#1E3A2B":"#F5F2EB",color:macroSub===k?"#FFFFFF":"#1E3A2B",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+          {l}
+        </button>
+      ))}
+    </div>
+  );
   const microCategoryButtonsNode=(
     <div style={{display:"flex",flexDirection:"column",gap:4,width:"100%"}}>
       {MICRO_CATEGORIES.map(({k,l})=>(
@@ -18989,6 +19030,7 @@ function AppInner(){
             {l}
           </button>
           {k==="micro"&&tab==="micro"&&<div style={{width:"100%"}}>{microCategoryButtonsNode}</div>}
+          {k==="macros"&&tab==="macros"&&<div style={{width:"100%"}}>{macroSubButtonsNode}</div>}
         </Fragment>
       ))}
       {/* לבקשת המשתמש: כפתור "דיווחים עצמיים" בתחתית סרגל הצד — פותח את SelfReportModal, עצמאי לגמרי מהטאבים
@@ -19221,12 +19263,8 @@ function AppInner(){
         )}
         {tab==="macros"&&!isDesktop&&(
           <>
-            <MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} lang={lang} onInfo={setInfoOpen}/>
-            {/* לבקשת המשתמש: יחס אומגה 6:3, המרה ל-EPA/DHA, לאוצין/ליזין, שומן רווי וכולסטרול — בלשונית אבות המזון */}
-            {omegaRatioTableNode}
-            {omegaConversionNode}
-            {aminoSectionNode}
-            {satFatSectionNode}
+            {macroSubChipsNode}
+            {macroSubCur.node}
           </>
         )}
         {tab==="macros"&&isDesktop&&(
@@ -19235,12 +19273,8 @@ function AppInner(){
               {sidebarNavNode}
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} lang={lang} onInfo={setInfoOpen}/>
-              {/* לבקשת המשתמש: יחס אומגה 6:3, המרה ל-EPA/DHA, לאוצין/ליזין, שומן רווי וכולסטרול — בלשונית אבות המזון */}
-              <div style={{marginTop:16}}>{omegaRatioTableNode}</div>
-              <div style={{marginTop:16}}>{omegaConversionNode}</div>
-              <div style={{marginTop:16}}>{aminoSectionNode}</div>
-              <div style={{marginTop:16}}>{satFatSectionNode}</div>
+              {/* מסך-המשנה שנבחר בסרגל הצד (מאקרו / אומגות / אמינו / שומן רווי) */}
+              {macroSubCur.node}
             </div>
           </div>
         )}
