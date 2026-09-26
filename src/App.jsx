@@ -2767,7 +2767,8 @@ function calorieBandOnly(plan, tgt, allowGrow){
   // יחידות שלמות בלבד (לבקשת המשתמש: "אל תציע חלקי יחידות כמו רבע אגוז ברזיל") — אגוזים, פירות, לחם ופריטים
   // שהמנה שלהם היא "יחידה"/"פרוסה"/"חופן": מעוגלים למספר שלם של יחידות, לפחות יחידה אחת
   const isPiece=it=>{ const fd=fdOf(it.fk); if(!fd||fd._isRecipe) return false; const su=getServingUnit(it.fk,fd,"he"); if(!su||su.weightOnly||!su.g) return false;
-    return fd.cat==="אגוזים"||fd.cat==="פרי"||BREAD.has(it.fk)||/יחידה|פרוסה|חופן/.test(su.he||""); };
+    if (fd.cat==="אגוזים"||fd.cat==="זרעים") return /יחידה/.test(su.he||"")||(su.count||1)>1; // אגוזים/זרעים בחופן/כף — מותר חלקי (לבקשת המשתמש)
+    return fd.cat==="פרי"||BREAD.has(it.fk)||/יחידה|פרוסה|חופן/.test(su.he||""); };
   Object.keys(plan).forEach(mk=>{ plan[mk]=(plan[mk]||[]).map(it=>{ if(!it||!it.fk||!isPiece(it)) return it; const u=oneUnitG(it.fk,fdOf(it.fk),null); if(!u) return it;
     const n=Math.max(1,Math.round(it.g/u)); const g=Math.round(n*u*10)/10; return Math.abs(g-it.g)>0.05?{...it,g}:it; }); });
   // שלב 2: השלמה ל-98% — רק שינוי כמות (לא הוספה/מחיקה), רק במתכונים/דגנים/קטניות/תבשילים שאינם ביחידות שלמות
@@ -2924,6 +2925,9 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
   const NUTS=new Set(["almonds","hazelnuts","brazilNuts","cashews","walnuts","pistachio","peanuts","almondbutter","peanutButter"]);
   const SEEDS=new Set(["sunflowerS","pumpkinS","chiaseeds","flaxseed","sesame"]);
   const isNutItem=fk=>NUTS.has(fk)||fdOf(fk)?.cat==="אגוזים";
+  // "פריט נספר": יחידה טבעית שלא חותכים (אגוז ברזיל "יחידה", פיסטוקים במספר) — תמיד שלם. שאר האגוזים והזרעים
+  // (חופן/כף/כפית) — מותר גם חלק מיחידה, לבקשת המשתמש, כדי להשלים ויטמין E ולשמור על תקרת השומן בדיוק
+  const isCountedPiece=fk=>{ const fd=fdOf(fk); if(!fd||fd._isRecipe) return false; const su=getServingUnit(fk,fd,"he"); return !!su&&!su.weightOnly&&(/יחידה/.test(su.he||"")||(su.count||1)>1); };
   const isSeedItem=fk=>SEEDS.has(fk)||fdOf(fk)?.cat==="זרעים";
   const mealHasNut=its=>its.some(it=>isNutItem(it.fk)||((fdOf(it.fk)?._ings)||[]).some(i=>isNutItem(i.fk)));
   const mealHasSeed=its=>its.some(it=>isSeedItem(it.fk)||((fdOf(it.fk)?._ings)||[]).some(i=>isSeedItem(i.fk)));
@@ -2999,13 +3003,13 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
             const it=its[idx]; const cap=Math.min(it.g+maxAddG(fk), (fd.cat==="קטנית"||fd.cat==="פרי")?stdG(fk):stdG(fk)*3);
             if (wholeUnitStepG(fk) && fd.cat==="פרי") break;
             let addG=Math.min(cap-it.g, gap/perG*1.05); if (addG<=0.5||!ulOk(addG)) break;
-            { const pu=isNutItem(fk)?unitG(fk):null; if (pu) { if (it.g+pu>cap+0.5) break; addG=pu; } }
+            { const pu=isCountedPiece(fk)?unitG(fk):null; if (pu) { if (it.g+pu>cap+0.5) break; addG=pu; } }
             if (mealKc(mk)+fd.per100.kcal*addG/100 > tgt*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38) && !(plan[mk]||[]).some(x=>x.fk!==fk&&shrinkable(x))) break;
             const sn=snap(); plan[mk][idx]={...it,g:Math.round((it.g+addG)*10)/10}; compensate(mk, fd.per100.kcal*addG/100, fk);
             if (ulFine()) done=true; else restore(sn); break; }
           if (!done && !used().has(fk)){
             let addG=Math.max(Math.min(maxAddG(fk), gap/perG*1.05), Math.min(maxAddG(fk), stdG(fk)*0.25));
-            { const pu=(isNutItem(fk)||FDB[fk]?.cat==="פרי")?unitG(fk):null; if (pu) addG=pu; } // יחידה שלמה, לא חלקי-אגוז
+            { const cnt=isCountedPiece(fk); const pu=(cnt||FDB[fk]?.cat==="פרי")?unitG(fk):null; if (pu) addG=pu; } // יחידה שלמה רק לפריט נספר (אגוז ברזיל/פרי)
             const mk=pickMeal(fk, fd.per100.kcal*addG/100); if(!mk) continue;
             if (!ulOk(addG)) continue;
             const sn=snap(); done=add(mk,fk,addG); if (done) { compensate(mk, fd.per100.kcal*addG/100, fk); if (!ulFine()) { restore(sn); done=false; } }
@@ -3201,6 +3205,111 @@ function enforceDailyCalorieBand(plan, tgt, dri, excl){
     calorieBandOnly(plan, tgt);
     if (stable()) break;
   }
+  // ── רק מנות ויחידות שלמות (לבקשת המשתמש: "לא רבעים וגם לא חצאים — רק מנות ויחידות שלמות", חוץ ממלח מיודד) ──
+  // כל כמות מעוגלת למספר שלם של יחידת התצוגה שלה (מנה למתכון; כוס/כף/כפית/פרוסה/יחידה למזון), לפחות 1.
+  // מלח/תבלינים ומזון שנמדד בגרמים בלבד — ללא שינוי. אחרי העיגול: תיקון חריגות (תקרת-ארוחה/שומן/אומגה/מנגן)
+  // ואז כיוונון קלורי ל-98-100% — שניהם בצעדים של יחידה שלמה בלבד; הכיוונון נשען על פריטים שהיחידה שלהם קטנה
+  // (כף/כפית זרעים, פרוסת לחם, יחידת פרי/ירק) ולכן מאפשר לפגוע בטווח הצר גם בלי חלקי-מנות
+  const unitInfo=it=>{
+    const fd=fdOf(it.fk); if(!fd) return null;
+    if (fd._isRecipe) return {u:fd._servingG||150, whole:false, recipe:true, fd};
+    if (fd.cat==="תבלינים") return null;
+    const su=getServingUnit(it.fk,fd,"he"); if(!su||su.weightOnly||!su.g) return null;
+    if ((fd.cat==="אגוזים"||fd.cat==="זרעים") && !isCountedPiece(it.fk)) return null; // מותר חלקי — מטופל בצעדים עדינים למטה
+    const whole = fd.cat==="אגוזים"||fd.cat==="פרי"||BREAD.has(it.fk)||(su.count||1)>1||/יחידה|פרוסה|חופן/.test(su.he||"");
+    return {u:su.g/(su.count||1), whole, recipe:false, fd, cat:fd.cat};
+  };
+  // ציון-כללים: כמה כללי הרכב נשברים ביום (הצמדות, מאפה↔ממרח, פרי בכל ארוחה עיקרית ו-4 ביום, סלט-ירקות עם
+  // עלים). הסרת פריט מותרת רק אם הציון לא מחמיר — כך שעיגול/הסרה לעולם לא שוברים כלל-הרכב
+  const rulesScore=()=>{ let v=0;
+    for (const m of ["breakfast","lunch","dinner"]) { const its=plan[m]||[]; if(!its.length) continue;
+      if (hasGrain(its)&&!hasLeg(its)) v++; if (hasLeg(its)&&!hasGrain(its)) v++;
+      if (its.some(it=>isSpread(it.fk))&&!its.some(it=>isBaked(it.fk)||BREAD.has(it.fk))) v++;
+      if (its.some(it=>isBaked(it.fk))&&!its.some(it=>isSpread(it.fk))) v++;
+      if (fruitUnitsOf(its)<1) v++; }
+    const fu=fruitUnitsOf(Object.values(plan).flat().filter(x=>x&&x.fk)); if (fu<4) v+=4-fu;
+    const sal=["breakfast","lunch","dinner"].flatMap(m=>plan[m]||[]).filter(it=>isVegSalad(it.fk));
+    if (!sal.some(it=>hasLeaves(it.fk))) v++;
+    return v; };
+  // עיגול: כמות ≥½ יחידה → מספר שלם הקרוב; פחות מ-½ יחידה → מוסר אם זה לא שובר כלל, אחרת יחידה אחת
+  for (const mk of Object.keys(plan)) {
+    const its=plan[mk]||[];
+    for (let idx=its.length-1; idx>=0; idx--){
+      const it=its[idx]; const inf=it&&it.fk?unitInfo(it):null; if(!inf) continue;
+      const n=it.g/inf.u; let k=Math.round(n);
+      if (k<1) { if (mk!=="snack") { const r0=rulesScore(); const saved=plan[mk]; plan[mk]=plan[mk].filter((_,i)=>i!==idx); if (rulesScore()<=r0) continue; plan[mk]=saved; } k=1; }
+      const g=Math.round(k*inf.u*10)/10; if (Math.abs(g-it.g)>0.05) plan[mk][idx]={...it,g};
+    }
+  }
+  const capUnits=(it,inf)=>{ if(inf.recipe) return bcat(it.fk)==="ממרחים"?1:2; if(BREAD.has(it.fk)) return 2; if(["דגן","קטנית","פרי"].includes(inf.cat)) return 1; return 3; };
+  const within=T=>(T.fat||0)*9<=T.kcal*0.30+1e-6 && ((T.omega3||0)>0&&(T.omega6||0)/T.omega3<=5) && (T.manganese||0)<=(dri?.manganese?.ul||15);
+  const violation=()=>{ const T=dayT(); let v=0;
+    ["breakfast","lunch","dinner"].forEach(m=>{ const over=mealKc(m)-tgt*(GLOBAL_MEAL_SHARE_MAX[m]||0.38)*1.005; if(over>0) v+=over; });
+    const fo=(T.fat||0)*9-T.kcal*0.30; if(fo>0) v+=fo*2;
+    const om=(T.omega3||0)>0?(T.omega6||0)-5*T.omega3:0; if(om>0) v+=om*40;
+    const mn=(T.manganese||0)-(dri?.manganese?.ul||15); if(mn>0) v+=mn*40;
+    const ov=T.kcal-tgt; if(ov>0) v+=ov;
+    return v; };
+  // מהלכים ביחידות שלמות בלבד: הורדת יחידה / הסרת פריט (רק אם כללי-ההרכב לא נפגעים) / הוספת יחידה / הוספת
+  // פריט קטן חדש (כף-כפית זרעים, יחידת פרי או ירק, פרוסת לחם — שלא הופיעו היום)
+  const SMALL_ADD=["chiaseeds","flaxseed","pumpkinS","sunflowerS","cucumber","tomato","carrot","redPepper","apple","orange","kiwi","peach","wholeWheatBread"];
+  const flaxToday=()=>Object.values(plan).flat().filter(x=>x&&x.fk==="flaxseed").reduce((a,x)=>a+x.g,0);
+  // אגוזים/זרעים (לא נספרים): צעדים עדינים של רבע-יחידה (למשל 7 גר' מחופן, 2.5 גר' מכף), לפחות רבע יחידה
+  const fineNS=it=>{ const fd=fdOf(it.fk); if(!fd||fd._isRecipe||!(fd.cat==="אגוזים"||fd.cat==="זרעים")||isCountedPiece(it.fk)) return null; const u=unitG(it.fk)||stdG(it.fk); return u?Math.max(2,u*0.25):null; };
+  const genMoves=(wantUp)=>{ const mv=[];
+    for (const mk of ["breakfast","lunch","dinner"]) (plan[mk]||[]).forEach((it,idx)=>{ const st=fineNS(it); if(!st) return;
+      const u=unitG(it.fk)||stdG(it.fk), cap=(it.fk==="flaxseed"?14:it.fk==="chiaseeds"?16:u*1.5);
+      if (wantUp) { if (it.g+st<=cap+0.01) mv.push({mk,idx,g:it.g+st}); }
+      else { if (it.g-st>=st-0.01) mv.push({mk,idx,g:it.g-st}); else mv.push({mk,idx,remove:true}); } });
+    for (const mk of ["breakfast","lunch","dinner"]) (plan[mk]||[]).forEach((it,idx)=>{
+      const inf=unitInfo(it); if(!inf) return; const n=Math.round(it.g/inf.u);
+      if (!wantUp) { if (n>=2) mv.push({mk,idx,g:(n-1)*inf.u}); else mv.push({mk,idx,remove:true}); }
+      else if (n+1<=capUnits(it,inf)) mv.push({mk,idx,g:(n+1)*inf.u});
+    });
+    if (wantUp) { const u=used();
+      const T=dayT(); const defK=KEYS.filter(k=>dri[k]&&(T[k]||0)<dri[k].dri);
+      const microAdds=[...new Set(defK.flatMap(k=>SOURCES[k]||[]))].filter(fk=>!SMALL_ADD.includes(fk)&&fk!=="saltIodized");
+      for (const fk of [...SMALL_ADD,...microAdds]) { const fd=FDB[fk]; if(!fd||u.has(fk)||blocked(fk)) continue;
+        const ug=((fd.cat==="אגוזים"||fd.cat==="זרעים")&&!isCountedPiece(fk)) ? Math.max(2,(unitG(fk)||stdG(fk))*0.25) : (unitG(fk)||stdG(fk));
+        if (fk==="flaxseed" && flaxToday()+ug>14) continue;
+        for (const mk of ["breakfast","lunch","dinner"]) { const its=plan[mk]||[]; if(!its.length) continue;
+          if (isSeedItem(fk) && (mealHasNut(its)||its.some(it=>isSeedItem(it.fk)))) continue;
+          if (fd.cat==="ירק" && (mk==="breakfast"||rawVegUnits(its)>=2)) continue;
+          if (fd.cat==="פרי" && fruitItemsOf(its)>=2) continue;
+          if (BREAD.has(fk) && !hasLeg(its)) continue;
+          if (isNutItem(fk) && (mealHasSeed(its)||its.some(it=>isNutItem(it.fk)))) continue;
+          if (isSoy(fk) && its.some(it=>isSoy(it.fk))) continue;
+          if (fd.cat==="עלים" && mk==="breakfast") continue;
+          if (fd.cat==="קטנית" && legFams().has(legumeFamilyOf(fk))) continue;
+          if (SPREAD_RAW.has(fk) && !its.some(it=>isBaked(it.fk)||BREAD.has(it.fk))) continue;
+          mv.push({mk,addFk:fk,g:ug}); break; } } }
+    return mv; };
+  const applyMove=m=>{ if (m.remove) plan[m.mk]=plan[m.mk].filter((_,i)=>i!==m.idx); else if (m.addFk) plan[m.mk]=[...plan[m.mk],{fk:m.addFk,g:Math.round(m.g*10)/10}]; else plan[m.mk][m.idx]={...plan[m.mk][m.idx],g:Math.round(m.g*10)/10}; };
+  const snapshot=()=>Object.fromEntries(Object.keys(plan).map(k=>[k,(plan[k]||[]).slice()]));
+  const restoreSnap=sn=>Object.keys(sn).forEach(k=>{ plan[k]=sn[k]; });
+  // מחיר משולב: חריגות (תקרות/שומן/אומגה/מנגן) > מרחק מטווח הקלוריות > חוסר מיקרו (עד 100% מהיעד)
+  const cost=()=>{ const T=dayT(); const lo=tgt*0.982, hi=tgt*0.999; // מרווח ביטחון קטן מגבולות 98-100% const kc=T.kcal<lo?lo-T.kcal:(T.kcal>hi?T.kcal-hi:0);
+    const micro=KEYS.reduce((a,k)=>a+(dri[k]?Math.max(0,1-(T[k]||0)/dri[k].dri):0),0);
+    const overK=Math.max(0,T.kcal-hi), underK=Math.max(0,lo-T.kcal);
+    const om=(T.omega3||0)>0?Math.max(0,(T.omega6||0)/T.omega3-5):0;
+    // תקרת 100% קלוריות ויחס אומגה ≤5 — כמעט-קשיחים (משקל גבוה מאוד), כך שהשלמת-מיקרו לעולם לא "קונה" חריגה בהם
+    return violation()*3+overK*40+underK*4+om*400+micro*150+Math.abs(T.kcal-tgt*0.99)*0.01; };
+  for (let guard=0; guard<60; guard++){
+    const T0=dayT(); const c0=cost(), r0=rulesScore();
+    let best=null;
+    for (const m of [...genMoves(true),...genMoves(false)]) {
+      const sn=snapshot(); applyMove(m);
+      const ok=rulesScore()<=r0 && (within(dayT())||!within(T0)); const c=cost();
+      restoreSnap(sn);
+      if (ok && c<c0-1e-6 && (!best||c<best.c)) best={m,c};
+    }
+    if (!best) break;
+    applyMove(best.m);
+  }
+  // חריגה זעירה מעל 100% (שארית-עיגול): קיצוץ בגרמים של אגוז/זרע (מותר חלקי) — הפריט הקלורי ביותר מהם
+  { const over=dayT().kcal-tgt*0.999;
+    if (over>0) { let bestNS=null; ["breakfast","lunch","dinner"].forEach(mk=>(plan[mk]||[]).forEach((it,idx)=>{ if(!fineNS(it)) return; const k=ingNut(it.fk,it.g).kcal; if(!bestNS||k>bestNS.k) bestNS={mk,idx,it,k}; }));
+      if (bestNS && bestNS.k>0) { const kpg=bestNS.k/bestNS.it.g; const ng=Math.max(2,bestNS.it.g-over/kpg); plan[bestNS.mk][bestNS.idx]={...bestNS.it,g:Math.round(ng*10)/10}; } } }
   return plan;
 }
 // הבטחה שבועית (לבקשת המשתמש: "מקבל ימים מתחת ל-98% כאשר השבועי עומד בזה"): אחרי בניית כל ימי השבוע, מחשבים
@@ -3210,14 +3319,14 @@ function enforceWeeklyMicros(daysArr, target, dri, excl){
   if (!dri || !daysArr || !daysArr.length) return;
   const KEYS=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&dri[k]);
   const dayTot=d=>sumNuts(Object.values(d).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
-  for (let pass=0; pass<3; pass++){
+  for (let pass=0; pass<4; pass++){
     const tots=daysArr.map(dayTot); const W=sumNuts(tots);
     const short=KEYS.filter(k=>(W[k]||0)<dri[k].dri*daysArr.length*0.98);
     if (!short.length) return;
     for (const k of short){
       const order=daysArr.map((d,i)=>i).sort((a,b)=>(tots[a][k]||0)-(tots[b][k]||0));
-      for (const i of order.slice(0,4)){
-        const boosted={...dri,[k]:{...dri[k],dri:dri[k].dri*1.25}};
+      for (const i of order.slice(0,7)){
+        const boosted={...dri,[k]:{...dri[k],dri:dri[k].dri*1.4}};
         enforceDailyCalorieBand(daysArr[i], target, boosted, excl);
         const W2=sumNuts(daysArr.map(dayTot)); if ((W2[k]||0)>=dri[k].dri*daysArr.length*0.98) break;
       }
