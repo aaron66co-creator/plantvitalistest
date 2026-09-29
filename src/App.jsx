@@ -1799,10 +1799,17 @@ function guaranteeDailyStews(plan, tgt, excl, usage, allowedIds){
 // "2.75 כפות פחות נוח"). שלב אחרון בכל מחולל: מעגלים לחצי הקרוב, אבל אם זה דוחף את היום מעל היעד — כלפי מטה, ואם מתחת
 // ל-98% — כלפי מעלה. מלח וואקמה לא מעוגלים (רבע כפית היא כמות אמיתית, ועיגול היה מכפיל נתרן/יוד)
 const SPOON_UNITS=new Set(["כף","כפית","כף קצוץ","כפית מגוררת"]);
-function roundSpoonPortions(plan, tgt){
-  if (!plan) return plan;
+// בתוך בניית שבוע — מעגלים רק בסוף השבוע, לא בכל יום בנפרד: עיגול מוקדם שינה את תוצאת ההתאמות השבועיות שאחריו
+// (בבדיקה — יום בלי תבשיל). מונה סינכרוני סביב קריאת מחולל-היום בלבד, כך שביטול באמצע לא משאיר אותו דלוק
+let __SPOON_ROUND_OFF=0;
+function withoutSpoonRound(fn){ __SPOON_ROUND_OFF++; try{ return fn(); } finally{ __SPOON_ROUND_OFF--; } }
+function roundSpoonPortions(plan, tgt, dri){
+  if (!plan || __SPOON_ROUND_OFF>0) return plan;
+  // תקרות בטיחות: עיגול כלפי מעלה של זרעים/אגוזים מוסיף מנגן וסלניום — לא מעגלים למעלה אם זה עובר את התקרה היומית
+  const UL_KEYS=["manganese","selenium"].filter(k=>dri&&dri[k]&&dri[k].ul!=null);
   const meals=["breakfast","snack","lunch","dinner"];
   const dayK=()=>meals.flatMap(mk=>plan[mk]||[]).reduce((a,it)=>a+ingNut(it.fk,it.g,it.soaked).kcal,0);
+  const dayNut=()=>sumNuts(meals.flatMap(mk=>plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
   meals.forEach(mk=>{ (plan[mk]||[]).forEach((it,idx)=>{
     if (it.fk==="saltIodized"||it.fk==="wakame") return;
     const fd=FDB[it.fk]; if (!fd||fd._isRecipe) return;
@@ -1814,6 +1821,8 @@ function roundSpoonPortions(plan, tgt){
     let n=near;
     if (tgt && kAt(n)>tgt*1.0) n=lo;
     else if (tgt && kAt(n)<tgt*0.98 && kAt(hi)<=tgt*1.0) n=hi;
+    if (n>q && UL_KEYS.length) { const base=dayNut(); const cur=ingNut(it.fk,it.g,it.soaked); const nxt=ingNut(it.fk,n*su.g,it.soaked);
+      if (UL_KEYS.some(k=>(base[k]||0)-(cur[k]||0)+(nxt[k]||0) > dri[k].ul && (nxt[k]||0)>(cur[k]||0))) { n=lo; if (q<0.5 && it.fk!=="flaxseed" && it.fk!=="chiaseeds") { plan[mk][idx]={...it,g:0,__drop:true}; return; } } }
     // פחות מחצי כף שהעיגול לחצי היה מעביר את היום מעל היעד — מוותרים עליו (כמות זניחה), חוץ מפשתן/צ'יה (אומגה 3)
     if (tgt && q<0.5 && kAt(n)>tgt*1.0 && it.fk!=="flaxseed" && it.fk!=="chiaseeds") { plan[mk][idx]={...it,g:0,__drop:true}; return; }
     plan[mk][idx]={...it,g:Math.round(n*su.g*10)/10};
@@ -8520,7 +8529,7 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
     else if (__r<(__lo?0.23:0.55)) runGenSync(recipeQuotaGen([__p], tgt, dri, excludedFks, recipeIds, {mealSalad:1}));
     else if (__r<(__lo?0.38:0.8)) runGenSync(recipeCategoryCoverageGen([__p], tgt, dri, excludedFks, recipeIds, {cats:["ארוחות סלט","קערות","דייסות","אחר","משקאות"], max:1})); }
   guaranteeDailyStews(__p, tgt, excludedFks, recipeUsage, new Set(recipeIds)); // שלב אחרון: תבשיל קטניות + תבשיל דגנים
-  roundSpoonPortions(__p, tgt);
+  roundSpoonPortions(__p, tgt, dri);
   return __p;
 }
 
@@ -8613,7 +8622,7 @@ function generateMixedDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={
   }
   enforceDailyCalorieBand(mixedPlan, target, dri, excludedFks); // שער 98-100% סופי — אחרי ההחלפות למוצרים מן החי
   guaranteeDailyStews(mixedPlan, target, excludedFks, recipeUsage, new Set(recipeIds)); // שלב אחרון: תבשיל קטניות + תבשיל דגנים
-  roundSpoonPortions(mixedPlan, target);
+  roundSpoonPortions(mixedPlan, target, dri);
   return {plantPlan, mixedPlan, subsDone};
 }
 
@@ -8626,11 +8635,11 @@ function generateMixedWeekPlan__impl(...a){ return runGenSync(generateMixedWeekP
 function* generateMixedWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set(),intensity="moderate"){
   const days=[];
   for (let d=0; d<7; d++) {
-    days.push(budgetPick(()=>generateMixedDayPlan(target,wKg,hp,dri,recipeIds,{},varietyExclFor(excludedFks,days.map(x=>x.mixedPlan)),intensity), d0=>d0.mixedPlan)); yield {phase:"build",i:days.length};
+    days.push(budgetPick(()=>withoutSpoonRound(()=>generateMixedDayPlan(target,wKg,hp,dri,recipeIds,{},varietyExclFor(excludedFks,days.map(x=>x.mixedPlan)),intensity)), d0=>d0.mixedPlan)); yield {phase:"build",i:days.length};
   }
   yield {phase:"weekly"}; yield* recipeQuotaGen(days.map(d=>d.mixedPlan), target, dri, excludedFks, recipeIds, (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(days.map(d=>d.mixedPlan), target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(days.map(d=>d.mixedPlan), target, dri, varietyExclFor(excludedFks,days.map(d=>d.mixedPlan)), 1); yield* enforceWeeklyMicrosGen(days.map(d=>d.mixedPlan), target, dri, excludedFks); yield* enforceWeeklyVarietyGen(days.map(d=>d.mixedPlan), target, dri, excludedFks);
   yield* enforceWeeklyMicrosGen(days.map(d=>d.plantPlan), target, dri, varietyExclFor(excludedFks,days.map(d=>d.plantPlan)), 1); yield* enforceWeeklyMicrosGen(days.map(d=>d.plantPlan), target, dri, excludedFks); yield* enforceWeeklyVarietyGen(days.map(d=>d.plantPlan), target, dri, excludedFks);
-  { const __su={}; days.forEach(d=>{ guaranteeDailyStews(d.plantPlan, target, excludedFks, {}, new Set(recipeIds)); guaranteeDailyStews(d.mixedPlan, target, excludedFks, __su, new Set(recipeIds)); roundSpoonPortions(d.plantPlan, target); roundSpoonPortions(d.mixedPlan, target); }); } // שלב אחרון לכל יום
+  { const __su={}; days.forEach(d=>{ guaranteeDailyStews(d.plantPlan, target, excludedFks, {}, new Set(recipeIds)); guaranteeDailyStews(d.mixedPlan, target, excludedFks, __su, new Set(recipeIds)); roundSpoonPortions(d.plantPlan, target, dri); roundSpoonPortions(d.mixedPlan, target, dri); }); } // שלב אחרון לכל יום
   const plantWeek={}, mixedWeek={};
   days.forEach((d,i)=>{ plantWeek[`d${i}`]=d.plantPlan; mixedWeek[`d${i}`]=d.mixedPlan; });
   const plantWeekTotals = sumNuts(days.flatMap(d=>Object.values(d.plantPlan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))));
@@ -12489,7 +12498,7 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
     else if (__r<(__lo?0.23:0.55)) runGenSync(recipeQuotaGen([__p], tgt, dri, excludedFks, recipes.map(r=>r.id), {mealSalad:1}));
     else if (__r<(__lo?0.38:0.8)) runGenSync(recipeCategoryCoverageGen([__p], tgt, dri, excludedFks, recipes.map(r=>r.id), {cats:["ארוחות סלט","קערות","דייסות","אחר","משקאות"], max:1})); }
   guaranteeDailyStews(__p, tgt, excludedFks, recipeUsage, new Set(recipes.map(r=>r.id))); // שלב אחרון: תבשיל קטניות + תבשיל דגנים
-  roundSpoonPortions(__p, tgt);
+  roundSpoonPortions(__p, tgt, dri);
   return __p;
 }
 // זה לא רק פשוט יותר מבנייה של אופטימיזציה שבועית מאפס — זה גם המתמטית הבטוחה ביותר: אם כל יום בנפרד
@@ -13438,7 +13447,7 @@ function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
   const week={}; const daysArr=[];
   const recipeIdSet = new Set(recipeIds);
   const recipeUsage = {};
-  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>generateDayPlan(target,wKg,hp,dri,recipeIds,recipeUsage,varietyExclFor(excludedFks,daysArr)), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage);  yield {phase:"build",i:d+1}; }
+  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>withoutSpoonRound(()=>generateDayPlan(target,wKg,hp,dri,recipeIds,recipeUsage,varietyExclFor(excludedFks,daysArr))), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage);  yield {phase:"build",i:d+1}; }
   // השלמת מלח מיודד ברבעי-כפית ברמת השבוע (לבקשת המשתמש): לא להשאיר מחסור שבועי בנתרן/יוד, כל עוד לא חורגים
   // מתקרת הנתרן היומית. applySodiumSaltTopup כבר עוצרת מעצמה אם היום הספציפי מגיע לתקרה או שהיוד כבר קרוב/מעל
   // היעד היומי שלו (למשל בגלל וואקמה/נורי שכבר קיימים בו) — לכן מריצים על כל הימים שיש בהם עדיין מחסור נתרן,
@@ -13574,7 +13583,7 @@ function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
     enforceDailyCalorieBand(day, target, dri, excludedFks); // שער 98-100% סופי לכל יום בשבוע
   yield {phase:"polish",i:__di+1}; }
   yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipeIds, (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
-  { const __su={}; Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, __su, new Set(recipeIds))); Object.keys(week).forEach(k=>roundSpoonPortions(week[k], target)); } // שלב אחרון לכל יום
+  { const __su={}; Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, __su, new Set(recipeIds))); Object.keys(week).forEach(k=>roundSpoonPortions(week[k], target, dri)); } // שלב אחרון לכל יום
   return week;
 }
 // גרסה שבועית של מחולל "הצע ארוחות ממתכונים" (generateRecipesNSFDayPlan) — לבקשת המשתמש. מריצה את אותו
@@ -13896,7 +13905,7 @@ function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=nu
   const recipeUsage = {...recentUsageSeed};
   // applySalt=false כאן: משלימים יוד (וואקמה) בכל יום כרגיל בתוך generateRecipesNSFDayPlan עצמו, אבל דוחים את
   // השלמת הנתרן-ע"י-מלח לאחרי שרואים את הנתרן הסופי של *כל* 7 הימים ביחד
-  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>generateRecipesNSFDayPlan(target,recipes,dri,wKg,hp,d,recipeUsage,varietyExclFor(excludedFks,daysArr),false), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage);  yield {phase:"build",i:d+1}; }
+  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>withoutSpoonRound(()=>generateRecipesNSFDayPlan(target,recipes,dri,wKg,hp,d,recipeUsage,varietyExclFor(excludedFks,daysArr),false)), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage);  yield {phase:"build",i:d+1}; }
   const sodiumCap = hp?.sodiumMax || 2300;
   const SODIUM_TARGET_WK = 1500;
   // עדכון לבקשת המשתמש: להבטיח שלא יהיה מחסור שבועי בנתרן/יוד, כל עוד תקרת הנתרן היומית לא נחרגת — לכן במקום
@@ -14505,7 +14514,7 @@ function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=nu
     enforceDailyCalorieBand(day, target, dri, excludedFks); // שער 98-100% סופי לכל יום בשבוע
   yield {phase:"polish",i:__di+1}; } }
   yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id), (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id)); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
-  Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, finalUsage, new Set(recipes.map(r=>r.id)))); Object.keys(week).forEach(k=>roundSpoonPortions(week[k], target)); // שלב אחרון לכל יום
+  Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, finalUsage, new Set(recipes.map(r=>r.id)))); Object.keys(week).forEach(k=>roundSpoonPortions(week[k], target, dri)); // שלב אחרון לכל יום
   return {week, updatedUsage: finalUsage};
 }
 // גרסה אישית לשבוע (generatePersonalWeekPlan) הוסרה לבקשת המשתמש — נותר רק המנגנון האישי היומי (generatePersonalDayPlan)
