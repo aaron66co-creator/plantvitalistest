@@ -14738,8 +14738,87 @@ const DEF_RECIPES=[
 // מתכון כאן כבר עבר אימות ידני שכל fk קיים במאגר FDB בפועל, כך שהייבוא שלהם תמיד עובר בהצלחה בלי תלות בהעתקה-הדבקה
 const STARTER_RECIPES_PACK=[];
 
+// ===== מקדמי שימור בבישול (לבקשת המשתמש: "מקדמי בישול") =====
+// הערכים הבסיסיים נשארים ממאגר צמרת. המקדם מופעל רק בתוך מתכון, ורק על רכיב שנשקל במצב גולמי (ירק/עלים/פרי
+// טריים, דגן יבש, שיבולת שועל גולמית, קמח, ואגוזים/זרעים במאפה) — רכיב שכבר רשום כמבושל/אפוי בצמרת לא מוכפל שוב.
+// מקור: USDA Table of Nutrient Retention Factors, Release 6 (2007). סדר המקדמים: [אשלגן, ויטמין C, B1, B6, פולאט]
+// (בטבלה: Potassium, Vitamin C, Thiamin, Vitamin B-6, Folate-food). קוד השורה בטבלה מצוין ליד כל ערך.
+// שיטות: moist = מבושל והנוזל נאכל (מרק/תבשיל/דייסה), drained = מבושל ומסונן, baked = אפוי, pan = מוקפץ/מטוגן
+const COOK_NUTR_KEYS=["potassium","vitC","vitB1","vitB6","vitB9"];
+const COOK_RETENTION={
+  greens:     {moist:[100,70,90,95,75]/*3006*/, drained:[85,55,80,85,60]/*3005*/, baked:[100,70,90,95,75]/*3001*/, pan:[100,85,90,95,85]/*3015*/},
+  roots:      {moist:[100,75,90,95,80]/*3456*/, drained:[90,65,80,90,65]/*3455*/, baked:[100,75,90,95,80]/*3451*/, pan:[100,80,90,95,80]/*3465*/},
+  potato:     {moist:[100,80,80,95,90]/*3309*/, drained:[90,75,80,95,75]/*3308*/, baked:[100,80,80,95,75]/*3302*/, pan:[100,80,80,95,75]/*3315*/},
+  sweetPotato:{moist:[100,80,85,95,90]/*3709*/, drained:[90,75,80,95,75]/*3708*/, baked:[100,80,80,95,75]/*3702*/, pan:[100,80,80,95,75]/*3710*/},
+  tomato:     {moist:[100,95,95,95,70]/*3751*/, drained:[100,95,95,95,70]/*3751*/, baked:[100,95,95,95,70]/*3751*/, pan:[100,95,95,95,70]/*3752*/},
+  vegOther:   {moist:[100,85,90,90,85]/*3776*/, drained:[90,75,80,85,65]/*3775*/, baked:[100,85,90,95,85]/*3771*/, pan:[100,85,90,95,80]/*3785*/},
+  fruit:      {moist:[90,70,80,90,50]/*0155*/,  drained:[90,70,80,90,50]/*0155*/,  baked:[90,80,80,95,60]/*0151*/,  pan:[90,70,80,90,50]/*0153*/},
+  grainDry:   {moist:[95,80,80,95,70]/*0432*/,  drained:[85,75,75,90,60]/*0431*/,  baked:[100,80,80,90,70]/*0301*/, pan:[95,70,75,90,60]/*0433*/},
+  oatsRaw:    {moist:[95,80,80,90,70]/*0352*/,  drained:[95,80,80,90,70]/*0352*/,  baked:[100,80,80,90,70]/*0301*/, pan:[100,80,75,90,65]/*0305*/},
+  flour:      {moist:[100,80,80,90,70]/*0302*/, drained:[100,80,80,90,70]/*0302*/, baked:[100,80,80,90,70]/*0301*/, pan:[100,80,75,90,65]/*0305*/},
+  nutsSeeds:  {baked:[100,80,85,95,80]/*2201; קלייה 2203 זהה ב-5 הרכיבים*/},
+};
+// רכיבים במצב גולמי בלבד. לא ברשימה (ולכן בלי מקדם): כל מה שרשום בצמרת כמבושל/אפוי (קטניות, דגנים מבושלים,
+// שעועית ירוקה, דלעת ערמונית, סלק, חציל, במיה, ארטישוק, בטטה/תפוח אדמה אפויים), מוצרי סויה, שמנים, תבלינים ולימון
+const COOK_CLASS_OF=(()=>{ const m={}; Object.entries({
+  greens:"spinach kale bokChoy celery celeryWithLeaves arugula romaine parsley dill basil swisschard lettuce mintLeaf cilantroLeaf",
+  roots:"carrot radish celeryRoot turnip parsnipVeg jerusalem gingerRoot",
+  potato:"potatoRaw", sweetPotato:"sweetPotatoRaw", tomato:"tomato",
+  vegOther:"lentilSprouts redPepper yellowPepper greenPepper hotPepperRed hotPepperGreen cabbageWhite cabbageRed broccoli cucumber zucchini cauliflower corn asparagus brusselsSp pumpkin mushroom onion garlic springOnion kohlrabi leek fennel",
+  fruit:"driedFig driedApricot clementine apricot banana apple medjoolDate orange kiwi mango pear pomegranate raspberry blueberry strawberry blackberry grapes cherries watermelon melon peach persimmon fig quince lychee guava papaya passionfruit starfruit mulberry sabra",
+  grainDry:"quinoaDry buckwheatGreenDry bulgurDry pearlBarleyDry couscous",
+  oatsRaw:"oatsThinRaw oatsMedRaw oatsThickRaw",
+  flour:"lentilFlour oatFlour chickpeaFlour spelledFlour",
+  nutsSeeds:"walnuts almonds hazelnuts cashews pistachio peanuts brazilNuts sunflowerS pumpkinS sesame flaxseed chiaseeds wheatGerm",
+}).forEach(([c,s])=>s.split(" ").forEach(fk=>{ m[fk]=c; })); return m; })();
+// שיטת הבישול של המתכון נגזרת מהקטגוריה שלו (אותה קטגוריה כמו בספר המתכונים). סלטים, ממרחים, קערות ומשקאות
+// נחשבים לא מבושלים
+function recipeCookMethod(r){
+  const cat=bookCategoryOf(r);
+  if (["סלטי ירקות","סלטי קטניות","סלטי פירות","ארוחות סלט","ממרחים","קערות","משקאות"].includes(cat)) return "raw";
+  if (cat==="פשטידות"||cat==="מאפים"||r.type==="מאפה"||r.type==="פשטידה") return "baked";
+  if (r.type==="תבשיל מחבת"||r.type==="חביתה") return "pan";
+  return "moist"; // מרקים, תבשילים, דייסות, ו"אחר" מבושל
+}
+// חריגים במתכונים המובנים, לפי הוראות ההכנה: רכיב שמבושל בשיטה אחרת מזו של המתכון כולו (למשל סלט עם בטטה אפויה)
+const COOK_OVERRIDES_BY_ID={
+  "72do5bj":{bulgurDry:"moist"},                 // סלט בורגול — הבורגול נספג במים רותחים
+  "km9fj3c":{"*":"moist"},                       // משקה תפוח-אפרסק-היביסקוס — הפרי מבושל והמים נשתים
+  "ir3cuzv":{pearlBarleyDry:"drained"},          // סלט גריסי פנינה — מבושלים ומסוננים
+  "drfcw8s":{"*":"moist", apple:"pan"},          // קערת שיבולת שועל — שיבולת שועל מבושלת, תפוח מאודה במחבת
+  "sademr0":{sweetPotatoRaw:"baked"},            // סלט עדשים ובטטה — הבטטה אפויה
+  "sqgm3sw":{"*":"pan"},                         // ממרח פטריות — פטריות, בצל ושום מטוגנים
+  "p5x9678":{redPepper:"baked"},                 // ממרח פפריקה קלויה — הפלפל צלוי
+  "zhwjr64":{cauliflower:"drained"},             // מחית כרובית — מבושלת במים ומסוננת
+  "sal06bb":{broccoli:"drained"},                // סלט כרוב סיני וברוקולי — הברוקולי חלוט ומסונן
+  "vxym8et":{peanuts:"baked"},                   // סלט כרובים ובוטנים — הבוטנים קלויים
+  "cbk01ss":{sesame:"baked"},                    // סלט כרוב סיני — השומשום קלוי
+  "tsj80e5":{sweetPotatoRaw:"baked"}, "5c1acio":{sweetPotatoRaw:"baked"}, // סלטי ארוחה — הבטטה בהם אפויה
+  "e48dyxr":{sweetPotatoRaw:"baked"}, "uvf15s5":{sweetPotatoRaw:"baked"},
+};
+function cookMethodOfIng(r, fk, method){
+  const ov=COOK_OVERRIDES_BY_ID[r&&r.id];
+  if (ov) { if (ov[fk]) return ov[fk]; if (ov["*"]) return ov["*"]; }
+  return method;
+}
+function cookedIngNut(fk,g,soaked,method){
+  const n=ingNut(fk,g,soaked);
+  const f=method&&method!=="raw"&&COOK_RETENTION[COOK_CLASS_OF[fk]]?.[method];
+  if (f) COOK_NUTR_KEYS.forEach((k,i)=>{ n[k]=(n[k]||0)*f[i]/100; });
+  return n;
+}
+// סך הערכים של מתכון שלם אחרי אובדן בבישול — משמש גם את מנוע התכנון (דרך recipeToFdbEntry) וגם את מסכי התצוגה
+function recipeTotalNuts(recipe){
+  const method=recipeCookMethod(recipe);
+  return sumNuts((recipe.ings||[]).map(({fk,g,soaked})=>cookedIngNut(fk,g,soaked,cookMethodOfIng(recipe,fk,method))));
+}
+// האם הוחל מקדם בישול כלשהו במתכון — להצגת ההערה "הערכים כוללים אובדן בבישול"
+function recipeHasCookLoss(recipe){
+  const method=recipeCookMethod(recipe);
+  return (recipe.ings||[]).some(({fk})=>{ const m=cookMethodOfIng(recipe,fk,method); return m!=="raw"&&!!COOK_RETENTION[COOK_CLASS_OF[fk]]?.[m]; });
+}
 function recipeToFdbEntry(recipe){
-  const totalNuts=sumNuts(recipe.ings.map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
+  const totalNuts=recipeTotalNuts(recipe);
   const totalG=recipe.ings.reduce((s,{g})=>s+g,0)||1;
   const servings=Math.max(1,recipe.servings);
   const perG=ALL_KEYS.reduce((a,k)=>({...a,[k]:(totalNuts[k]||0)/totalG*100}),{});
@@ -14794,7 +14873,7 @@ function RecipeViewModal({recipe,lang,onClose}){
   // וסיכום תזונתי-למנה (מחושב מהמרכיבים בפועל, לא ערך-משוער): קלוריות, אבות-מזון, וכמה מיקרו-נוטריאנטים מרכזיים
   const catKey = bookCategoryOf(recipe);
   const catLabel = BOOK_CATEGORY_LABELS[lang]?.[catKey] || catKey;
-  const totalNuts = sumNuts((recipe.ings||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
+  const totalNuts = recipeTotalNuts(recipe); // כולל אובדן בבישול — אותם ערכים שמנוע התכנון רואה
   const servingsN = Math.max(1,recipe.servings||1);
   const perServing = key => (totalNuts[key]||0)/servingsN;
   const MICRO_HIGHLIGHT = ["calcium","iron","vitE","potassium","sodium"];
@@ -14824,6 +14903,7 @@ function RecipeViewModal({recipe,lang,onClose}){
               <span key={k}>{DRI_LABELS[k]?.[lang]||k}: {fmtN(perServing(k),k==="sodium"||k==="potassium"?0:1)}{microUnit[k]||""}</span>
             ))}
           </div>
+          {recipeHasCookLoss(recipe)&&<div style={{fontSize:10,color:"#6B7C72",marginTop:5}}>{lang==="he"?"🔥 הערכים כוללים אובדן בבישול (ויטמין C, B1, B6, חומצה פולית, אשלגן)":"🔥 Values include cooking losses (vitamin C, B1, B6, folate, potassium)"}</div>}
         </div>
         <div style={{fontSize:11,fontWeight:700,color:"#2e7d32",marginBottom:5}}>{lang==="he"?"מרכיבים":"Ingredients"}</div>
         {(recipe.ings||[]).map((ing,i)=>(
@@ -19744,6 +19824,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
               })}
             </div>
             <div style={{fontSize:11,color:"#7c5cbf",fontWeight:700,marginBottom:6}}>{lang==="he"?"💊 ויטמינים ומינרלים (למנה):":"💊 Vitamins & Minerals (per serving):"}</div>
+            {recipeHasCookLoss(r)&&<div style={{fontSize:10,color:"#6B7C72",marginTop:-3,marginBottom:6}}>{lang==="he"?"🔥 הערכים כוללים אובדן בבישול":"🔥 Values include cooking losses"}</div>}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginBottom:10}}>
               {microShow.map(k=>{
                 const d=dri[k];if(!d)return null;
