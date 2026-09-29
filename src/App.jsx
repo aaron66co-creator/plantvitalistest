@@ -1887,7 +1887,9 @@ function tidyMealLogic(plan, tgt, dri, excl){
     for (const {m,it} of cands){ if(left<=15) break; const arr=plan[m]; const i=arr.indexOf(it); if(i<0) continue; const k=kOf(it); if(!(k>0)) continue;
       const fd=FDB[it.fk]||TEMP_FDB[it.fk]; const step=fd._isRecipe?(fd._servingG||200):(isWholeUnitCountable(it.fk,fd)?wholeUnitStepG(it.fk):null);
       if (step&&step>0) { const units=Math.round(it.g/step); const kU=k/Math.max(1,units);
-        let n=Math.round(left/kU); if(sign<0) n=Math.min(n,units-1); else n=Math.min(n,Math.max(1,units)); if(n<=0) continue;
+        let n=Math.round(left/kU); if(sign<0) n=Math.min(n,units-1); else n=Math.min(n,Math.max(1,units));
+        if (sign>0&&BREAD_FKS.has(it.fk)) n=Math.min(n,(it.fk==="wholePita"?1:2)-units); // לחם: עד 2 פרוסות / פיתה אחת בארוחה
+        if(n<=0) continue;
         arr[i]={...it,g:Math.round((units+sign*n)*step*100)/100}; left-=n*kU; }
       else { const c=Math.min(k*0.6,left); arr[i]={...it,g:Math.round(it.g*(1+sign*c/k)*10)/10}; left-=c; } }
     return left<=15;
@@ -1907,6 +1909,14 @@ function tidyMealLogic(plan, tgt, dri, excl){
     if (legN<0.99 && tryAdd(mk, unused(COOKED_LEGUME_FKS), v0)) return true;
     return false; };
 
+  // משלים קלוריות שהתפנו כשאין דרך "נקייה": הגדלת פריטים גמישים בכל היום (גם פרי), ואז מנה שלמה של דגן/קטנית
+  // בארוחה עיקרית אחרת שחסרה לה. נשאר גם אם הטווח לא הושג במלואו — עדיף מעט מתחת ליעד מאשר להפר את הכלל
+  const fillDay=(freed, avoidMk)=>{ if (freed<=15) return; const v0=mealShareViolation(plan); const s0=snap();
+    const kM=m=>(plan[m]||[]).reduce((a,it)=>a+kOf(it),0);
+    for (const m of [...MAIN].filter(m=>m!==avoidMk&&(plan[m]||[]).length).sort((a,b)=>kM(a)-kM(b))) { // קודם בארוחה הקלה ביותר
+      adjust(freed, m, it=>isRawLegume(it.fk)||isCookedGrain(it.fk), true); if (okAfter(v0)) return; restore(s0); }
+    adjust(freed, null, it=>isRawLegume(it.fk)||isCookedGrain(it.fk), true); if (okAfter(v0)) return;
+    for (const m of MAIN) { if (m===avoidMk||!(plan[m]||[]).length||dayK()>=tgt*0.975) continue; refill(m, tgt*0.99-dayK(), v0); } };
   // (0) יחידות שלמות קודם: לחם, פיתה, כוס דגן/קטנית ומנות מתכון — עיגול ליחידה הקרובה (לפחות 1)
   for (const mk of ALL) plan[mk]=(plan[mk]||[]).map(it=>{ const fd=fdOf(it.fk); if(!fd) return it;
     const whole=fd._isRecipe||BREAD_FKS.has(it.fk)||isCookedGrain(it.fk)||isRawLegume(it.fk); if(!whole) return it;
@@ -1932,13 +1942,16 @@ function tidyMealLogic(plan, tgt, dri, excl){
     seeds.sort((a,b)=>((isOmega(b)?1:0)-(isOmega(a)?1:0))||(b.g/SEED_CAP_G[b.fk]-a.g/SEED_CAP_G[a.fk]));
     const keep=seeds[0], g=seedG(keep); if (seeds.length===1&&Math.abs(keep.g-g)<0.05) continue;
     plan[mk]=(plan[mk]||[]).filter(it=>!seedIt(it)||it===keep).map(it=>it===keep?{...it,g}:it); seedsCut=true; }
-  // ב. פשתן/צ'יה רק ליד מנה מארחת
-  for (const mk of ALL) { if (!(plan[mk]||[]).some(isOmega)||hostMeal(mk)) continue;
-    const v0=mealShareViolation(plan); const s0=snap(); let moved=false;
-    for (const m2 of ALL) { if (m2===mk||!hostMeal(m2)||(plan[m2]||[]).some(isOmega)) continue;
-      const it=plan[mk].splice(plan[mk].findIndex(isOmega),1)[0]; plan[m2]=plan[m2].filter(x=>!seedIt(x)); plan[m2].push(it);
-      if (mealShareViolation(plan)<=v0+0.005) { moved=true; break; } restore(s0); }
-    if (!moved) plan[mk]=plan[mk].filter(x=>!isOmega(x)); seedsCut=true; }
+  // ב. פשתן/צ'יה רק ליד מנה מארחת (רץ שוב בסוף — שלבים מאוחרים יכולים להעביר תבשיל בין ארוחות)
+  const placeOmega=()=>{ let changed=false;
+    for (const mk of ALL) { if (!(plan[mk]||[]).some(isOmega)||hostMeal(mk)) continue;
+      const v0=mealShareViolation(plan); const s0=snap(); let moved=false;
+      for (const m2 of ALL) { if (m2===mk||!hostMeal(m2)||(plan[m2]||[]).some(isOmega)) continue;
+        const it=plan[mk].splice(plan[mk].findIndex(isOmega),1)[0]; plan[m2]=plan[m2].filter(x=>!seedIt(x)); plan[m2].push(it);
+        if (mealShareViolation(plan)<=v0+0.005) { moved=true; break; } restore(s0); }
+      if (!moved) plan[mk]=plan[mk].filter(x=>!isOmega(x)); changed=true; }
+    return changed; };
+  if (placeOmega()) seedsCut=true;
   // ג. אומגה 3
   const alaMin=alaMinOf(dri); const ala=()=>dayNut().omega3||0;
   if (seedsCut && dayK()>tgt*1.005) fitDown(null,null);
@@ -1993,7 +2006,11 @@ function tidyMealLogic(plan, tgt, dri, excl){
     if (extra) for (const other of MAIN) { if (other===mk||!(plan[other]||[]).length||(plan[other]||[]).some(it=>portions(it)>0)) continue;
       const i=plan[mk].indexOf(extra); plan[other].push({...plan[mk].splice(i,1)[0],g:unitG(extra.fk)});
       if (okAfter(v0)) { moved=true; break; } restore(s0); }
-    if (!moved) restore(s0); }
+    if (!moved) { restore(s0);
+      // תבשיל (דגנים או קטניות) פעמיים באותה ארוחה, כשמנה אחת שלו 200 קק"ל ומעלה — לעולם לא (לבקשת המשתמש):
+      // יורדים למנה אחת בכל מקרה, והקלוריות מושלמות ביחידות שלמות במקום אחר ביום
+      const si=(plan[mk]||[]).findIndex(it=>(kind==="leg"?isLegStew(it.fk):isGrainStew(it.fk))&&Math.round(it.g/unitG(it.fk))>=2&&kOf({...it,g:unitG(it.fk)})>=200);
+      if (si>=0) { const it=plan[mk][si]; plan[mk][si]={...it,g:unitG(it.fk)}; fillDay(k0-dayK(), mk); } } }
   // (3) תבשיל קטניות עם דגן; מרק עם מנת דגנים
   for (const mk of MAIN) {
     const items=plan[mk]||[]; const needLeg=items.some(it=>isLegStew(it.fk))&&!hasGrain(mk);
@@ -2009,6 +2026,25 @@ function tidyMealLogic(plan, tgt, dri, excl){
     if (!done) done=tryAdd(mk, unused(COOKED_GRAIN_FKS), v0);
     if (!done && !needLeg) done=tryAdd(mk, ["wholeWheatBread","wholePita"], v0);
   }
+  // (3ב) ירקות — הכללים הקיימים (ensureVegInEveryMainMeal / ensureDailyVegQuota): לפחות 2 יחידות ירק בכל ארוחה
+  // עיקרית ו-7 ביום. הכללים המוקדמים מוותרים כשאין מקום בתקציב הקלורי (לבקשת המשתמש: "אין מספיק ירקות");
+  // כאן מפנים מקום — יחידת ירק שלמה נוספת (עד 2 סוגי ירק גולמי בארוחה), ואיזון בפריטים גמישים
+  const VEG_ADD=["cucumber","tomato","carrot","redPepper","yellowPepper","greenPepper","radish","kohlrabi","celeryWithLeaves","beet"].filter(fk=>FDB[fk]&&!GLOBAL_BANNED_STANDALONE.has(fk)&&!(excl&&excl.has(fk)));
+  const isRawVeg=it=>{ const f=FDB[it.fk]; return !!f&&!f._isRecipe&&(f.cat==="ירק"||f.cat==="עלים"); };
+  const vegUnits=its=>(its||[]).reduce((a,it)=>{ const fd=fdOf(it.fk); if (!fd) return a;
+    if (fd._isRecipe) { if (isSaladFk(it.fk)&&!isLegumeDominantGlobal(fd)&&!isGrainDominantGlobal(fd)&&catOf(it.fk)!=="סלטי פירות") return a+3;
+      const vg=(fd._ings||[]).reduce((t,i)=>{ const f=FDB[i.fk]; return t+(f&&(f.cat==="ירק"||f.cat==="עלים")?(i.g||0):0); },0); return a+(vg>=60?1:0); }
+    return isRawVeg(it)?a+Math.max(1,Math.round(it.g/unitG(it.fk))):a; },0);
+  const rawVegTypes=mk=>new Set((plan[mk]||[]).filter(isRawVeg).map(it=>it.fk)).size;
+  const addVeg=mk=>{ if (rawVegTypes(mk)>=2) return false; const v0=mealShareViolation(plan); const s0=snap();
+    const used=new Set(ALL.flatMap(m=>(plan[m]||[]).map(it=>it.fk)));
+    const cands=[...VEG_ADD.filter(f=>!used.has(f)),...VEG_ADD.filter(f=>used.has(f)&&!(plan[mk]||[]).some(it=>it.fk===f))];
+    for (const fk of cands) { const add={fk,g:getServingUnit(fk,FDB[fk],"he")?.g||100}; plan[mk].push(add);
+      const over=dayK()-tgt*0.995; if (over>0) adjust(-over, mk, it=>it===add||isRawLegume(it.fk)||isCookedGrain(it.fk), true);
+      if (okAfter(v0)) return true; restore(s0); }
+    return false; };
+  for (const mk of MAIN) { let g=0; while ((plan[mk]||[]).length&&vegUnits(plan[mk])<2&&g++<2) if (!addVeg(mk)) break; }
+  for (let g=0; g<4&&MAIN.reduce((a,m)=>a+vegUnits(plan[m]),0)<7; g++) { const mk=MAIN.filter(m=>(plan[m]||[]).length&&rawVegTypes(m)<2).sort((a,b)=>vegUnits(plan[a])-vegUnits(plan[b]))[0]; if (!mk||!addVeg(mk)) break; }
   // (4) מלח לא באותה ארוחה עם וואקמה
   if (plan.snack) plan.snack=plan.snack.filter(it=>it.fk!=="saltIodized");
   for (const mk of MAIN) {
@@ -2030,6 +2066,12 @@ function tidyMealLogic(plan, tgt, dri, excl){
     const ng=Math.round((best.it.g-q)*100)/100;
     if (ng<=0.05) plan[best.m].splice(best.i,1); else plan[best.m][best.i]={...best.it,g:ng};
   }
+  { const k0=dayK(); if (placeOmega()) fillDay(k0-dayK(), null); }
+  // לחם: עד 2 פרוסות או פיתה אחת בארוחה (תקרה קיימת; שלבי השלמת קלוריות יכלו לעבור אותה)
+  for (const mk of ALL) for (const fk of ["wholeWheatBread","wholePita"]) { const cap=unitG(fk)*(fk==="wholePita"?1:2);
+    const tot=(plan[mk]||[]).filter(it=>it.fk===fk).reduce((a,it)=>a+it.g,0); if (tot<=cap+0.5) continue;
+    const k0=dayK(); let first=true; plan[mk]=(plan[mk]||[]).filter(it=>{ if (it.fk!==fk) return true; if (first) { first=false; return true; } return false; }).map(it=>it.fk===fk?{...it,g:cap}:it);
+    fillDay(k0-dayK(), mk); }
   // (6) בדיקה אחרונה: היום מעל היעד (עיגולי יחידות שלמות לאורך השלבים) — כף שנייה של פשתן/צ'יה יורדת אם אומגה 3
   // נשארת מספקת, ואחר כך איזון בפריטים גמישים (מותר גם פרי)
   for (const mk of ALL) { if (dayK()<=tgt*1.005) break; const i=(plan[mk]||[]).findIndex(isOmega); if (i<0) continue; const it=plan[mk][i]; const t=OMEGA_SEED_TBSP_G[it.fk];
@@ -4995,7 +5037,7 @@ function enforceCalorieCeilingAndFloor(plan, tgt){
 // ensureCalciumAdequacyFinal (שרץ אחרי applyMealHygieneFinalRules) בונה לעצמו רשימת-מועמדים נפרדת, בלי
 // לבדוק מול הרשימה הזו בכלל. הועברה לקבוע גלובלי, כדי שגם מנגנונים אחרים (לא רק applyMealHygieneFinalRules
 // עצמה) יוכלו להימנע מהצעת הפריטים האלה כעצמאיים. נוסף גם "leek" (כרישה) לפי הבקשה החדשה
-const GLOBAL_BANNED_STANDALONE = new Set(["peanuts","vinegar","appleCiderVinegar","oliveOil","brusselsSp","turnip","zucchini","cauliflower","broccoli","kale","asparagus","nori","cabbageWhite","cabbageRed","bokChoy","tahiniFullRaw","tahiniRaw","tofu","tempeh","onion","leek","dateSilan"]);
+const GLOBAL_BANNED_STANDALONE = new Set(["pumpkin","peanuts","vinegar","appleCiderVinegar","oliveOil","brusselsSp","turnip","zucchini","cauliflower","broccoli","kale","asparagus","nori","cabbageWhite","cabbageRed","bokChoy","tahiniFullRaw","tahiniRaw","tofu","tempeh","onion","leek","dateSilan"]);
 function applyMealHygieneFinalRules(plan, tgt){
   const BREAD_FKS = new Set(["wholeWheatBread","wholePita"]);
   const LENTIL_FKS = new Set(["redLentils","greenLentils","brownLentils","blackLentils"]);
@@ -17393,7 +17435,7 @@ function courseOf(fk){ const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return "main";
 const COURSE_LABELS={starter:{he:"🥗 פתיחה",en:"🥗 Starter"},main:{he:"🍲 עיקרית",en:"🍲 Main"},dessert:{he:"🍎 קינוח",en:"🍎 Dessert"}};
 // מחזיר את רשימת הפריטים מקובצת לפי מנות (אם יש לפחות שתי קבוצות) — render(it, idx המקורי, האחרון-בקבוצה)
 // נבט חיטה ואצות וואקמה מוצגים צמוד לסלט, מיד אחריו, עם "(להוספה)" (לבקשת המשתמש) — תצוגה בלבד, הכמויות והתכנון לא משתנים
-const SALAD_ADDON_FKS=new Set(["wheatGerm","wakame"]);
+const SALAD_ADDON_FKS=new Set(["wheatGerm","wakame","saltIodized"]); // מלח מיודד — ליד הסלט, "(להוספה)" (לבקשת המשתמש)
 function isSaladFk(fk){ if (String(fk).startsWith("autosal_")) return true; const c=recipeCatOfFk(fk); return !!c && (c.startsWith("סלטי")||c==="ארוחות סלט"); }
 function withCourses(mk, items, render, lang, inline){
   let list=(items||[]).map((it,idx)=>({it,idx}));
@@ -21331,16 +21373,18 @@ function AppInner(){
         const pD=phosphorusSources(displayItemsFlat), pW=wk?.pSources||{animalShare:0,addedShare:0};
         const caDri=dri?.calcium?.dri||1000;
         const hasAnimal=pD.animalShare>=0.01||pW.animalShare>=0.01, hasAdded=pD.addedShare>=0.005||pW.addedShare>=0.005;
-        const caOkD=(displayTotals.calcium||0)>=caDri*0.98, caOkW=(wk?.calcium||0)>=caDri*7*0.98;
+        // "סידן ביעד" לצורך היחס = 90% מהיעד ומעלה: היעד (RDA) מכסה את הצורך של 97.5% מהאוכלוסייה והוא גבוה בהרבה מהצורך
+        // הממוצע (EAR = 80% ממנו), כך שחוסר של אחוזים בודדים אינו משמעותי (לבקשת המשתמש: 96% הוצג באדום)
+        const caOkD=(displayTotals.calcium||0)>=caDri*0.90, caOkW=(wk?.calcium||0)>=caDri*7*0.90;
         const pct=x=>Math.round(x*100);
         const textPlant = he
-          ? "סידן וזרחן בונים יחד את העצם. בתפריט הזה כל הזרחן ממקור צמחי — ברובו קשור לפיטאט ונספג רק בחלקו — ולכן כל עוד הסידן עומד ביעד היומי, יחס סידן:זרחן נמוך מ-1:1 אינו פוגע בספיגת הסידן או במאזן הסידן בעצם. מה שחשוב כאן הוא עמידה ביעד הסידן, לא היחס עצמו."
-          : "Calcium and phosphorus build bone together. In this menu all phosphorus is plant-based — mostly bound to phytate and only partly absorbed — so as long as calcium meets its daily target, a Ca:P ratio below 1:1 does not impair calcium absorption or bone calcium balance. What matters here is meeting the calcium target, not the ratio itself.";
+          ? "סידן וזרחן בונים יחד את העצם. בתפריט הזה כל הזרחן ממקור צמחי — ברובו קשור לפיטאט ונספג רק בחלקו — ולכן כל עוד הסידן עומד ביעד היומי, יחס סידן:זרחן נמוך מ-1:1 אינו פוגע בספיגת הסידן או במאזן הסידן בעצם. מה שחשוב כאן הוא עמידה ביעד הסידן, לא היחס עצמו. היעד היומי מכוון לכסות את הצורך של כמעט כל האוכלוסייה (97.5%), ולכן 90% ממנו ומעלה נחשב כאן עמידה ביעד."
+          : "Calcium and phosphorus build bone together. In this menu all phosphorus is plant-based — mostly bound to phytate and only partly absorbed — so as long as calcium meets its daily target, a Ca:P ratio below 1:1 does not impair calcium absorption or bone calcium balance. What matters here is meeting the calcium target, not the ratio itself. The daily target is set to cover nearly everyone's need (97.5% of people), so 90% of it or more counts as on target here.";
         const textAnimal = he
           ? `סידן וזרחן בונים יחד את העצם. בהצעה הזו כ-${pct(pD.animalShare)}% מהזרחן ביום (וכ-${pct(pW.animalShare)}% בשבוע) מגיע ממוצרים מן החי (חלב, גבינות, ביצים), שבהם הזרחן נספג ביעילות גבוהה יותר מזרחן צמחי — ולכן כאן היחס רלוונטי יותר, ורצוי שהסידן יעמוד ביעד והיחס יתקרב ל-1:1. מוצרי חלב מביאים איתם גם סידן רב, כך שלרוב הם תורמים לאיזון.${hasAdded?" חלק מהזרחן מגיע מגבינה מעובדת עם זרחן מוסף (מלחי היתוך), שנספג כמעט במלואו — מומלץ לצמצם אותה.":""}`
           : `Calcium and phosphorus build bone together. In this plan about ${pct(pD.animalShare)}% of the day's phosphorus (about ${pct(pW.animalShare)}% of the week's) comes from animal products (dairy, cheese, eggs), where phosphorus is absorbed more efficiently than plant phosphorus — so the ratio matters more here: calcium should meet its target and the ratio should approach 1:1. Dairy also brings plenty of calcium, so it usually supports the balance.${hasAdded?" Part of the phosphorus comes from processed cheese with added phosphate (emulsifying salts), which is almost fully absorbed — best kept to a minimum.":""}`;
         return { name: he?"סידן : זרחן":"Calcium : Phosphorus",
-          range: hasAnimal ? (he?"לפחות 1:1 + סידן ביעד":"≥1:1 + calcium on target") : (he?"סידן ביעד היומי (היחס משני — זרחן צמחי)":"Calcium on daily target (ratio secondary — plant P)"),
+          range: hasAnimal ? (he?"לפחות 1:1 + סידן 90% מהיעד ומעלה":"≥1:1 + calcium ≥90% of target") : (he?"סידן 90% מהיעד ומעלה (היחס משני — זרחן צמחי)":"Calcium ≥90% of target (ratio secondary — plant P)"),
           day: r(displayTotals.calcium||0, displayTotals.phosphorus||0), week: r(wk?.calcium||0, wk?.phosphorus||0),
           ok: v=> v!=null&&v>=1,
           okDay: v=> hasAnimal ? (v!=null&&v>=1&&caOkD) : caOkD,
