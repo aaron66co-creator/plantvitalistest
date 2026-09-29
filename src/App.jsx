@@ -16954,11 +16954,14 @@ function withCourses(mk, items, render, lang, inline){
   const groups=["starter","main","dessert"].map(c=>({c,rows:list.filter(x=>courseOf(x.it.fk)===c)})).filter(g=>g.rows.length);
   if (groups.length<2) return flat();
   return groups.map(g=>(<div key={g.c} style={inline?{display:"flex",flexWrap:"wrap",gap:"2px 0",width:"100%",alignItems:"center"}:{}}>
-    <div style={{width:"100%",fontSize:10,fontWeight:800,color:"#5c8060",letterSpacing:.2,marginTop:3}}>{COURSE_LABELS[g.c][lang==="he"?"he":"en"]}</div>
+    <div style={{width:"100%",fontSize:14,fontWeight:800,color:"#2F3B34",letterSpacing:.2,marginTop:6,marginBottom:2}}>{COURSE_LABELS[g.c][lang==="he"?"he":"en"]}</div>
     {g.rows.map((x,i)=>render(x.it,x.idx,i===g.rows.length-1))}</div>));
 }
 // מסגרת "מפת שולחן" משובצת לכרטיסי ארוחה (לבקשת המשתמש — אפשרות ב): המשבצות במסגרת, התוכן על משטח בהיר
-const GINGHAM_BG={backgroundColor:"#FFFFFF",backgroundImage:"linear-gradient(90deg,rgba(46,125,50,.26) 50%,transparent 50%),linear-gradient(rgba(46,125,50,.26) 50%,transparent 50%)",backgroundSize:"20px 20px"};
+// צבע ייחודי לכל ארוחה (לבקשת המשתמש): בוקר ירוק, ביניים אדום, צהריים כחול, ערב צהוב
+const MEAL_FRAME_RGB={breakfast:"46,125,50",snack:"198,40,40",lunch:"21,101,192",dinner:"230,160,0"};
+const MEAL_FRAME_BORDER={breakfast:"#9fc9a2",snack:"#e3a3a3",lunch:"#9dbfe6",dinner:"#ecd08a"};
+const ginghamBg=mk=>{ const c=`rgba(${MEAL_FRAME_RGB[mk]||MEAL_FRAME_RGB.breakfast},${mk==="dinner"?.34:.26})`; return {backgroundColor:"#FFFFFF",backgroundImage:`linear-gradient(90deg,${c} 50%,transparent 50%),linear-gradient(${c} 50%,transparent 50%)`,backgroundSize:"20px 20px"}; };
 function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple}){
   const tx=T[lang];
   const icons={breakfast:"🌅",snack:"🍎",lunch:"☀️",dinner:"🌙"};
@@ -16983,7 +16986,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
           if(data&&data.mealKey&&data.idx!=null) onMoveItem(data.mealKey,data.idx,mealKey);
         }catch{}
       }):undefined}
-      style={{...GINGHAM_BG,display:"flex",flexDirection:"column",borderRadius:16,padding:7,marginBottom:8,border:`1px solid ${isDragOver?"#8C6D53":"#cfe0d0"}`,boxShadow:isDragOver?"0 0 0 2px #8C6D5355":"0 4px 12px rgba(30, 58, 43, 0.05)",direction:tx.dir,transition:"box-shadow .12s ease"}}>
+      style={{...ginghamBg(mealKey),display:"flex",flexDirection:"column",borderRadius:16,padding:7,marginBottom:8,border:`1px solid ${isDragOver?"#8C6D53":(MEAL_FRAME_BORDER[mealKey]||"#cfe0d0")}`,boxShadow:isDragOver?"0 0 0 2px #8C6D5355":"0 4px 12px rgba(30, 58, 43, 0.05)",direction:tx.dir,transition:"box-shadow .12s ease"}}>
       <div style={{background:"#FFFDF8",borderRadius:11,padding:"9px 11px",flex:1}}>
       {/* שורה 1: שם + שעה + kcal */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -17593,7 +17596,7 @@ function WeeklyTrackingPanel({hist,today,lang,dri,profile,alerts,restInfo,onUpda
     const lines=[];
     if ((sum.A.sodium||0)>naCap*1.02) lines.push(simpleLine("⛔",he?"נתרן מעל התקרה בימים שתועדו — פחות מלח ומזון מעובד.":"Sodium above the ceiling on logged days — less salt and processed food.","#b3261e"));
     lines.push(...simpleWeekVerdict(lowK,lang));
-    lines.push(<div key="n" style={{fontSize:12.5,color:"#6B7C72",marginTop:4}}>{he?`לפי מה שנאכל בפועל ב-${n} הימים שתועדו.`:`Based on what you actually ate on the ${n} logged days.`}</div>);
+    lines.push(<div key="n" style={{fontSize:14,color:"#34443b",marginTop:4}}>{he?`לפי מה שנאכל בפועל ב-${n} הימים שתועדו.`:`Based on what you actually ate on the ${n} logged days.`}</div>);
     const canRest=isCur&&restInfo&&restInfo.deficits.length>0&&restInfo.n>0;
     return (<SimpleShell lang={lang} title={he?"📊 השבוע שלי":"📊 My week"} full={<WeeklyTrackingPanel hist={hist} today={today} lang={lang} dri={dri} profile={profile} alerts={alerts} restInfo={restInfo} onUpdateRest={onUpdateRest} mealGapOf={mealGapOf} embedWk={wk}/>}>
       {lines.map((l,i)=><Fragment key={i}>{l}</Fragment>)}
@@ -17943,11 +17946,12 @@ function SimpleShell({title,children,full,lang}){
   return (<div style={{background:"#FFFFFF",borderRadius:16,padding:14,marginBottom:10,border:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)",direction:he?"rtl":"ltr"}}>
     <div style={{fontSize:15,fontWeight:800,color:"#1E3A2B",marginBottom:8}}>{title}</div>
     {children}
-    {full&&<button onClick={()=>setOpen(o=>!o)} style={{marginTop:8,background:"transparent",border:"none",color:"#2277a8",fontSize:13,fontWeight:700,cursor:"pointer",padding:0}}>{open?(he?"הסתר פירוט ‹":"Hide details ‹"):(he?"פירוט ›":"Details ›")}</button>}
-    {full&&open&&<div style={{marginTop:10}}>{full}</div>}
+    {full&&<button onClick={()=>setOpen(o=>!o)} style={{display:"block",width:"100%",marginTop:12,background:open?"#FFFFFF":"#E3EEF7",border:"2px solid #2277a8",borderRadius:12,color:"#15507a",fontSize:18,fontWeight:800,cursor:"pointer",padding:"12px 16px"}}>{open?(he?"▲ הסתר פירוט":"▲ Hide details"):(he?"▼ הצג פירוט מלא":"▼ Show full details")}</button>}
+    {full&&open&&<div className="pv-full" style={{marginTop:10}}>{full}</div>}
   </div>);
 }
-const simpleLine=(icon,text,color)=>(<div style={{display:"flex",gap:7,alignItems:"flex-start",fontSize:14,color:color||"#1E3A2B",lineHeight:1.5,marginBottom:5}}><span>{icon}</span><span>{text}</span></div>);
+const SIMPLE_DARK={"#2e7d32":"#1b5e20","#a6440f":"#8a3408"}; // גוונים כהים יותר לקריאות בתצוגה הפשוטה
+const simpleLine=(icon,text,color)=>(<div style={{display:"flex",gap:7,alignItems:"flex-start",fontSize:15.5,fontWeight:600,color:SIMPLE_DARK[color]||color||"#1E3A2B",lineHeight:1.5,marginBottom:5}}><span>{icon}</span><span>{text}</span></div>);
 // תצוגה פשוטה שלב ב' — סיכום שבועי במילים (בלי ציון מספרי) + הצעה מעשית אחת בלבד. low = מפתחות החסרים, מהחסר ביותר
 function simpleWeekVerdict(low,lang){
   const he=lang==="he"; const nm=k=>(DRI_LABELS[k]&&DRI_LABELS[k][he?"he":"en"])||k; const out=[];
@@ -17971,7 +17975,7 @@ function SimpleDaySummary({totals,target,profile,lang,full}){
     const low=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&k!=="sodium"&&dri[k]&&(totals[k]||0)<dri[k].warn).sort((a,b)=>(totals[a]||0)/dri[a].dri-(totals[b]||0)/dri[b].dri).slice(0,3);
     low.forEach(k=>lines.push(simpleLine("•",he?`חסר ${DRI_LABELS[k].he} — למשל ${simpleTipOf(k,lang)}.`:`Low in ${DRI_LABELS[k].en} — e.g. ${simpleTipOf(k,lang)}.`,"#a6440f")));
     if (!low.length && pct>=95 && pct<=105) lines.push(simpleLine("✓",he?"היום מאוזן":"A balanced day","#2e7d32"));
-    lines.push(<div key="n" style={{fontSize:12.5,color:"#6B7C72",marginTop:4}}>{he?"יום בודד הוא תמונת מצב — העמידה ביעדים נמדדת לאורך השבוע (לשונית מיקרו). 💊 B12 וויטמין D — לפי יומן התוספים.":"A single day is a snapshot — targets are measured over the week (Micro tab). 💊 B12 and vitamin D — see the supplement log."}</div>);
+    lines.push(<div key="n" style={{fontSize:14,color:"#34443b",marginTop:4}}>{he?"יום בודד הוא תמונת מצב — העמידה ביעדים נמדדת לאורך השבוע (לשונית מיקרו). 💊 B12 וויטמין D — לפי יומן התוספים.":"A single day is a snapshot — targets are measured over the week (Micro tab). 💊 B12 and vitamin D — see the supplement log."}</div>);
   }
   return <SimpleShell lang={lang} title={he?"📊 איך היום שלי":"📊 How's my day"} full={full}>{lines.map((l,i)=><Fragment key={i}>{l}</Fragment>)}</SimpleShell>;
 }
@@ -17986,7 +17990,7 @@ function SimpleMicroPanel({weekTotals,days,profile,lang,full,sourceLabel}){
     const low=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&k!=="sodium"&&dri[k]&&(weekTotals[k]||0)<wk(k)*0.98).sort((a,b)=>(weekTotals[a]||0)/wk(a)-(weekTotals[b]||0)/wk(b));
     lines.push(...simpleWeekVerdict(low,lang));
     lines.push(simpleLine("💊",he?"B12 וויטמין D — לפי יומן התוספים.":"B12 and vitamin D — see the supplement log."));
-    lines.push(<div key="n" style={{fontSize:12.5,color:"#6B7C72",marginTop:4}}>{he?`מבוסס על ${days} ימים עם תפריט השבוע (${sourceLabel}).`:`Based on ${days} days with a menu this week (${sourceLabel}).`}</div>);
+    lines.push(<div key="n" style={{fontSize:14,color:"#34443b",marginTop:4}}>{he?`מבוסס על ${days} ימים עם תפריט השבוע (${sourceLabel}).`:`Based on ${days} days with a menu this week (${sourceLabel}).`}</div>);
   }
   return <SimpleShell lang={lang} title={he?"💊 ויטמינים ומינרלים השבוע":"💊 Vitamins & minerals this week"} full={full}>
     <CalciumNotice lang={lang} profile={profile} pct={days===7?Math.round((weekTotals.calcium||0)/(getDRI(profile.age||35,profile.sex||"male",profile.pregnant).calcium.dri*7)*100):null}/>
@@ -18002,7 +18006,7 @@ function SimpleMacroPanel({totals,profile,lang,full}){
     const ok=w?prot>=w*hp.protPerKg*0.9:prot*4/kc*100>=(hp.protMin||18)*0.9;
     lines.push(ok?simpleLine("✓",he?"החלבון מספיק היום":"Protein is sufficient today","#2e7d32")
       :simpleLine("⚠",he?"החלבון נמוך היום — כדאי להוסיף קטנית, טופו או תורמוס.":"Protein is low today — add legumes, tofu or lupins.","#a6440f"));
-    lines.push(<div key="n" style={{fontSize:12.5,color:"#6B7C72",marginTop:4}}>{he?"פחמימות, שומן, סיבים, אומגות וחומצות אמינו — בפירוט.":"Carbs, fat, fiber, omegas and amino acids — in the details."}</div>);
+    lines.push(<div key="n" style={{fontSize:14,color:"#34443b",marginTop:4}}>{he?"פחמימות, שומן, סיבים, אומגות וחומצות אמינו — בפירוט.":"Carbs, fat, fiber, omegas and amino acids — in the details."}</div>);
   }
   return <SimpleShell lang={lang} title={he?"🍽 אבות המזון היום":"🍽 Macronutrients today"} full={full}>{lines.map((l,i)=><Fragment key={i}>{l}</Fragment>)}</SimpleShell>;
 }
@@ -21181,7 +21185,7 @@ function AppInner(){
     </div>); };
   return(
     <div style={{minHeight:"100vh",width:"100%",boxSizing:"border-box",background:"#FBF8F3",color:"#1E3A2B",fontFamily:"Segoe UI,system-ui,sans-serif",maxWidth:contentMaxWidth,margin:"0 auto",paddingBottom:isDesktop?24:100,paddingInline:isDesktop?24:0,transition:"max-width .15s ease"}}>
-      <style>{`@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}input[type=number]::-webkit-inner-spin-button{opacity:1}html,body{margin:0;padding:0;width:100%;display:block!important;place-items:initial!important}#root{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;text-align:initial!important}.profile-num-input::placeholder{color:#B8B0A2!important;font-weight:400!important;opacity:1}`}</style>
+      <style>{`.pv-full{zoom:1.12}.pv-full [style*="color: rgb(107, 124, 114)"],.pv-full [style*="color: rgb(90, 107, 95)"]{color:#34443b!important}@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}input[type=number]::-webkit-inner-spin-button{opacity:1}html,body{margin:0;padding:0;width:100%;display:block!important;place-items:initial!important}#root{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;text-align:initial!important}.profile-num-input::placeholder{color:#B8B0A2!important;font-weight:400!important;opacity:1}`}</style>
 
       {/* Header */}
       <div style={{padding:"14px 16px 8px",background:isDesktop?"#DCEAD9":"#FFFFFF",position:"sticky",top:0,zIndex:50,borderBottom:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)"}}>
