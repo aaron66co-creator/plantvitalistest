@@ -15465,18 +15465,20 @@ function RecipeBookModal({recipes,lang,onClose,profile}){
           <div style={{flex:1,minHeight:0,display:"flex",justifyContent:"center",perspective:"2600px"}}>
             <div style={{display:"flex",width:"100%",maxWidth:1400,minHeight:0,transformStyle:"preserve-3d",filter:"drop-shadow(0 18px 30px rgba(0,0,0,0.45))"}}>
               <div style={{flex:1,minWidth:0,display:"flex",transform:"rotateY(2.5deg)",transformOrigin:"100% 50%",borderRadius:"10px 0 0 10px",overflow:"hidden"}}>
-                {renderPageContent(spreadLeftP)}
+                <Fragment key={"L"+spreadLeftP}>{renderPageContent(spreadLeftP)}</Fragment>
               </div>
               <div style={{width:16,flexShrink:0,background:"linear-gradient(90deg,rgba(0,0,0,0.35),rgba(0,0,0,0.05) 30%,rgba(0,0,0,0.05) 70%,rgba(0,0,0,0.35))",boxShadow:"inset 0 0 12px rgba(0,0,0,0.4)"}}/>
               <div style={{flex:1,minWidth:0,display:"flex",transform:"rotateY(-2.5deg)",transformOrigin:"0% 50%",borderRadius:"0 10px 10px 0",overflow:"hidden"}}>
-                {renderPageContent(spreadRightP)}
+                <Fragment key={"R"+spreadRightP}>{renderPageContent(spreadRightP)}</Fragment>
               </div>
             </div>
           </div>
         ) : (
           <div style={isDesktop?{flex:1,minHeight:0,display:"flex",justifyContent:"center",perspective:"2000px"}:{flex:1,minHeight:0,display:"flex"}}>
-            <div style={isDesktop?{width:"100%",maxWidth:430,display:"flex",filter:"drop-shadow(0 14px 24px rgba(0,0,0,0.4))"}:{width:"100%",display:"flex"}}>
-              {renderPageContent(page)}
+            <div style={isDesktop?{width:"100%",maxWidth:430,display:"flex",filter:"drop-shadow(0 14px 24px rgba(0,0,0,0.4))"}:{width:"100%",display:"flex",minHeight:0}}>{/* minHeight:0 — בלי זה במובייל עמוד ארוך (תוכן העניינים) גולש אל מחוץ לנייר ונראה שחור */}
+              {/* key לכל עמוד: בלי זה React משתמש באותו אלמנט לשער ולתוכן העניינים, ובמעבר ביניהם מוחק את backgroundImage
+                  של השער אחרי שכבר הוגדר רקע הנייר — העמוד נשאר שקוף ונראה שחור, בעיקר במובייל */}
+              <Fragment key={page}>{renderPageContent(page)}</Fragment>
             </div>
           </div>
         )}
