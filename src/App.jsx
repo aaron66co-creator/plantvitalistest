@@ -1,11 +1,14 @@
 import { useState,useMemo,useEffect,useCallback,useRef,Fragment } from "react";
 
 
-const T={he:{title:"תכנון ארוחות ומעקב",subtitle:"🌿 WFPB Vegetarian · כולל מוצרי חלב וביצים",meals:"🥗 ארוחות",macrosTab:"🍽 אבות המזון",micro:"💊 מיקרו",clearWeek:"🗑 נקה",profile:"👤 פרופיל",height:"גובה ס״מ",weight:"משקל ק״ג",age:"גיל",male:"זכר",female:"נקבה",low:"מועטה",medium:"בינונית",high:"גבוהה",activity:"פעילות",goal:"מטרה",maintain:"שמירה",lose:"ירידה",gain:"עלייה",breakfast:"ארוחת בוקר",snack:"ארוחת ביניים",lunch:"ארוחת צהריים",dinner:"ארוחת ערב",build:"🍽 בנה וערוך",saved:"📂",suggest:"💡",buildMeal:"בנה ארוחה",saveMeal:"💾 שמור",saveLabel:"שם הארוחה...",saveBtn:"שמור",confirm:"✅ אשר",noMeals:"לחץ בנה / הצע",noSaved:"אין ארוחות שמורות",loadMeal:"✅ טען",deleteMeal:"🗑",deletePerm:"מחק לצמיתות",cancel:"ביטול",savedMeals:"ארוחות שמורות",suggestions:"הצעות",items:"פריטים",searchFood:"🔍 חפש...",all:"הכל",grams:"גר׳",per100:"לכל 100גר׳",daily:"📊 סיכום יומי",calories:"קלוריות",carb:"פח׳",prot:"חלב׳",fat:"שומן",fiber:"סיבים",carbTarget:"≤55%",protTarget:"18-20%",fatTarget:"≤30%",protPerKg:"חלבון/ק״ג",protGoal:"יעד 1.2–1.6",vitE:"ויטמין E",calcium:"סידן",omega:"אומגה",ratio:"יחס Ω6:Ω3",vitamins:"💊 ויטמינים ומינרלים",deficiencies:"⚠️ חוסרים",enterData:"הזן נתונים",footer:"🌱 פח׳≤55% · חלב׳≥18% · שומן≤30% · VitE≥15mg · Ca≥1000mg",saved_toast:"✅ נשמר!",dir:"rtl",infoEdit:"✎ ערוך",infoSave:"💾 שמור",infoCancel:"ביטול",infoPlaceholder:"הוסף טקסט כאן...",clearMeal:"🗑 נקה ארוחה",clearConfirm:"בטוח?",clearYes:"כן",clearNo:"לא",wfpbInfo:"🌿 WFPB",ndsLabel:"🏆 צפיפות נוטריאנטים",ndsScore:"ציון NDS",ndsInfo:"מדד צפיפות",swapBtn:"🔄 אופטימיזציה",swapTitle:"💡 הצעות אופטימיזציה",swapApply:"✅ החל",swapSkip:"דלג",swapNoIssues:"הארוחות מאוזנות — אין הצעות שינוי",swapExplain:"מה עושה האופטימיזציה?",disclaimer:"⚠ אזהרת שימוש",healthProfile:"🏥 פרופיל בריאותי",healthNone:"ללא",spices:"🧂 תבלינים",mealTime:"שעת ארוחה",bmi:"BMI",bmiLabel:"מדד מסת גוף",recipes:"📖 מתכונים",newRecipe:"➕ מתכון חדש",recipeName:"שם המתכון...",servings:"מנות",recipeType:"סוג",recipeTypePie:"🥧 פשטידה",recipeTypeBaked:"🍞 מאפה",recipeTypeSoup:"🍲 מרק",recipeTypeStew:"🫕 תבשיל",saveRecipe:"💾 שמור מתכון",editRecipe:"✎ ערוך",deleteRecipe:"🗑 מחק",addToMeal:"➕ הוסף לארוחה",perServing:"לכל מנה",noRecipes:"אין מתכונים עדיין",recipeAdded:"✅ נוסף!",confirmDeleteRecipe:"מחק מתכון?",generalSuggestBtn:"🔀 הצעות כלליות",generalSuggestConfirm:"האם ברצונך להשתמש באפשרות זו?",generalSuggestYes:"כן",generalSuggestNo:"לא",dayPlanBtn:"🗓️ הצע ארוחות ליום",dayPlanTitle:"🗓️ תפריט מוצע ליום",dayPlanSubtitle:"מכסה קטניות, דגנים, ירק, עלים, פרי, אגוזים, זרעים, שומן, חלבון ותבלינים בתוך תקציב הקלוריות",dayPlanApply:"✅ החל על היום",dayPlanRegenerate:"🔄 הצע שוב",dayPlanClose:"ביטול",personalDayPlanBtn:"השלם יום",personalDayPlanSubtitle:"בנוי אך ורק מהארוחות השמורות והמתכונים שלך — ארוחות שכבר בנית היום נשארות כפי שהן, ורק החלקים הריקים מושלמים",personalDayPlanEmpty:"אין עדיין ארוחות שמורות או מתכונים מתאימים למלא את החלקים הריקים — שמור כמה ארוחות או מתכונים ונסה שוב",recipesNSFDayPlanBtn:"🍓 הצע ארוחות ממתכונים ליום",recipesNSFDayPlanSubtitle:"בנוי בעיקר מהמתכונים שלך — משלים בפריטי אגוזים/זרעים/פרי/ירק/דגן/קטנית/עלים גולמיים לפי הצורך, כדי לעמוד ביעד הקלורי במדויק",recipesNSFDayPlanEmpty:"אין מספיק מתכונים או פריטי אגוזים/זרעים/פרי כדי לבנות יום שלם — הוסף מתכונים או נסה שוב",recipesNSFWeekPlanBtn:"🍓×7 הצע ארוחות ממתכונים לשבוע",weekPlanBtn:"🗓️×7 הצע ארוחות לשבוע",weekPlanTitle:"🗓️×7 תפריט מוצע לשבוע",weekPlanSubtitle:"עומד בסך הקלוריות השבועי, ב-RDA השבועי לכל מיקרו-נוטריאנט וביחסי אומגה ונתרן/אשלגן — לרוחב 7 ימים, בדיוק כמו במנגנון היומי",weekPlanApply:"✅ החל על כל השבוע",weekPlanApplyConfirm:"⚠️ לחץ שוב לאישור — יחליף את כל ארוחות השבוע",weekPlanRegenerate:"🔄 הצע שבוע חדש",weekPlanWeekly:"שבועי",weekPlanDayLabel:"יום",shoppingListBtn:"🛒 רשימת קניות",shoppingListTitle:"🛒 רשימת קניות שבועית",shoppingListSubtitle:"מרוכז מכל הארוחות שהוגדרו בכל ימות השבוע, מאורגן לפי קבוצות מזון",shoppingListEmpty:"עדיין לא הוגדרו ארוחות באף יום השבוע — הוסף ארוחות כדי לראות רשימת קניות",shoppingListCheckAll:"✅ סמן הכל",shoppingListUncheckAll:"↺ נקה סימונים",shoppingListItemsCount:"פריטים",shoppingListSortNutrition:"🥗 מיון תזונתי",shoppingListSortStore:"🏬 מיון לפי סופר",shoppingListShopModeOff:"🛍️ מצב קניה",shoppingListShopModeOn:"🛍️ מצב קניה: פעיל",shoppingListPantryTitle:"מוצרי מזווה (כנראה כבר יש בבית)",resetDayLog:"🗑 איפוס יומן היום",resetDayLogConfirm:"לאפס את כל יומן האכילה בפועל של היום הזה? זה לא ישנה את התפריט המתוכנן — הוא יישאר כפי שהוא, רק התיעוד בפועל יימחק ויחזור להציג את המתוכנן כברירת מחדל.",resetDayLogYes:"כן, אפס",resetDayLogNo:"ביטול",resetDayLogEmpty:"אין מה לאפס — עדיין לא תועד דבר ביום הזה",resetDayLogDone:"✅ יומן היום אופס",
-},en:{title:"Meal Planning & Tracking",subtitle:"🌿 WFPB Vegetarian · Includes Dairy & Eggs",meals:"🥗 Meals",macrosTab:"🍽 Macronutrients",micro:"💊 Micro",clearWeek:"🗑 Clear",profile:"👤 Profile",height:"Height cm",weight:"Weight kg",age:"Age",male:"Male",female:"Female",low:"Low",medium:"Moderate",high:"High",activity:"Activity",goal:"Goal",maintain:"Maintain",lose:"Lose",gain:"Gain",breakfast:"Breakfast",snack:"Snack",lunch:"Lunch",dinner:"Dinner",build:"🍽 Build & Edit",saved:"📂",suggest:"💡",buildMeal:"Build a Meal",saveMeal:"💾 Save",saveLabel:"Meal name...",saveBtn:"Save",confirm:"✅ Confirm",noMeals:"Tap Build / Suggest",noSaved:"No saved meals",loadMeal:"✅ Load",deleteMeal:"🗑",deletePerm:"Delete permanently",cancel:"Cancel",savedMeals:"Saved Meals",suggestions:"Suggestions",items:"items",searchFood:"🔍 Search...",all:"All",grams:"g",per100:"per 100g",daily:"📊 Daily Summary",calories:"Calories",carb:"Carbs",prot:"Protein",fat:"Fat",fiber:"Fiber",carbTarget:"≤55%",protTarget:"18-20%",fatTarget:"≤30%",protPerKg:"Protein/kg",protGoal:"target 1.2–1.6",vitE:"Vitamin E",calcium:"Calcium",omega:"Omega",ratio:"Ω6:Ω3 ratio",vitamins:"💊 Vitamins & Minerals",deficiencies:"⚠️ Deficiencies",enterData:"Enter data",footer:"🌱 Carbs≤55% · Prot≥18% · Fat≤30% · VitE≥15mg · Ca≥1000mg",saved_toast:"✅ Saved!",dir:"ltr",infoEdit:"✎ Edit",infoSave:"💾 Save",infoCancel:"Cancel",infoPlaceholder:"Add your notes here...",clearMeal:"🗑 Clear Meal",clearConfirm:"Sure?",clearYes:"Yes",clearNo:"No",wfpbInfo:"🌿 WFPB",ndsLabel:"🏆 Nutrient Density",ndsScore:"NDS Score",ndsInfo:"Density Score",swapBtn:"🔄 Optimize",swapTitle:"💡 Optimization Suggestions",swapApply:"✅ Apply",swapSkip:"Skip",swapNoIssues:"Meals are balanced — no suggestions",swapExplain:"What does Optimization do?",disclaimer:"⚠ Disclaimer",healthProfile:"🏥 Health Profile",healthNone:"None",spices:"🧂 Spices",mealTime:"Meal time",bmi:"BMI",bmiLabel:"Body Mass Index",recipes:"📖 Recipes",newRecipe:"➕ New Recipe",recipeName:"Recipe name...",servings:"Servings",recipeType:"Type",recipeTypePie:"🥧 Pie",recipeTypeBaked:"🍞 Baked",recipeTypeSoup:"🍲 Soup",recipeTypeStew:"🫕 Stew",saveRecipe:"💾 Save Recipe",editRecipe:"✎ Edit",deleteRecipe:"🗑 Delete",addToMeal:"➕ Add to Meal",perServing:"per serving",noRecipes:"No recipes yet",recipeAdded:"✅ Added!",confirmDeleteRecipe:"Delete recipe?",generalSuggestBtn:"🔀 General Suggestions",generalSuggestConfirm:"Would you like to use this option?",generalSuggestYes:"Yes",generalSuggestNo:"No",dayPlanBtn:"🗓️ Suggest Day's Meals",dayPlanTitle:"🗓️ Suggested Day Menu",dayPlanSubtitle:"Covers legumes, grains, veg, greens, fruit, nuts, seeds, fat, protein and spices within the calorie budget",dayPlanApply:"✅ Apply to Day",dayPlanRegenerate:"🔄 Suggest Again",dayPlanClose:"Cancel",personalDayPlanBtn:"Complete Day",personalDayPlanSubtitle:"Built only from your own saved meals and recipes — meals you've already built today stay as-is, only the empty ones get filled in",personalDayPlanEmpty:"No saved meals or matching recipes yet to fill the empty slots — save a few meals or recipes and try again",recipesNSFDayPlanBtn:"🍓 Suggest Day from Recipes",recipesNSFDayPlanSubtitle:"Built mainly from your recipes — supplemented with raw nuts/seeds/fruit/veg/grain/legume/greens items as needed, to hit the calorie target precisely",recipesNSFDayPlanEmpty:"Not enough recipes or nuts/seeds/fruit items to build a full day — add recipes and try again",recipesNSFWeekPlanBtn:"🍓×7 Suggest Week from Recipes",weekPlanBtn:"🗓️×7 Suggest Week's Meals",weekPlanTitle:"🗓️×7 Suggested Week Menu",weekPlanSubtitle:"Meets weekly calories, weekly RDA for every micronutrient, and omega/sodium-potassium ratios — across 7 days, exactly like the daily engine",weekPlanApply:"✅ Apply to Whole Week",weekPlanApplyConfirm:"⚠️ Tap again to confirm — replaces all meals this week",weekPlanRegenerate:"🔄 Suggest New Week",weekPlanWeekly:"Weekly",weekPlanDayLabel:"Day",shoppingListBtn:"🛒 Shopping List",shoppingListTitle:"🛒 Weekly Shopping List",shoppingListSubtitle:"Totaled from every meal set across the week, organized by food group",shoppingListEmpty:"No meals set for any day this week yet — add meals to see a shopping list",shoppingListCheckAll:"✅ Check All",shoppingListUncheckAll:"↺ Clear Checks",shoppingListItemsCount:"items",shoppingListSortNutrition:"🥗 Sort by Nutrition",shoppingListSortStore:"🏬 Sort by Aisle",shoppingListShopModeOff:"🛍️ Shopping Mode",shoppingListShopModeOn:"🛍️ Shopping Mode: On",shoppingListPantryTitle:"Pantry Staples (likely already home)",resetDayLog:"🗑 Reset Today's Log",resetDayLogConfirm:"Reset all actual eating log entries for this day? This will NOT change the planned menu — it stays exactly as is. Only the actual/logged entries are cleared, reverting the log to show the plan by default.",resetDayLogYes:"Yes, reset",resetDayLogNo:"Cancel",resetDayLogEmpty:"Nothing to reset — nothing logged for this day yet",resetDayLogDone:"✅ Today's log reset",
+const T={he:{title:"תכנון ארוחות ומעקב",subtitle:"🌿 טבעוני או צמחוני (חלב וביצים לבחירה)",meals:"🥗 ארוחות",macrosTab:"🍽 אבות המזון",micro:"💊 מיקרו",clearWeek:"🗑 נקה",profile:"👤 פרופיל",height:"גובה ס״מ",weight:"משקל ק״ג",age:"גיל",male:"זכר",female:"נקבה",low:"מועטה",medium:"בינונית",high:"גבוהה",activity:"פעילות",goal:"מטרה",maintain:"שמירה",lose:"ירידה",gain:"עלייה",breakfast:"ארוחת בוקר",snack:"ארוחת ביניים",lunch:"ארוחת צהריים",dinner:"ארוחת ערב",build:"🍽 בנה וערוך",saved:"📂",suggest:"💡",buildMeal:"בנה ארוחה",saveMeal:"💾 שמור",saveLabel:"שם הארוחה...",saveBtn:"שמור",confirm:"✅ אשר",noMeals:"לחץ בנה / הצע",noSaved:"אין ארוחות שמורות",loadMeal:"✅ טען",deleteMeal:"🗑",deletePerm:"מחק לצמיתות",cancel:"ביטול",savedMeals:"ארוחות שמורות",suggestions:"הצעות",items:"פריטים",searchFood:"🔍 חפש...",all:"הכל",grams:"גר׳",per100:"לכל 100גר׳",daily:"📊 סיכום יומי",calories:"קלוריות",carb:"פח׳",prot:"חלב׳",fat:"שומן",fiber:"סיבים",carbTarget:"≤55%",protTarget:"≥18%",fatTarget:"≤30%",protPerKg:"חלבון/ק״ג",protGoal:"יעד 1.2–1.6",vitE:"ויטמין E",calcium:"סידן",omega:"אומגה",ratio:"יחס Ω6:Ω3",vitamins:"💊 ויטמינים ומינרלים",deficiencies:"⚠️ חוסרים",enterData:"הזן נתונים",footer:"🌱 פח׳≤55% · חלב׳≥18% · שומן≤30% · VitE≥15mg · Ca≥1000mg",saved_toast:"✅ נשמר!",dir:"rtl",infoEdit:"✎ ערוך",infoSave:"💾 שמור",infoCancel:"ביטול",infoPlaceholder:"הוסף טקסט כאן...",clearMeal:"🗑 נקה ארוחה",clearConfirm:"בטוח?",clearYes:"כן",clearNo:"לא",wfpbInfo:"🌿 WFPB",ndsLabel:"🏆 צפיפות נוטריאנטים",ndsScore:"ציון NDS",ndsInfo:"מדד צפיפות",swapBtn:"🔄 אופטימיזציה",swapTitle:"💡 הצעות אופטימיזציה",swapApply:"✅ החל",swapSkip:"דלג",swapNoIssues:"הארוחות מאוזנות — אין הצעות שינוי",swapExplain:"מה עושה האופטימיזציה?",disclaimer:"⚠ אזהרת שימוש",healthProfile:"🏥 פרופיל בריאותי",healthNone:"ללא",spices:"🧂 תבלינים",mealTime:"שעת ארוחה",bmi:"BMI",bmiLabel:"מדד מסת גוף",recipes:"📖 מתכונים",newRecipe:"➕ מתכון חדש",recipeName:"שם המתכון...",servings:"מנות",recipeType:"סוג",recipeTypePie:"🥧 פשטידה",recipeTypeBaked:"🍞 מאפה",recipeTypeSoup:"🍲 מרק",recipeTypeStew:"🫕 תבשיל",saveRecipe:"💾 שמור מתכון",editRecipe:"✎ ערוך",deleteRecipe:"🗑 מחק",addToMeal:"➕ הוסף לארוחה",perServing:"לכל מנה",noRecipes:"אין מתכונים עדיין",recipeAdded:"✅ נוסף!",confirmDeleteRecipe:"מחק מתכון?",generalSuggestBtn:"🔀 הצעות כלליות",generalSuggestConfirm:"האם ברצונך להשתמש באפשרות זו?",generalSuggestYes:"כן",generalSuggestNo:"לא",dayPlanBtn:"🗓️ הצע ארוחות ליום",dayPlanTitle:"🗓️ תפריט מוצע ליום",dayPlanSubtitle:"מכסה קטניות, דגנים, ירק, עלים, פרי, אגוזים, זרעים, שומן, חלבון ותבלינים בתוך תקציב הקלוריות",dayPlanApply:"✅ החל על היום",dayPlanRegenerate:"🔄 הצע שוב",dayPlanClose:"ביטול",personalDayPlanBtn:"השלם יום",personalDayPlanSubtitle:"בנוי אך ורק מהארוחות השמורות והמתכונים שלך — ארוחות שכבר בנית היום נשארות כפי שהן, ורק החלקים הריקים מושלמים",personalDayPlanEmpty:"אין עדיין ארוחות שמורות או מתכונים מתאימים למלא את החלקים הריקים — שמור כמה ארוחות או מתכונים ונסה שוב",recipesNSFDayPlanBtn:"🍓 הצע ארוחות ממתכונים ליום",recipesNSFDayPlanSubtitle:"בנוי בעיקר מהמתכונים שלך — משלים בפריטי אגוזים/זרעים/פרי/ירק/דגן/קטנית/עלים גולמיים לפי הצורך, כדי לעמוד ביעד הקלורי במדויק",recipesNSFDayPlanEmpty:"אין מספיק מתכונים או פריטי אגוזים/זרעים/פרי כדי לבנות יום שלם — הוסף מתכונים או נסה שוב",recipesNSFWeekPlanBtn:"🍓×7 הצע ארוחות ממתכונים לשבוע",weekPlanBtn:"🗓️×7 הצע ארוחות לשבוע",weekPlanTitle:"🗓️×7 תפריט מוצע לשבוע",weekPlanSubtitle:"עומד בסך הקלוריות השבועי, ב-RDA השבועי לכל מיקרו-נוטריאנט וביחסי אומגה ונתרן/אשלגן — לרוחב 7 ימים, בדיוק כמו במנגנון היומי",weekPlanApply:"✅ החל על כל השבוע",weekPlanApplyConfirm:"⚠️ לחץ שוב לאישור — יחליף את כל ארוחות השבוע",weekPlanRegenerate:"🔄 הצע שבוע חדש",weekPlanWeekly:"שבועי",weekPlanDayLabel:"יום",shoppingListBtn:"🛒 רשימת קניות",shoppingListTitle:"🛒 רשימת קניות שבועית",shoppingListSubtitle:"מרוכז מכל הארוחות שהוגדרו בכל ימות השבוע, מאורגן לפי קבוצות מזון",shoppingListEmpty:"עדיין לא הוגדרו ארוחות באף יום השבוע — הוסף ארוחות כדי לראות רשימת קניות",shoppingListCheckAll:"✅ סמן הכל",shoppingListUncheckAll:"↺ נקה סימונים",shoppingListItemsCount:"פריטים",shoppingListSortNutrition:"🥗 מיון תזונתי",shoppingListSortStore:"🏬 מיון לפי סופר",shoppingListShopModeOff:"🛍️ מצב קניה",shoppingListShopModeOn:"🛍️ מצב קניה: פעיל",shoppingListPantryTitle:"מוצרי מזווה (כנראה כבר יש בבית)",resetDayLog:"🗑 איפוס יומן היום",resetDayLogConfirm:"לאפס את כל יומן האכילה בפועל של היום הזה? זה לא ישנה את התפריט המתוכנן — הוא יישאר כפי שהוא, רק התיעוד בפועל יימחק ויחזור להציג את המתוכנן כברירת מחדל.",resetDayLogYes:"כן, אפס",resetDayLogNo:"ביטול",resetDayLogEmpty:"אין מה לאפס — עדיין לא תועד דבר ביום הזה",resetDayLogDone:"✅ יומן היום אופס",
+},en:{title:"Meal Planning & Tracking",subtitle:"🌿 Vegan or vegetarian (dairy & eggs optional)",meals:"🥗 Meals",macrosTab:"🍽 Macronutrients",micro:"💊 Micro",clearWeek:"🗑 Clear",profile:"👤 Profile",height:"Height cm",weight:"Weight kg",age:"Age",male:"Male",female:"Female",low:"Low",medium:"Moderate",high:"High",activity:"Activity",goal:"Goal",maintain:"Maintain",lose:"Lose",gain:"Gain",breakfast:"Breakfast",snack:"Snack",lunch:"Lunch",dinner:"Dinner",build:"🍽 Build & Edit",saved:"📂",suggest:"💡",buildMeal:"Build a Meal",saveMeal:"💾 Save",saveLabel:"Meal name...",saveBtn:"Save",confirm:"✅ Confirm",noMeals:"Tap Build / Suggest",noSaved:"No saved meals",loadMeal:"✅ Load",deleteMeal:"🗑",deletePerm:"Delete permanently",cancel:"Cancel",savedMeals:"Saved Meals",suggestions:"Suggestions",items:"items",searchFood:"🔍 Search...",all:"All",grams:"g",per100:"per 100g",daily:"📊 Daily Summary",calories:"Calories",carb:"Carbs",prot:"Protein",fat:"Fat",fiber:"Fiber",carbTarget:"≤55%",protTarget:"≥18%",fatTarget:"≤30%",protPerKg:"Protein/kg",protGoal:"target 1.2–1.6",vitE:"Vitamin E",calcium:"Calcium",omega:"Omega",ratio:"Ω6:Ω3 ratio",vitamins:"💊 Vitamins & Minerals",deficiencies:"⚠️ Deficiencies",enterData:"Enter data",footer:"🌱 Carbs≤55% · Prot≥18% · Fat≤30% · VitE≥15mg · Ca≥1000mg",saved_toast:"✅ Saved!",dir:"ltr",infoEdit:"✎ Edit",infoSave:"💾 Save",infoCancel:"Cancel",infoPlaceholder:"Add your notes here...",clearMeal:"🗑 Clear Meal",clearConfirm:"Sure?",clearYes:"Yes",clearNo:"No",wfpbInfo:"🌿 WFPB",ndsLabel:"🏆 Nutrient Density",ndsScore:"NDS Score",ndsInfo:"Density Score",swapBtn:"🔄 Optimize",swapTitle:"💡 Optimization Suggestions",swapApply:"✅ Apply",swapSkip:"Skip",swapNoIssues:"Meals are balanced — no suggestions",swapExplain:"What does Optimization do?",disclaimer:"⚠ Disclaimer",healthProfile:"🏥 Health Profile",healthNone:"None",spices:"🧂 Spices",mealTime:"Meal time",bmi:"BMI",bmiLabel:"Body Mass Index",recipes:"📖 Recipes",newRecipe:"➕ New Recipe",recipeName:"Recipe name...",servings:"Servings",recipeType:"Type",recipeTypePie:"🥧 Pie",recipeTypeBaked:"🍞 Baked",recipeTypeSoup:"🍲 Soup",recipeTypeStew:"🫕 Stew",saveRecipe:"💾 Save Recipe",editRecipe:"✎ Edit",deleteRecipe:"🗑 Delete",addToMeal:"➕ Add to Meal",perServing:"per serving",noRecipes:"No recipes yet",recipeAdded:"✅ Added!",confirmDeleteRecipe:"Delete recipe?",generalSuggestBtn:"🔀 General Suggestions",generalSuggestConfirm:"Would you like to use this option?",generalSuggestYes:"Yes",generalSuggestNo:"No",dayPlanBtn:"🗓️ Suggest Day's Meals",dayPlanTitle:"🗓️ Suggested Day Menu",dayPlanSubtitle:"Covers legumes, grains, veg, greens, fruit, nuts, seeds, fat, protein and spices within the calorie budget",dayPlanApply:"✅ Apply to Day",dayPlanRegenerate:"🔄 Suggest Again",dayPlanClose:"Cancel",personalDayPlanBtn:"Complete Day",personalDayPlanSubtitle:"Built only from your own saved meals and recipes — meals you've already built today stay as-is, only the empty ones get filled in",personalDayPlanEmpty:"No saved meals or matching recipes yet to fill the empty slots — save a few meals or recipes and try again",recipesNSFDayPlanBtn:"🍓 Suggest Day from Recipes",recipesNSFDayPlanSubtitle:"Built mainly from your recipes — supplemented with raw nuts/seeds/fruit/veg/grain/legume/greens items as needed, to hit the calorie target precisely",recipesNSFDayPlanEmpty:"Not enough recipes or nuts/seeds/fruit items to build a full day — add recipes and try again",recipesNSFWeekPlanBtn:"🍓×7 Suggest Week from Recipes",weekPlanBtn:"🗓️×7 Suggest Week's Meals",weekPlanTitle:"🗓️×7 Suggested Week Menu",weekPlanSubtitle:"Meets weekly calories, weekly RDA for every micronutrient, and omega/sodium-potassium ratios — across 7 days, exactly like the daily engine",weekPlanApply:"✅ Apply to Whole Week",weekPlanApplyConfirm:"⚠️ Tap again to confirm — replaces all meals this week",weekPlanRegenerate:"🔄 Suggest New Week",weekPlanWeekly:"Weekly",weekPlanDayLabel:"Day",shoppingListBtn:"🛒 Shopping List",shoppingListTitle:"🛒 Weekly Shopping List",shoppingListSubtitle:"Totaled from every meal set across the week, organized by food group",shoppingListEmpty:"No meals set for any day this week yet — add meals to see a shopping list",shoppingListCheckAll:"✅ Check All",shoppingListUncheckAll:"↺ Clear Checks",shoppingListItemsCount:"items",shoppingListSortNutrition:"🥗 Sort by Nutrition",shoppingListSortStore:"🏬 Sort by Aisle",shoppingListShopModeOff:"🛍️ Shopping Mode",shoppingListShopModeOn:"🛍️ Shopping Mode: On",shoppingListPantryTitle:"Pantry Staples (likely already home)",resetDayLog:"🗑 Reset Today's Log",resetDayLogConfirm:"Reset all actual eating log entries for this day? This will NOT change the planned menu — it stays exactly as is. Only the actual/logged entries are cleared, reverting the log to show the plan by default.",resetDayLogYes:"Yes, reset",resetDayLogNo:"Cancel",resetDayLogEmpty:"Nothing to reset — nothing logged for this day yet",resetDayLogDone:"✅ Today's log reset",
 }};
 
 const ACTIVITY={low:{he:"מועטה",en:"Low",factor:1.375},medium:{he:"בינונית",en:"Moderate",factor:1.55},high:{he:"גבוהה",en:"High",factor:1.725}};
+// בטיחות (ביקורת דיאטנית): עם BMI מתחת ל-18.5 לא בונים גירעון קלורי — "ירידה" נחסמת ומטופלת כ"שמירה"
+const bmiOfProfile=p=>{ const h=+p?.height, w=+p?.weight; return h&&w?w/((h/100)**2):null; };
+const effectiveGoal=p=>{ const g=p?.goal||"maintain"; const b=bmiOfProfile(p); return (g==="lose"&&b!=null&&b<18.5)?"maintain":g; };
 const GOALS={maintain:{he:"שמירה",en:"Maintain",emoji:"⚖️",pct:0},lose:{he:"ירידה זהירה",en:"Careful Loss",emoji:"📉",pct:-0.0625},gain:{he:"עליה נקייה",en:"Clean Gain",emoji:"📈",pct:0.0625}};
 
 const HEALTH_PROFILES={
@@ -20,6 +23,10 @@ const HEALTH_PROFILES={
 // כל העבודה האינטנסיבית שכבר נעשתה על אכילת-חלבון בסימולציות ממשיכה להיות תקפה לברירת-המחדל, לא משתנה.
 // התקרה הקלינית (protPerKgMax) לעולם לא מותאמת כאן — מגבלה קלינית (למשל מחלת כליות) לא אמורה "לעלות" רק כי
 // המשתמש בחר רמת-פעילות גבוהה יותר; ה-multiplier חל אך ורק על הרצפה (protPerKg)
+// יעד סיבים (ביקורת דיאטנית): 50 גר' לכולם גבוה מדי כמינימום — בקשישים עם תיאבון קטן הוא גורם לשובע מוקדם על חשבון
+// חלבון וקלוריות, ומגביר את השפעת הפיטאטים על ספיגת מינרלים. המינימום הוא ההמלצה המקובלת, 14 גר' לכל 1,000 קק"ל
+// (IOM), והשאיפה — 50 גר' (מגיל 65: 40). מחולל התפריט לא משתמש ביעד הזה (הוא תצוגה ודוח בלבד)
+function fiberTargetsOf(kcal, age){ const k=+kcal||2000; return {min:Math.max(20,Math.round(14*k/1000)), goal:(+age>=65?40:50)}; }
 const ACTIVITY_PROTEIN_MULT = {low:0.85, medium:1.0, high:1.25};
 // תיקון (לבקשת המשתמש: "וכיצד היא מותאמת לגיל?") — הטקסט-ההסברי של פאנל-החלבון כבר מתאר במפורש שגיל 65+
 // אמור לקבל רצפה של כ-1.0-1.2 גר'/ק"ג למניעת סרקופניה (אובדן מסת שריר עם הגיל), בלי קשר לרמת-הפעילות —
@@ -33,9 +40,12 @@ function resolveHealthProfile(profile){
   const age = parseFloat(profile?.age)||0;
   let protPerKg = base.protPerKg*mult;
   if (age>=65) protPerKg = Math.max(protPerKg, AGE_PROTEIN_FLOOR_65);
-  if (mult===1.0 && age<65) return base;
+  // תקרת נתרן (ביקורת דיאטנית): 2,300 מ"ג ביום (NASEM CDRR; בגבולות משרד הבריאות 2,000–2,400), ומגיל 65 או עם יתר
+  // לחץ דם — 2,000 מ"ג (WHO). אם לפרופיל יש תקרה מחמירה יותר — היא גוברת
+  const naCap = Math.min(base.sodiumMax||Infinity, (age>=65 || (profile?.medical||[]).includes("htn")) ? 2000 : 2300);
+  if (mult===1.0 && age<65) return {...base, sodiumMax:naCap};
   // גיל 65+: תקרת שומן 35% (בטווח ה-AMDR של 20-35%) — מאפשרת טחינה/שקדים/זרעים כמקורות סידן וויטמין E בתקציב קלורי נמוך
-  return {...base, protPerKg: Math.round(protPerKg*100)/100, ...(age>=65?{fatMax:Math.max(base.fatMax,35)}:{})};
+  return {...base, sodiumMax:naCap, protPerKg: Math.round(protPerKg*100)/100, ...(age>=65?{fatMax:Math.max(base.fatMax,35)}:{})};
 }
 
 const MEAL_KEYS=["breakfast","snack","lunch","dinner"];
@@ -110,10 +120,26 @@ function getDRI(age,sex,pregnant){
   r.iron.planDri = r.iron.dri>20 ? r.iron.baseDri : r.iron.dri;
   r.zinc={...r.zinc,baseDri:r.zinc.dri,dri:Math.round(r.zinc.dri*1.5*10)/10,warn:Math.round(r.zinc.warn*1.5*10)/10,vegAdj:1.5};
   r._age=a; // לשימוש כללי-גיל במחוללים (סף לאוצין לארוחה)
+  r._sex=s;
+  // ALA — "צריכה מספקת" (AI, IOM): 1.1 גר' ביום לנשים, 1.6 לגברים. מחליף את יחס אומגה 6:3 כאילוץ במנוע (ביקורת דיאטנית:
+  // ההנחיות העדכניות לא ממליצות להפחית אומגה 6, ומה שקובע הוא כמות ה-ALA המוחלטת)
+  r._alaMin = s==="male"?1.6:1.1;
   return r;
 }
 // עותק של טבלת היעדים לשימוש המחוללים — עם יעד התכנון במקום היעד המוצג, כשיש כזה (ברזל לנשים בגיל הפוריות)
+// דירוג שבועי (ביקורת דיאטנית): ערכי ה-RDA נקבעו כממוצע לטווח ארוך, לא כחובה יומית. לכן יעד התכנון *היומי* לכל
+// ויטמין ומינרל הוא DAY_MICRO_FRAC מהיעד, והיעד המלא (weekDri) נאכף ברמת השבוע (enforceWeeklyMicros ועדכון שאר
+// השבוע). כך יום בודד לא נדחף לפתרונות מלאכותיים (נבט חיטה לכולין, כוס משקה מועשר לעוד כמה מ"ג סידן) כשהשבוע
+// כולו ממילא עומד ביעד. נתרן (תקרה/AI) ו-B12/D (תוספים) לא מושפעים
+const DAY_MICRO_FRAC=0.9;
+const ALA_PLAN_MIN=1.76; // מחוללים מוקדמים (בלי מין בהקשר): 1.6 גר' + 10% מרווח
+// וואקמה (לבקשת המשתמש): צעד של חצי גרם (כ-120 מק"ג יוד) במקום כפית שלמה (2 גר', כ-480 מק"ג) — הכפית השלמה, שנכפתה
+// בעיגול ליחידות שלמות, הקפיצה את היוד היומי לפי 3–4 מהיעד
+const WAKAME_STEP_G=0.5;
+const alaMinOf=dri=>dri?._alaMin||(dri?._sex==="male"?1.6:1.1)||1.1;
+const wkDri=d=>d?(d.weekDri!=null?d.weekDri:d.dri):0;
 function planDRI(dri){ if (!dri||dri.__plan) return dri; const r={...dri}; Object.keys(r).forEach(k=>{ const v=r[k]; if (v&&typeof v==="object"&&v.planDri!=null) { const {planDri,...rest}=v; r[k]={...rest,dri:planDri,displayDri:v.dri}; } });
+  MICRO_KEYS.forEach(k=>{ const v=r[k]; if (!v||typeof v!=="object"||v.weekDri!=null||k==="sodium"||k==="vitB12"||k==="vitD") return; r[k]={...v,weekDri:v.dri,dri:Math.round(v.dri*DAY_MICRO_FRAC*1000)/1000}; });
   Object.defineProperty(r,"__plan",{value:true,enumerable:false}); return r; }
 const DRI_LABELS={vitA:{he:"ויטמין A",en:"Vitamin A"},vitC:{he:"ויטמין C",en:"Vitamin C"},vitD:{he:"ויטמין D",en:"Vitamin D"},vitE:{he:"ויטמין E",en:"Vitamin E"},vitK:{he:"ויטמין K",en:"Vitamin K"},vitB1:{he:"B1",en:"B1"},vitB2:{he:"B2",en:"B2"},vitB3:{he:"B3",en:"B3"},vitB6:{he:"B6",en:"B6"},vitB9:{he:"פולאט B9",en:"Folate B9"},vitB12:{he:"B12 ⚠",en:"B12 ⚠"},calcium:{he:"סידן",en:"Calcium"},iron:{he:"ברזל",en:"Iron"},zinc:{he:"אבץ",en:"Zinc"},magnesium:{he:"מגנזיום",en:"Magnesium"},potassium:{he:"אשלגן",en:"Potassium"},selenium:{he:"סלניום",en:"Selenium"},iodine:{he:"יוד",en:"Iodine"},vitB5:{he:"B5",en:"B5"},choline:{he:"כולין",en:"Choline"},copper:{he:"נחושת",en:"Copper"},manganese:{he:"מנגן",en:"Manganese"},sodium:{he:"נתרן",en:"Sodium"},phosphorus:{he:"זרחן",en:"Phosphorus"}};
 
@@ -1998,9 +2024,9 @@ function capSweetBakedGoodOncePerDay(plan, tgt){
 function enforceOmegaRatioFinal(plan, tgt){
   if (!tgt) return plan;
   const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
-  const currentRatio = () => { const n=sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))); return n.omega3>0 ? n.omega6/n.omega3 : (n.omega6>0?Infinity:0); };
+  const currentRatio = () => { const n=sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))); return (n.omega3||0)<ALA_PLAN_MIN ? 99 : 0; }; // ביקורת דיאטנית: מפעיל רק כשה-ALA מתחת למינימום (היחס — מידע בלבד)
   const O3_BOOST_CAPS = {flaxseed:24, chiaseeds:28, walnuts:15};
-  const HIGH_O6_ITEMS = new Set(["hazelnuts","brazilNuts","cashews","almonds","sunflowerS","pumpkinS","tahiniFullRaw","tahiniRaw","peanutButter","almondbutter","peanuts","pistachio","sesame"]);
+  const HIGH_O6_ITEMS = new Set(); // לא מקטינים אומגה 6 (ההנחיות העדכניות לא ממליצות על כך)
   let guard=0;
   while (currentRatio() > 5 && guard<16) {
     guard++;
@@ -2715,7 +2741,7 @@ function enforceMealShareCeiling(plan, tgt){
   return plan;
 }
 // תקרות יומיות לפריט (גרם): נבט חיטה — 2 כפות; פירות מיובשים עתירי קלוריות — 3 תאנים / 5 משמשים
-const DAY_ITEM_CAP_G={wheatGerm:14,driedFig:60,driedApricot:40};
+const DAY_ITEM_CAP_G={wheatGerm:14,driedFig:60,driedApricot:40,wakame:1}; // וואקמה: עד 1 גר' ביום (כ-240 מק"ג יוד)
 function enforceSeedsDailyCap(plan){
   const CAPS_G = { flaxseed: 14, chiaseeds: 16, wheatGerm: 14, driedFig: 60, driedApricot: 40 }; // נבט חיטה: 2 כפות; תאנים מיובשות: 3; משמשים מיובשים: 5 // ~2 כפות (פשתן: 7 גר'/כף; צ'יה: 4 גר'/כפית, ~4 כפיות)
   Object.keys(CAPS_G).forEach(fk=>{
@@ -2742,7 +2768,9 @@ function enforceSeedsDailyCap(plan){
 // עזר משותף: כמה קק"ל כבר יש בארוחה ספציפית (לא ביום כולו) — נחוץ כדי לאכוף גם תקרת-נתח-לארוחה (למשל
 // ארוחת בוקר לא אמורה לחרוג מ~38% מהיעד היומי) בנוסף לתקרת-היום-כולו, כי רשתות הביטחון החדשות בדקו עד כה
 // רק את תקרת היום הכוללת ולא ידעו שהארוחה הספציפית שאליה הן מוסיפות כבר "מלאה" ביחס לחלק שמגיע לה
-const GLOBAL_MEAL_SHARE_MAX = {breakfast:0.38, lunch:0.38, dinner:0.28, snack:0.08};
+// גמישות (ביקורת דיאטנית, לבקשת המשתמש): בוטל הכלל "ארוחת הערב לא גדולה מארוחת הבוקר", ותקרת הערב הורחבה מ-28%
+// ל-33% — ארוחת ערב משפחתית גדולה היא חלק מהחיים, ואין לחלוקה הזו יתרון תזונתי מוכח
+const GLOBAL_MEAL_SHARE_MAX = {breakfast:0.38, lunch:0.38, dinner:0.33, snack:0.08};
 // תקרת השומן בשער הסופי: 30% מהקלוריות; מגיל 65 — 35% (לבקשת המשתמש), מופעל יחד עם תקרת-הערב של גיל 65+
 const GLOBAL_FAT_MAX = {v:0.30};
 // גיל 65+ (עודכן לבקשת המשתמש): ארוחות החלבון הן הבוקר והצהריים, ותקרת הערב נשארת 28% (קודם: הערב, עם תקרה של 32%) — לשאת
@@ -2946,7 +2974,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   const __nc=new Map(); const nutC=(fk,g,soaked)=>{ const k=fk+"|"+g+"|"+(soaked?1:0); let v=__nc.get(k); if(v===undefined){ v=ingNut(fk,g,soaked); __nc.set(k,v); } return v; };
   const __sg=new Map(), __ug=new Map();
   const stdG=fk=>{ if(__sg.has(fk)) return __sg.get(fk); const v=getServingUnit(fk,fdOf(fk),"he")?.g||100; __sg.set(fk,v); return v; };
-  const unitG=fk=>{ if(__ug.has(fk)) return __ug.get(fk); const fd=fdOf(fk); const su=getServingUnit(fk,fd,"he"); const v=su&&!su.weightOnly&&su.g?su.g/(su.count||1):null; __ug.set(fk,v); return v; };
+  const unitG=fk=>{ if(fk==="wakame") return WAKAME_STEP_G; if(__ug.has(fk)) return __ug.get(fk); const fd=fdOf(fk); const su=getServingUnit(fk,fd,"he"); const v=su&&!su.weightOnly&&su.g?su.g/(su.count||1):null; __ug.set(fk,v); return v; };
   // "לעולם לא להציע": מזון חסום, או מתכון שמכיל מרכיב חסום — לא מוסיפים בשום שלב
   // כרוב סיני כפריט עצמאי מותר רק בתקציב קלורי נמוך (מתחת ל-1,700 קק"ל) — שם הוא מקור הסידן היעיל ביותר לקלוריה
   // (לבקשת המשתמש); בשאר המקרים הוא מוצע רק בתוך סלט/מתכון
@@ -3061,7 +3089,8 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
 
   // ── השלמת מיקרו-נוטריאנטים עד 100% מהיעד היומי ──
   const KEYS=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD");
-  const UL={selenium:400,iodine:1100,manganese:dri?.manganese?.ul||15};
+  const NA_CAP=dri?._naCap||((dri?._age||0)>=65?2000:2300); // תקרת נתרן יומית (ביקורת דיאטנית)
+  const UL={selenium:400,iodine:1100,manganese:dri?.manganese?.ul||15,sodium:NA_CAP};
   const SOURCES={
     // כולין: קטניות וסויה, זרעים ואגוזים (מותר בחלקי יחידה), פטריות וקינואה. קייל הוצא (0.8 מ"ג לפי מאגר משרד הבריאות)
     // (לפי יעילות כולין לקלוריה: פטריות ותרד, מתכונים עתירי כולין — מחית כרובית וטופו, תורמוס, אדממה, טמפה וברוקולי — אחר כך קטניות, ורק אז זרעים ואגוזים)
@@ -3156,9 +3185,9 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
           const restore=sn=>Object.keys(sn).forEach(m=>{ plan[m]=sn[m]; });
           const fatPct=X=>(X.fat||0)*9/Math.max(1,X.kcal||0);
           // גם כלל השומן (≤30% מהקלוריות): תוספת מותרת רק אם אחוז השומן נשאר ≤30%, או לפחות לא עלה
-          const o63=X=>(X.omega3||0)>0?(X.omega6||0)/X.omega3:99;
-          // גם יחס אומגה 6:3 (≤5:1): תוספת מותרת רק אם היחס נשאר ≤5, או לפחות לא עלה
-          const ulFine=()=>{ const T2=dayT(); return Object.keys(UL).every(u=>(T2[u]||0)<=UL[u]||(T2[u]||0)<=(T[u]||0)+1e-6) && (fatPct(T2)<=GLOBAL_FAT_MAX.v||fatPct(T2)<=fatPct(T)+1e-6) && (o63(T2)<=5||o63(T2)<=o63(T)+1e-6); };
+          // ALA: תוספת מותרת רק אם ה-ALA נשאר מעל המינימום, או לפחות לא ירד
+          const alaM=alaMinOf(dri);
+          const ulFine=()=>{ const T2=dayT(); return Object.keys(UL).every(u=>(T2[u]||0)<=UL[u]||(T2[u]||0)<=(T[u]||0)+1e-6) && (fatPct(T2)<=GLOBAL_FAT_MAX.v||fatPct(T2)<=fatPct(T)+1e-6) && ((T2.omega3||0)>=alaM||(T2.omega3||0)>=(T.omega3||0)-1e-6); };
           const ulOk=()=>true;
           // קודם: הגדלת פריט קיים
           let done=false;
@@ -3221,8 +3250,41 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     if (!add(mk,fk,g)) return false;
     compensate(mk, FDB[fk].per100.kcal*g/100, fk); return true;
   };
+  // גמישות (לבקשת המשתמש): היעד 4 יחידות ביום, ו-3 כשאין ברירה. פרי בכל ארוחה עיקרית הוא העדפה (ארוחות בלי פרי
+  // מקבלות אותו ראשונות), לא חובה
+  const dayFruitUnits=()=>fruitUnitsOf(Object.values(plan).flat().filter(x=>x&&x.fk));
+  // תקרה (לבקשת המשתמש): עד 5 יחידות פרי ביום. קודם מקטינים ארוחה עם 2 יחידות (גם ביניים), ורק אחר כך ארוחה
+  // שיש בה פרי אחד — כך שהפרי נשאר מפוזר. הקלוריות שהתפנו מושלמות אחר כך מדגנים/קטניות/אגוזים (לא מפרי)
+  const FRUIT_DAY_MAX=5;
+  // מעל תקרת הנתרן: מקטינים קודם את המלח המיודד (הוא כ-80% מהנתרן בתפריטים), ברבעי גרם. היוד שחסר מושלם אחר כך
+  // בוואקמה (במגבלת כמות) דרך שלב המיקרו הרגיל
+  const wakameCapPass=()=>{ // עד 1 גר' וואקמה עצמאית ביום
+    for (let guard=0; guard<8; guard++){ const items=[]; Object.keys(plan).forEach(mk=>(plan[mk]||[]).forEach((it,idx)=>{ if(it.fk==="wakame"&&!it._user) items.push({mk,idx,it}); }));
+      const tot=items.reduce((a,x)=>a+x.it.g,0); if (tot<=DAY_ITEM_CAP_G.wakame+0.01||!items.length) break;
+      const b=items.sort((a,c)=>c.it.g-a.it.g)[0]; const ng=Math.max(0,Math.round((b.it.g-Math.min(b.it.g,tot-DAY_ITEM_CAP_G.wakame))/WAKAME_STEP_G)*WAKAME_STEP_G);
+      if (ng<=0) plan[b.mk]=plan[b.mk].filter((_,i)=>i!==b.idx); else plan[b.mk][b.idx]={...b.it,g:ng}; } };
+  const saltCapPass=()=>{ wakameCapPass();
+    for (let guard=0; guard<12; guard++){ const ex=(dayT().sodium||0)-NA_CAP; if (ex<=0) break;
+      let best=null; Object.keys(plan).forEach(mk=>(plan[mk]||[]).forEach((it,idx)=>{ if(it.fk==="saltIodized"&&!it._user&&(!best||it.g>best.it.g)) best={mk,idx,it}; }));
+      if (!best) break;
+      const cut=Math.min(best.it.g, Math.ceil(ex/390*1.02*4)/4); const ng=Math.round((best.it.g-cut)*100)/100;
+      if (ng<=0.05) plan[best.mk]=plan[best.mk].filter((_,i)=>i!==best.idx); else plan[best.mk][best.idx]={...best.it,g:ng};
+    } };
+  const fruitCapPass=()=>{
+    for (let guard=0; guard<12 && dayFruitUnits()>FRUIT_DAY_MAX; guard++){
+      const cands=[];
+      Object.keys(plan).forEach(mk=>(plan[mk]||[]).forEach((it,idx)=>{ const fd=FDB[it.fk]; if(!fd||fd.cat!=="פרי"||it._user||it._keep) return;
+        const mu=fruitUnitsOf(plan[mk]); const u=unitG(it.fk); const n=u?Math.max(1,Math.round(it.g/u)):1;
+        cands.push({mk,idx,it,u,n,pri:(mu>=2?0:2)+(mk==="snack"?1:0)}); }));
+      if (!cands.length) break;
+      cands.sort((a,b)=>a.pri-b.pri||b.n-a.n);
+      const c=cands[0];
+      if (c.u && c.n>=2) plan[c.mk][c.idx]={...c.it,g:Math.round((c.n-1)*c.u*10)/10};
+      else plan[c.mk]=plan[c.mk].filter((_,i)=>i!==c.idx);
+    }
+  };
   const fruitPass=()=>{
-    for (const mk of ["breakfast","lunch","dinner"]) { const its=plan[mk]||[]; if (its.length && fruitUnitsOf(its)<1) addFruitTo(mk); }
+    for (const mk of ["breakfast","lunch","dinner"]) { const its=plan[mk]||[]; if (dayFruitUnits()>=4) break; if (its.length && fruitUnitsOf(its)<1) addFruitTo(mk); }
     let guard=0;
     while (fruitUnitsOf(Object.values(plan).flat().filter(x=>x&&x.fk))<4 && guard++<4){
       const mk=["breakfast","lunch","dinner"].filter(m=>(plan[m]||[]).length&&fruitItemsOf(plan[m])<2).sort((a,b)=>mealKc(a)/(GLOBAL_MEAL_SHARE_MAX[a]||0.38)-mealKc(b)/(GLOBAL_MEAL_SHARE_MAX[b]||0.38))[0];
@@ -3235,7 +3297,13 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   const MN_UL=dri?.manganese?.ul||15;
   const itemFatPct=it=>{ const n=ingNut(it.fk,it.g,it.soaked); return n.kcal>0?(n.fat||0)*9/n.kcal:0; };
   const itemMnPerKcal=it=>{ const n=ingNut(it.fk,it.g,it.soaked); return n.kcal>0?(n.manganese||0)/n.kcal:0; };
-  const leanGrow=it=>itemFatPct(it)<=0.25 && itemMnPerKcal(it)<=(MN_UL/tgt);
+  const leanGrow0=it=>itemFatPct(it)<=0.25 && itemMnPerKcal(it)<=(MN_UL/tgt);
+  // תקרה רכה לסיבים (ביקורת דיאטנית): כ-70 גר' ביום (מגיל 65 — כ-50), ובתקציב קלורי גבוה עד 30 גר' לכל 1,000 קק"ל
+  // (מגיל 65 — 28). מעל התקרה: השלמת קלוריות רק מפריטים דלי-סיבים, ועלות קטנה בבחירת המהלכים — המיקרו תמיד קודם
+  const FIBER_CAP=(dri?._age||0)>=65?Math.max(50,28*tgt/1000):Math.max(70,30*tgt/1000);
+  const fiberOver=()=>Math.max(0,(dayT().fiber||0)-FIBER_CAP);
+  const lowFib=it=>{ const n=ingNut(it.fk,it.g,it.soaked); return n.kcal>0 && (n.fiber||0)/n.kcal<=0.02; };
+  const leanGrow=it=>leanGrow0(it) && (fiberOver()<=0 || lowFib(it));
   const fatMnPass=()=>{
     for (let guard=0; guard<30; guard++){
       const T=dayT(); const fatOver=(T.fat||0)*9/Math.max(1,T.kcal)>GLOBAL_FAT_MAX.v, mnOver=(T.manganese||0)>MN_UL;
@@ -3319,7 +3387,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   // "ירק גלוי" בארוחה (לבקשת המשתמש: ירק בכל ארוחה עיקרית — לא מספיק ירק שמוסתר בתוך תבשיל/חביתה): פריט ירק/עלים
   // גולמי, או סלט ירקות / ארוחת סלט. מתכון אחר עם ≥60 גר' ירקות עדיין נספר ל-7 היחידות היומיות, אבל לא לכלל הזה
   const vegVisibleIn=its=>its.some(it=>{ if(!it||!it.fk) return false; const fd=fdOf(it.fk); if(!fd) return false;
-    if (!fd._isRecipe) return (fd.cat==="ירק"||fd.cat==="עלים")&&!STARCHY_VEG_FKS.has(it.fk); // בטטה/תפוח אדמה/תירס — לא נחשבים
+    if (!fd._isRecipe) return fd.cat==="ירק"&&!STARCHY_VEG_FKS.has(it.fk); // בטטה/תפוח אדמה/תירס — לא נחשבים; עלים לבדם (תרד/קייל) — לא נחשבים ירק (לבקשת המשתמש) — ליד ירק הם הופכים לסלט
     const c=recipeCatOfFk(it.fk); return (c==="סלטי ירקות"||c==="ארוחות סלט")&&!isLegumeDominantGlobal(fd)&&!isGrainDominantGlobal(fd); });
   // ירק בכל ארוחה עיקרית ולפחות 7 יחידות ביום — מוסיפים יחידת ירק גולמי (שלא הופיע היום) לארוחה החסרה / הדלה בירקות
   const vegPass=()=>{ const ALT=["cucumber","tomato","carrot","redPepper","yellowPepper","zucchini","cabbageRed","radish","beet","kohlrabi"];
@@ -3328,6 +3396,54 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     for (let g=0; g<6; g++) { const dv=["breakfast","lunch","dinner"].reduce((a,m)=>a+vegUnitsIn(plan[m]||[]),0); if (dv>=7) break;
       const mk=["lunch","dinner","breakfast"].filter(m=>(plan[m]||[]).length&&rawVegUnits(plan[m])<2).sort((a,b)=>vegUnitsIn(plan[a])-vegUnitsIn(plan[b]))[0];
       if (!mk||!addVeg(mk)) break; } };
+  // ── מבנה ארוחה (לבקשת המשתמש) ──
+  // (א) יוגורט — לא יותר מגביע אחד בארוחה. (ב) מנת תבשיל/מאפה מעל 250 קק"ל — מנה אחת בארוחה; במקום מנה שנייה
+  // מצמידים מנה אחרת לפי כלל ההצמדה (תבשיל דגנים ← תבשיל קטניות, ולהפך). (ג) סלט אחד בארוחה — במקום שני סלטים
+  // שונים (כולל ירקות+עלים גולמיים שמוצגים כסלט) — שתי מנות מאותו סלט
+  const YOG_FKS=new Set([...SOY_YOG,"leben","yogurtPlain3","yogurtGreek"]);
+  const sUnitG=it=>{ const fd=fdOf(it.fk); if(!fd) return null; return fd._isRecipe?(fd._servingG||150):(unitG(it.fk)||null); };
+  const servK=fk=>{ const fd=fdOf(fk); return fd&&fd._isRecipe?(fd.per100.kcal||0)*(fd._servingG||150)/100:0; };
+  const isHeavyDish=fk=>{ const fd=fdOf(fk); if(!fd||!fd._isRecipe) return false; const c=bcat(fk); return !SALAD_BOOK_CATS.has(c)&&c!=="ממרחים"&&servK(fk)>250; };
+  const rawSaladItems=its=>its.filter(it=>{ if(!it||!it.fk||it._user) return false; const f=FDB[it.fk]; return !!f&&(f.cat==="ירק"||f.cat==="עלים")&&it.fk!=="garlic"&&!STARCHY_VEG_FKS.has(it.fk); });
+  const rawFormsSalad=its=>{ const r=rawSaladItems(its); return r.length>=2&&r.some(it=>FDB[it.fk].cat==="עלים"||it.fk==="mushroom"); };
+  const saladDishCount=its=>its.filter(it=>it&&it.fk&&isVegSalad(it.fk)).length+(rawFormsSalad(its)?1:0);
+  const structureScore=()=>{ let v=0; for (const m of ["breakfast","lunch","dinner"]) { const its=plan[m]||[];
+      for (const it of its) { if(!it||!it.fk||it._user) continue; const u=sUnitG(it); if(!u) continue; const n=it.g/u;
+        if (YOG_FKS.has(it.fk)&&n>1.05) v++; if (isHeavyDish(it.fk)&&n>1.5) v++; }
+      if (saladDishCount(its)>1) v++; } return v; };
+  const saladScore=fk=>{ const fd=fdOf(fk); if(!fd) return 0; const p=fd.per100; const k=Math.max(1,p.kcal||1); let a=0; KEYS.forEach(x=>{ if(dri[x]) a+=Math.min(1,(p[x]||0)/dri[x].dri); }); return a/k+(hasLeaves(fk)?0.01:0); };
+  const structurePass=()=>{
+    for (const mk of ["breakfast","lunch","dinner"]) { if(!(plan[mk]||[]).length) continue;
+      // (א) יוגורט
+      plan[mk]=plan[mk].map(it=>{ if(!it||it._user||!YOG_FKS.has(it.fk)) return it; const u=sUnitG(it); return (u&&it.g>u*1.05)?{...it,g:Math.round(u*10)/10}:it; });
+      // (ב) מנה כבדה כפולה
+      for (let idx=0; idx<plan[mk].length; idx++) { const it=plan[mk][idx]; if(!it||it._user||!isHeavyDish(it.fk)) continue;
+        const u=sUnitG(it); const n=it.g/u; if (n<=1.5) continue;
+        const freedK=servK(it.fk)*(Math.round(n)-1);
+        plan[mk][idx]={...it,g:Math.round(u*10)/10};
+        const c0=bcat(it.fk); const want=c0==="תבשילי דגנים"?["תבשילי קטניות","סלטי קטניות"]:c0==="תבשילי קטניות"?["תבשילי דגנים"]:["תבשילי קטניות","תבשילי דגנים"];
+        const u0=used(); const fams=new Set(plan[mk].map(x=>legumeFamilyOfItem(x)).filter(Boolean));
+        const cands=Object.keys(TEMP_FDB).filter(id=>TEMP_FDB[id]?._isRecipe&&id!==it.fk&&!u0.has(id)&&!blocked(id)&&want.includes(bcat(id))&&servK(id)<=freedK*1.25+40)
+          .filter(id=>{ const f=legumeFamilyOfItem({fk:id,g:TEMP_FDB[id]._servingG||150}); return !f||!fams.has(f); })
+          .sort((a,b)=>Math.abs(servK(a)-freedK)-Math.abs(servK(b)-freedK)).slice(0,6);
+        const r0=rulesScoreLite(); let best=null;
+        for (const id of cands) { const sv=plan[mk]; plan[mk]=[...sv,{fk:id,g:Math.round((TEMP_FDB[id]._servingG||150)*10)/10}]; const r=rulesScoreLite(); plan[mk]=sv;
+          if (r<=r0 && (!best||Math.abs(servK(id)-freedK)<Math.abs(servK(best)-freedK))) best=id; }
+        if (best) plan[mk]=[...plan[mk],{fk:best,g:Math.round((TEMP_FDB[best]._servingG||150)*10)/10}];
+      }
+      // (ג) סלט אחד בארוחה — שתי מנות מאותו סלט
+      for (let g=0; g<3 && saladDishCount(plan[mk])>1; g++) { const its=plan[mk];
+        const recs=its.map((it,idx)=>({it,idx})).filter(x=>x.it&&x.it.fk&&!x.it._user&&isVegSalad(x.it.fk));
+        if (!recs.length) break;
+        const keep=recs.slice().sort((a,b)=>saladScore(b.it.fk)-saladScore(a.it.fk))[0];
+        const rawSet=rawFormsSalad(its)?new Set(rawSaladItems(its)):new Set();
+        const dropIdx=new Set(recs.filter(x=>x!==keep).map(x=>x.idx));
+        const u=sUnitG(keep.it)||150;
+        plan[mk]=its.map((it,idx)=>idx===keep.idx?{...it,g:Math.round(Math.max(it.g,2*u)*10)/10}:it).filter((it,idx)=>!dropIdx.has(idx)&&!rawSet.has(it));
+      }
+    }
+  };
+  const rulesScoreLite=()=>{ let v=0; for (const m of ["breakfast","lunch","dinner"]) { const its=plan[m]||[]; if(!its.length) continue; if (grainUnpaired(its)) v++; if (hasLeg(its)&&!hasGrain(its)) v++; { const fams=its.map(it=>legumeFamilyOfItem(it)).filter(Boolean); if (new Set(fams).size<fams.length) v++; } } return v; };
   const tofuPass=()=>{
     for (const mk of Object.keys(plan)) {
       (plan[mk]||[]).forEach((it,idx)=>{
@@ -3347,9 +3463,10 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   // זרעים/אגוזים; אם אין אפשרות — מקטינים ביחידה את הפריט העשיר ביותר באומגה 6 (גרעינים/טחינה/חמאות-אגוזים)
   const O3_SRC=[["flaxseed",14],["chiaseeds",16],["walnuts",28]];
   const O6_HEAVY=new Set(["sunflowerS","pumpkinS","sesame","tahiniFullRaw","tahiniRaw","peanutButter","peanuts","almondbutter","almonds","hazelnuts","cashews","pistachio"]);
-  const ratio63=()=>{ const T=dayT(); return (T.omega3||0)>0?(T.omega6||0)/T.omega3:99; };
+  const ALA_MIN=alaMinOf(dri);
+  const alaOk=T=>(T.omega3||0)>=ALA_MIN;
   const omegaPass=()=>{
-    for (let guard=0; guard<12 && ratio63()>4.5; guard++){
+    for (let guard=0; guard<12 && (dayT().omega3||0)<ALA_MIN*1.1; guard++){
       let done=false;
       for (const [fk,cap] of O3_SRC){
         if (!FDB[fk]||blocked(fk)) continue;
@@ -3366,15 +3483,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
         if (!mk) continue;
         add(mk,fk,step); compensate(mk,k,fk); done=true; break;
       }
-      if (!done){
-        let best=null;
-        MAINS.forEach(mk=>(plan[mk]||[]).forEach((it,idx)=>{ if(!O6_HEAVY.has(it.fk)||it._user) return; const o6=ingNut(it.fk,it.g).omega6||0; if(!best||o6>best.o6) best={mk,idx,it,o6}; }));
-        if (!best) break;
-        const step=unitG(best.it.fk)||10;
-        if (best.it.g>step+0.5) plan[best.mk][best.idx]={...best.it,g:Math.round((best.it.g-step)*10)/10};
-        else if (!["tahiniFullRaw","tahiniRaw","peanutButter","almondbutter"].includes(best.it.fk)) plan[best.mk]=plan[best.mk].filter((_,i)=>i!==best.idx);
-        else break;
-      }
+      if (!done) break;
     }
   };
   // סבבים עד התייצבות: מיקרו → הצמדות → תקרות-ארוחה ויום (הקטנה בלבד) → שער 98-100%. כל סבב יכול לשנות את
@@ -3384,13 +3493,15 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     MAINS.forEach(mk=>{ const over=mealK(mk)-tgt*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38); if (over>0) compensate(mk,over,null,true); });
     const dk=dayT().kcal; if (dk>tgt) compensate("lunch",dk-tgt*0.99,null,false);
   };
-  const stable=()=>{ const T=dayT(); return T.kcal>=tgt*0.98&&T.kcal<=tgt&&(T.fat||0)*9<=T.kcal*GLOBAL_FAT_MAX.v&&(T.manganese||0)<=(dri?.manganese?.ul||15)&&((T.omega3||0)>0&&(T.omega6||0)/T.omega3<=5)&&KEYS.every(k=>!dri[k]||(T[k]||0)>=dri[k].dri*0.98); };
+  const stable=()=>{ const T=dayT(); return T.kcal>=tgt*0.98&&T.kcal<=tgt&&(T.fat||0)*9<=T.kcal*GLOBAL_FAT_MAX.v&&(T.manganese||0)<=(dri?.manganese?.ul||15)&&alaOk(T)&&KEYS.every(k=>!dri[k]||(T[k]||0)>=dri[k].dri*0.98); };
   for (let round=0; round<6; round++){
     saladPass();
     fruitPass();
     microPass();
+    fruitCapPass();
+    saltCapPass();
     pairingPass(); // תוספות-מיקרו יכולות ליצור צורך בהצמדה חדשה (למשל קטנית בלי דגן)
-    tofuPass(); recipeOnlyVegPass(); legumeDupPass(); panBreadPass(); vegPass(); vegSplitPass();
+    tofuPass(); recipeOnlyVegPass(); legumeDupPass(); panBreadPass(); structurePass(); vegPass(); vegSplitPass();
     nutDedupPass();
     omegaPass();
     closure();
@@ -3398,7 +3509,8 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     calorieBandOnly(plan, tgt, leanGrow);
     // אם עדיין מתחת ל-98%: קודם יחידות פרי (רזות, דלות-מנגן, עד 2 פירות לארוחה, בלי לחרוג מתקרת-הארוחה),
     // ורק אחר כך הגדלת מנות כללית
-    for (let g2=0; g2<4 && dayT().kcal<tgt*0.98; g2++){
+    fruitCapPass();
+    for (let g2=0; g2<4 && dayT().kcal<tgt*0.98 && dayFruitUnits()<FRUIT_DAY_MAX; g2++){
       const u=used();
       const mk=["breakfast","lunch","dinner"].filter(m=>(plan[m]||[]).length&&fruitItemsOf(plan[m])<2).sort((a,b)=>mealKc(a)/(GLOBAL_MEAL_SHARE_MAX[a]||0.38)-mealKc(b)/(GLOBAL_MEAL_SHARE_MAX[b]||0.38))[0];
       const fk=mk&&shuffleArr(FRUIT_POOL.filter(f=>FDB[f]&&unitG(f)&&!u.has(f)&&!blocked(f)))[0];
@@ -3413,7 +3525,8 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
       const mk=["lunch","breakfast","dinner"].filter(m=>(plan[m]||[]).length&&hasLeg(plan[m])).sort((a,b)=>(mealKc(a)/(GLOBAL_MEAL_SHARE_MAX[a]||0.38))-(mealKc(b)/(GLOBAL_MEAL_SHARE_MAX[b]||0.38)))[0];
       if (!mk) break;
       const room=Math.min(tgt*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38)-mealKc(mk), tgt*0.99-dayT().kcal);
-      const fk=["quinoaCooked","bulgurCooked","buckwheatCooked","brownRiceCooked","pearlBarleyCooked","couscousCooked","wholeWPasta"].find(f=>FDB[f]&&!u.has(f)&&!blocked(f));
+      const GR=fiberOver()>0?["brownRiceCooked","couscousCooked","quinoaCooked","buckwheatCooked","wholeWPasta","pearlBarleyCooked","bulgurCooked"]:["quinoaCooked","bulgurCooked","buckwheatCooked","brownRiceCooked","pearlBarleyCooked","couscousCooked","wholeWPasta"];
+      const fk=GR.find(f=>FDB[f]&&!u.has(f)&&!blocked(f));
       if (!fk || room<40) break;
       const one=unitG(fk)||160, kpg=FDB[fk].per100.kcal/100;
       add(mk,fk,Math.max(one*0.25,Math.min(one,room/kpg)));
@@ -3427,6 +3540,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   // ואז כיוונון קלורי ל-98-100% — שניהם בצעדים של יחידה שלמה בלבד; הכיוונון נשען על פריטים שהיחידה שלהם קטנה
   // (כף/כפית זרעים, פרוסת לחם, יחידת פרי/ירק) ולכן מאפשר לפגוע בטווח הצר גם בלי חלקי-מנות
   const unitInfo=it=>{
+    if (it.fk==="wakame") return {u:WAKAME_STEP_G, whole:false, recipe:false, fd:fdOf(it.fk), cat:"ירק"}; // וואקמה בחצאי גרם (לא כפית שלמה)
     const fd=fdOf(it.fk); if(!fd) return null;
     if (fd._isRecipe) return {u:fd._servingG||150, whole:false, recipe:true, fd};
     if (fd.cat==="תבלינים") return null;
@@ -3442,15 +3556,16 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
       if (grainUnpaired(its)) v++; if (hasLeg(its)&&!hasGrain(its)) v++;
       if (its.some(it=>isSpread(it.fk))&&!its.some(it=>isBreadLike(it.fk))) v++;
       if (its.some(it=>isBreadLike(it.fk))&&!breadPartnered(its)) v++;
-      if (fruitUnitsOf(its)<1) v++;
       if (its.some(it=>panDish(it.fk))&&!its.some(it=>isBreadLike(it.fk))) v++; // מנת מחבת — חייבת לחם/מאפה דמוי-לחם לצידה
       { const fams=its.map(it=>legumeFamilyOfItem(it)).filter(Boolean); if (new Set(fams).size<fams.length) v++; } // אותה משפחת קטנית פעמיים בארוחה
+      if (fruitUnitsOf(its)<1) v+=0.25; // פרי בכל ארוחה עיקרית — העדפה רכה: מוותרים עליה רק כשזה מתקן כלל אחר
       if (!vegVisibleIn(its)) v++; } // ירק (גלוי) בכל ארוחה עיקרית
     { const dv=["breakfast","lunch","dinner"].reduce((a,m)=>a+vegUnitsIn(plan[m]||[]),0); if (dv<7) v+=7-dv; } // לפחות 7 יחידות ירק ביום
-    const fu=fruitUnitsOf(Object.values(plan).flat().filter(x=>x&&x.fk)); if (fu<4) v+=4-fu;
+    const fu=fruitUnitsOf(Object.values(plan).flat().filter(x=>x&&x.fk)); if (fu<3) v+=3-fu+0.5; else if (fu<4) v+=0.5; else if (fu>FRUIT_DAY_MAX) v+=fu-FRUIT_DAY_MAX; // 4 פירות ביום; 3 רק כשאין ברירה; עד 5
     const sal=["breakfast","lunch","dinner"].flatMap(m=>plan[m]||[]).filter(it=>isVegSalad(it.fk));
     if (!sal.some(it=>hasLeaves(it.fk))) v++;
     { const tot={}; Object.values(plan).flat().forEach(it=>{ if(it&&DAY_ITEM_CAP_G[it.fk]) tot[it.fk]=(tot[it.fk]||0)+it.g; }); Object.keys(tot).forEach(k=>{ if(tot[k]>DAY_ITEM_CAP_G[k]+0.5) v++; }); } // תקרות יומיות (נבט חיטה, פירות מיובשים)
+    v+=structureScore(); // מבנה ארוחה: יוגורט אחד, מנה כבדה אחת, סלט אחד
     return v; };
   // עיגול: כמות ≥½ יחידה → מספר שלם הקרוב; פחות מ-½ יחידה → מוסר אם זה לא שובר כלל, אחרת יחידה אחת
   for (const mk of Object.keys(plan)) {
@@ -3462,14 +3577,12 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
       const g=Math.round(k*inf.u*10)/10; if (Math.abs(g-it.g)>0.05) plan[mk][idx]={...it,g};
     }
   }
-  const capUnits=(it,inf)=>{ if(inf.recipe) return (bcat(it.fk)==="ממרחים"||SALAD_BOOK_CATS.has(bcat(it.fk)))?1:2; if(BREAD.has(it.fk)) return it.fk==="wholePita"?1:2; if(["דגן","קטנית","פרי","ירק"].includes(inf.cat)||it.fk==="kale") return 1; return 3; }; // ירק: יחידה אחת לכל ירק (לבקשת המשתמש)
-  const within=T=>(T.fat||0)*9<=T.kcal*GLOBAL_FAT_MAX.v+1e-6 && ((T.omega3||0)>0&&(T.omega6||0)/T.omega3<=5) && (T.manganese||0)<=(dri?.manganese?.ul||15);
+  const capUnits=(it,inf)=>{ if(YOG_FKS.has(it.fk)) return 1; if(inf.recipe) return (bcat(it.fk)==="ממרחים"||(SALAD_BOOK_CATS.has(bcat(it.fk))&&!isVegSalad(it.fk))||isHeavyDish(it.fk))?1:2; if(BREAD.has(it.fk)) return it.fk==="wholePita"?1:2; if(["דגן","קטנית","פרי","ירק"].includes(inf.cat)||it.fk==="kale") return 1; return 3; }; // ירק: יחידה אחת לכל ירק (לבקשת המשתמש)
+  const within=T=>(T.fat||0)*9<=T.kcal*GLOBAL_FAT_MAX.v+1e-6 && alaOk(T) && (T.manganese||0)<=(dri?.manganese?.ul||15) && (T.sodium||0)<=NA_CAP+1;
   const violation=()=>{ const T=dayT(); let v=0;
     ["breakfast","lunch","dinner"].forEach(m=>{ const over=mealKc(m)-tgt*(GLOBAL_MEAL_SHARE_MAX[m]||0.38)*1.005; if(over>0) v+=over; });
-    // ארוחת הערב לא גדולה מארוחת הבוקר (לבקשת המשתמש — בוקר עד 38%, ערב עד 28%)
-    if ((plan.breakfast||[]).length && (plan.dinner||[]).length) { const d=mealKc("dinner")-mealKc("breakfast"); if (d>0) v+=d*0.1; }
     const fo=(T.fat||0)*9-T.kcal*GLOBAL_FAT_MAX.v; if(fo>0) v+=fo*2;
-    const om=(T.omega3||0)>0?(T.omega6||0)-5*T.omega3:0; if(om>0) v+=om*40;
+    const om=ALA_MIN-(T.omega3||0); if(om>0) v+=om*200;
     const mn=(T.manganese||0)-(dri?.manganese?.ul||15); if(mn>0) v+=mn*40;
     const ov=T.kcal-tgt; if(ov>0) v+=ov;
     return v; };
@@ -3574,9 +3687,10 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   const cost=()=>{ const T=dayT(); const lo=tgt*0.982, hi=tgt*0.999; // מרווח ביטחון קטן מגבולות 98-100% const kc=T.kcal<lo?lo-T.kcal:(T.kcal>hi?T.kcal-hi:0);
     const micro=KEYS.reduce((a,k)=>a+(dri[k]?Math.max(0,1-(T[k]||0)/dri[k].dri):0),0);
     const overK=Math.max(0,T.kcal-hi), underK=Math.max(0,lo-T.kcal);
-    const om=(T.omega3||0)>0?Math.max(0,(T.omega6||0)/T.omega3-5):0;
+    const om=Math.max(0,ALA_MIN-(T.omega3||0))/ALA_MIN*5;
     // תקרת 100% קלוריות ויחס אומגה ≤5 — כמעט-קשיחים (משקל גבוה מאוד), כך שהשלמת-מיקרו לעולם לא "קונה" חריגה בהם
-    return violation()*3+overK*40+underK*4+om*400+micro*150+leuPenalty()*450+Math.abs(T.kcal-tgt*0.99)*0.01; };
+    const fo=Math.max(0,(T.fiber||0)-FIBER_CAP);
+    return violation()*3+overK*40+underK*4+om*400+micro*150+leuPenalty()*450+fo*0.6+Math.abs(T.kcal-tgt*0.99)*0.01; };
   const runDiscrete=(protect,post)=>{ for (let guard=0; guard<60; guard++){
     const T0=dayT(); const c0=cost(), r0=rulesScore();
     let best=null;
@@ -3605,6 +3719,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     if (!best) break;
     if (best.m.combo) best.m.combo.forEach(applyMove); else applyMove(best.m);
   } };
+  structurePass();
   runDiscrete();
   // ── "ארוחת חלבון" לגיל 65+ בתקציב קלורי נמוך (לבקשת המשתמש — אפשרות ג) ──
   // אם גם אחרי כל המהלכים פחות מ-2 ארוחות עוברות את סף הלאוצין (2.5 גר'), והיעד היומי מתחת ל-1,800 קק"ל: הארוחה
@@ -3668,7 +3783,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
             const TT=dayT(); const bad=rulesScore()>r0 || (TT.fat||0)*9>TT.kcal*GLOBAL_FAT_MAX.v; plan[pm]=sv; if (bad) return; }
           const isGr=(catsInFoodGlobal(it.fk)||[]).some(c=>c==="דגן"||c==="מאפה"); const grains=its.filter(x=>(catsInFoodGlobal(x.fk)||[]).some(c=>c==="דגן"||c==="מאפה")).length;
           if (isGr && grains<=1 && hasLeg(its)) return;
-          if (FDB[it.fk]?.cat==="פרי" && fruitUnitsOf(its)<=1) return;
+          if (FDB[it.fk]?.cat==="פרי" && dayFruitUnits()<=4) return;
           const dens=(n.leucine||0)/n.kcal; if(!bestR||dens<bestR.dens) bestR={idx,it,inf,dens}; });
         if (!bestR) break;
         const units=bestR.inf?Math.round(bestR.it.g/bestR.inf.u):1; const kBefore=mealKc(pm); const savedMeal=plan[pm].slice();
@@ -3694,6 +3809,29 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     runDiscrete(m=>(m.removeSet&&m.removeSet.some(i=>isPackIdx(m.mk,i)))||(m.combo&&false)||(m.mk&&isPackIdx(m.mk,m.idx))||(m.down&&isPackIdx(m.down.mk,m.down.idx))||(m.removeIdx!=null&&isPackIdx(m.mk,m.removeIdx)),
       ()=>protMeals.every(m=>leuOf(m)>=LEU_THR*0.98) && leuMealsOk()>=leuAfterPack); // מהלך שמוריד ארוחת-חלבון מתחת לסף — נדחה
   }
+  // ── סיבים מעל התקרה הרכה: החלפה בתוך אותה קבוצה לפריט דל-סיבים בקלוריות דומות (בורגול ← אורז מלא/קינואה,
+  // אגס ← ענבים/מנגו, אפונה ← תורמוס). רק אם כללי ההרכב, הלאוצין, השומן/אומגה/מנגן, טווח הקלוריות והמיקרו נשמרים
+  { const LOWFIB={דגן:["couscousCooked","brownRiceCooked","quinoaCooked","wholeWPasta"],פרי:["grapes","watermelon","mango","melon","banana","cherries","clementine"],קטנית:["lupinBeansCooked"]};
+    const fibDen=fk=>{ const fd=fdOf(fk); return fd&&fd.per100.kcal>0?(fd.per100.fiber||0)/fd.per100.kcal:0; };
+    const mDefF=T=>KEYS.reduce((a,k)=>a+(dri[k]?Math.max(0,1-(T[k]||0)/dri[k].dri):0),0);
+    for (let g=0; g<10 && fiberOver()>0; g++){
+      const T0=dayT(), r0=rulesScore(), l0=Math.min(2,leuMealsOk()), md0=mDefF(T0); let best=null;
+      for (const mk of ["breakfast","lunch","dinner","snack"]) (plan[mk]||[]).forEach((it,idx)=>{
+        const fd=fdOf(it.fk); if(!fd||it._user||it._keep||BREAD.has(it.fk)) return;
+        let alts=null;
+        if (fd._isRecipe) { const c=bcat(it.fk); if (c==="תבשילי דגנים"||c==="תבשילי קטניות"||c==="מרקים"||c==="סלטי קטניות") alts=Object.keys(TEMP_FDB).filter(id=>TEMP_FDB[id]?._isRecipe&&bcat(id)===c&&!(excl&&(TEMP_FDB[id]._ings||[]).some(i=>excl.has(i.fk)))).sort((x,y)=>fibDen(x)-fibDen(y)).slice(0,8); }
+        else alts=LOWFIB[fd.cat];
+        if(!alts) return;
+        const d0=fibDen(it.fk); const k0=nutC(it.fk,it.g,it.soaked).kcal||0; if(!(k0>20)) return; const u0=used();
+        for (const a of alts) { if (a===it.fk||u0.has(a)||blocked(a)||!fdOf(a)||fibDen(a)>d0*0.7) continue;
+          const ua=fdOf(a)?._isRecipe?(fdOf(a)._servingG||150):(unitG(a)||stdG(a)); if(!ua) continue; const n=Math.max(1,Math.min(2,Math.round(k0/((fdOf(a).per100.kcal||1)*ua/100)))); const ga=Math.round(n*ua*10)/10;
+          const sn=snapshot(); plan[mk]=plan[mk].map((x,i)=>i===idx?{fk:a,g:ga}:x); const T1=dayT();
+          const ok=rulesScore()<=r0 && leuMealsOk()>=l0 && (within(T1)||!within(T0)) && T1.kcal<=tgt+0.5 && (T1.kcal>=tgt*0.98||T1.kcal>=T0.kcal-0.5) && mDefF(T1)<=md0+0.005 && mealKc(mk)<=tgt*(GLOBAL_MEAL_SHARE_MAX[mk]||0.38)*1.01+1;
+          const gain=(T0.fiber||0)-(T1.fiber||0); restoreSnap(sn);
+          if (ok && gain>1 && (!best||gain>best.gain)) best={mk,idx,a,ga,gain}; } });
+      if (!best) break;
+      plan[best.mk]=plan[best.mk].map((x,i)=>i===best.idx?{fk:best.a,g:best.ga}:x);
+    } }
   // תקרת 100% קלוריות — כלל-יסוד: אם עדיין יש חריגה (בדרך כלל אחרי הוספת ארוחת-חלבון), מורידים/מסירים יחידות שלמות
   // שלא שוברות כללי-הרכב, תחילה בלי לפגוע בכלל הלאוצין ורק אם אין ברירה — גם על חשבונו (הקלוריות קודמות)
   { const leuN0=leuMealsOk();
@@ -3729,9 +3867,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   for (let g=0; g<8; g++) {
     const capOf=m=>tgt*(GLOBAL_MEAL_SHARE_MAX[m]||0.38);
     let overM=["breakfast","lunch","dinner"].map(m=>({m,o:mealKc(m)-capOf(m)})).filter(x=>x.o>3).sort((a,b)=>b.o-a.o)[0];
-    // ערב גדול מבוקר — מעבירים פריט מהערב לבוקר (כשיש בבוקר מקום), עד שהבוקר לפחות כמו הערב
     let onlyDst=null;
-    if (!overM && (plan.breakfast||[]).length && mealKc("dinner")>mealKc("breakfast")+3) { overM={m:"dinner",o:(mealKc("dinner")-mealKc("breakfast"))/2}; onlyDst="breakfast"; }
     if (!overM) break;
     const src=overM.m, r0=rulesScore(), l0=Math.min(2,leuMealsOk()), T0=dayT(); let best=null;
     (plan[src]||[]).forEach((it,idx)=>{ const fd=fdOf(it.fk); if(!fd||it.fk==="saltIodized"||it._keep) return; const k=ingNut(it.fk,it.g,it.soaked).kcal; if(!(k>10)) return;
@@ -3758,7 +3894,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   { const capOf=m=>tgt*(GLOBAL_MEAL_SHARE_MAX[m]||0.38);
     const M3=["breakfast","lunch","dinner"];
     const excessOf=()=>{ let e=M3.reduce((a,m)=>a+((plan[m]||[]).length?Math.max(0,mealKc(m)-capOf(m))*2:0),0);
-      if ((plan.breakfast||[]).length && (plan.dinner||[]).length) e+=Math.max(0,mealKc("dinner")-mealKc("breakfast")); return e; };
+      return e; };
     const subsets=arr=>{ const r=arr.map(x=>[x]); for (let i=0;i<arr.length;i++) for (let j=i+1;j<arr.length;j++) r.push([arr[i],arr[j]]); return r; };
     const kOf=set=>set.reduce((a,x)=>a+ingNut(x.it.fk,x.it.g,x.it.soaked).kcal,0);
     const rawVegFd=fk=>{ const fd=fdOf(fk); return !!fd&&!fd._isRecipe&&(fd.cat==="ירק"||fd.cat==="עלים"); };
@@ -3773,7 +3909,6 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
       // זוגות מקור→יעד: ארוחה חורגת → כל ארוחה אחרת; ערב גדול מהבוקר → בוקר
       const pairs=[];
       for (const s of M3) if ((plan[s]||[]).length && mealKc(s)>capOf(s)+3) for (const d of M3) if (d!==s&&(plan[d]||[]).length) pairs.push([s,d]);
-      if ((plan.breakfast||[]).length && mealKc("dinner")>mealKc("breakfast")+3 && !pairs.some(([s,d])=>s==="dinner"&&d==="breakfast")) pairs.push(["dinner","breakfast"]);
       for (const [src,dst] of pairs) {
         const mov=(plan[src]||[]).map((it,idx)=>({it,idx})).filter(x=>!x.it._keep&&!x.it._user&&x.it.fk!=="saltIodized");
         const fitsDst=its=>{ const t2=plan[dst]||[]; for (const it of its) { if (t2.some(x=>x.fk===it.fk)) return false; if (dst==="breakfast"&&rawVegFd(it.fk)) return false; } return true; };
@@ -3925,6 +4060,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     { let bestNS=null; ["breakfast","lunch","dinner"].forEach(mk=>(plan[mk]||[]).forEach((it,idx)=>{ if(it._user||!fineNS(it)||it.g<=2.05) return; const k=ingNut(it.fk,it.g).kcal; if(!bestNS||k>bestNS.k) bestNS={mk,idx,it,k}; }));
       if (!bestNS) break;
       if (bestNS && bestNS.k>0) { const kpg=bestNS.k/bestNS.it.g; const ng=Math.max(2,bestNS.it.g-over/kpg); plan[bestNS.mk][bestNS.idx]={...bestNS.it,g:Math.round(ng*10)/10}; } } }
+  saltCapPass(); // תקרת נתרן — בדיקה אחרונה (מלח הוא 0 קק"ל, כך שטווח הקלוריות לא משתנה)
   return plan;
 }
 // הבטחה שבועית (לבקשת המשתמש: "מקבל ימים מתחת ל-98% כאשר השבועי עומד בזה"): אחרי בניית כל ימי השבוע, מחשבים
@@ -4107,22 +4243,89 @@ function weekGenProgressInfo(p, lang, mixed){
   const n=p.n||0; // בדיקה שבועית: כל תיקון-יום נוסף מקדם מעט את הפס (עד 99%)
   return {pct:Math.min(99,(mixed?88:90)+n), text:he?(n?`בדיקה שבועית — השלמת ויטמינים ומינרלים (תיקון ${n})`:"בדיקה שבועית של ויטמינים ומינרלים..."):(n?`Weekly check — topping up nutrients (fix ${n})`:"Weekly vitamin & mineral check...")};
 }
-function* enforceWeeklyMicrosGen(daysArr, target, dri, excl){
+// ── גיוון שבועי (ביקורת דיאטנית): פריט עיקרי לא יופיע יותר מ-4 פעמים בשבוע (מזונות השלמה — 5; מלח, תבלינים, שמנים
+// ווואקמה — ללא הגבלה). מופע עודף מוחלף בפריט מאותה קבוצה (או מתכון מאותה קטגוריה בספר) בקלוריות דומות, והיום
+// מאוזן מחדש בשער היומי — כשהפריט המוחלף חסום לאותו יום. השינוי נשמר רק אם החוסר השבועי בוויטמינים ובמינרלים
+// לא מחמיר, והעודף הכולל בחזרות קטן. התזונה קודמת לגיוון
+const VARIETY_SUPPORT=new Set(["wheatGerm","flaxseed","chiaseeds","soymilkFortified","soymilkOrgPlain","oatMilk","soyYogurtPlain","soyYogurtOrgPlain","walnuts","almonds","pumpkinS","sunflowerS","tahiniFullRaw","lentilSprouts"]);
+const varietyCapOf=fk=>{ const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return Infinity; if(fk==="saltIodized"||fk==="wakame") return Infinity; if(!fd._isRecipe&&(fd.cat==="תבלינים"||fd.cat==="שומן")) return Infinity; return VARIETY_SUPPORT.has(fk)?5:4; };
+// מניעה כבר בבנייה: פריט שהגיע לתקרה בימים שכבר נבנו לא יוצע בימים הבאים. לא חל על פריטים שהם רכיב נפוץ במתכונים
+// (טחינה, פשתן, משקה סויה...), כי החרגה שלהם הייתה מוציאה גם את כל המתכונים שמכילים אותם — אלה מטופלים במעבר המאוחר
+let __commonIng=null;
+function commonIngredientFks(){ if (__commonIng) return __commonIng; const c={}; (DEF_RECIPES||[]).forEach(r=>(r.ings||[]).forEach(i=>{ c[i.fk]=(c[i.fk]||0)+1; })); __commonIng=new Set(Object.keys(c).filter(k=>c[k]>=5)); return __commonIng; }
+function varietyExclFor(excl, plans){
+  const c={}; (plans||[]).forEach(d=>d&&Object.values(d).forEach(its=>(its||[]).forEach(it=>{ if(it&&it.fk) c[it.fk]=(c[it.fk]||0)+1; })));
+  const s=new Set(excl||[]); const common=commonIngredientFks();
+  // מזונות השלמה עתירי-רכיבים (זרעים, אגוזים, נבט חיטה, משקה סויה) לא נחסמים בבנייה — הם כלי ההשלמה של ויטמין E,
+  // סידן וכולין בתקציב קלורי נמוך; החזרתיות שלהם מטופלת במעבר המאוחר, שמקבל החלפה רק אם התזונה לא נפגעת
+  Object.keys(c).forEach(fk=>{ if (c[fk]>=varietyCapOf(fk) && !common.has(fk) && !VARIETY_SUPPORT.has(fk)) s.add(fk); });
+  return s;
+}
+function* enforceWeeklyVarietyGen(daysArr, target, dri, excl){
+  dri=planDRI(dri); if(!daysArr||!daysArr.length) return;
+  const KEYS=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&k!=="sodium"&&dri[k]);
+  const dayTot=d=>sumNuts(Object.values(d).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
+  const shortOf=()=>{ const W=sumNuts(daysArr.map(dayTot)); return KEYS.reduce((a,k)=>a+Math.max(0,wkDri(dri[k])*daysArr.length*0.98-(W[k]||0))/(wkDri(dri[k])*daysArr.length),0); };
+  const counts=()=>{ const c={}; daysArr.forEach(d=>Object.values(d).forEach(its=>(its||[]).forEach(it=>{ if(it&&it.fk) c[it.fk]=(c[it.fk]||0)+1; }))); return c; };
+  const overOf=c=>Object.keys(c).reduce((a,fk)=>a+Math.max(0,c[fk]-varietyCapOf(fk)),0);
+  const fdOf=fk=>FDB[fk]||TEMP_FDB[fk];
+  const kcalOf=(fk,g)=>ingNut(fk,g).kcal||0;
+  const altsFor=(fk,c,dayUsed)=>{ const fd=fdOf(fk); if(!fd) return [];
+    let pool;
+    if (fd._isRecipe) { const cat=recipeCatOfFk(fk); pool=Object.keys(TEMP_FDB).filter(id=>TEMP_FDB[id]?._isRecipe&&recipeCatOfFk(id)===cat); }
+    else pool=Object.keys(FDB).filter(k=>FDB[k]?.cat===fd.cat&&!FDB[k]._isRecipe&&!RECIPE_ONLY_FKS.has(k)&&!STARCHY_VEG_FKS.has(k)&&k!=="wakame"&&k!=="saltIodized");
+    const pd=fd.per100.kcal>0?(fd.per100.protein||0)/fd.per100.kcal:0;
+    return pool.filter(a=>a!==fk&&!dayUsed.has(a)&&!(excl&&excl.has(a))&&(c[a]||0)<varietyCapOf(a)-0.5&&!(fdOf(a)?._isRecipe&&excl&&(fdOf(a)._ings||[]).some(i=>excl.has(i.fk)))&&(fdOf(a)?.per100?.kcal||0)>0)
+      .sort((x,y)=>Math.abs((fdOf(x).per100.protein||0)/fdOf(x).per100.kcal-pd)-Math.abs((fdOf(y).per100.protein||0)/fdOf(y).per100.kcal-pd)).slice(0,4); };
+  const gramsFor=(a,kc)=>{ const fd=fdOf(a); if (fd._isRecipe){ const sg=fd._servingG||150; return Math.max(1,Math.min(2,Math.round(kc/(fd.per100.kcal*sg/100))))*sg; }
+    const su=getServingUnit(a,fd,"he"); const u=su&&!su.weightOnly&&su.g?su.g/(su.count||1):null; const raw=kc/(fd.per100.kcal/100); return u?Math.max(1,Math.round(raw/u))*u:Math.round(raw); };
+  let n=0; const skip=new Set(); const T0=Date.now(); let tries=0; // תקציב זמן: הגיוון לא יאט את התכנון השבועי יותר מכמה שניות
+  const snapWeek=()=>JSON.stringify(daysArr);
+  const restoreWeek=js=>{ const arr=JSON.parse(js); daysArr.forEach((d,i)=>{ Object.keys(d).forEach(k=>{ if(!(k in arr[i])) delete d[k]; }); Object.keys(arr[i]).forEach(k=>{ d[k]=arr[i][k]; }); }); };
+  const bandOk=()=>!target||daysArr.every(d=>{ const k=calcKcalActual(dayTot(d)); return k>=target*0.98-0.5&&k<=target+0.5; });
+  for (let it=0; it<30; it++){
+    const c=counts(); const O0=overOf(c); if (!O0) return;
+    // המופע לטיפול: הפריט עם העודף הגדול ביותר; קודם ביום שבו הוא מופיע יותר מפעם אחת
+    const fk=Object.keys(c).filter(k=>c[k]>varietyCapOf(k)&&!skip.has(k)).sort((a,b)=>(c[b]-varietyCapOf(b))-(c[a]-varietyCapOf(a)))[0];
+    const occ=[]; daysArr.forEach((d,di)=>Object.keys(d).forEach(mk=>(d[mk]||[]).forEach((x,idx)=>{ if(x&&x.fk===fk&&!x._keep&&!x._user) occ.push({di,mk,idx,dup:Object.values(d).flat().filter(y=>y&&y.fk===fk).length}); })));
+    if (!fk) return;
+    occ.sort((a,b)=>b.dup-a.dup);
+    let done=false; const S0=shortOf();
+    if (tries>=24 || Date.now()-T0>8000) return;
+    for (const o of occ.slice(0,2)){
+      const day=daysArr[o.di]; const dayUsed=new Set(Object.values(day).flat().filter(x=>x&&x.fk).map(x=>x.fk));
+      const orig=day[o.mk][o.idx]; const kc=kcalOf(orig.fk,orig.g);
+      for (const a of altsFor(fk,c,dayUsed).slice(0,2)){
+        if (tries++>=24 || Date.now()-T0>8000) return;
+        const wsnap=snapWeek();
+        day[o.mk]=day[o.mk].map((x,i)=>i===o.idx?{fk:a,g:gramsFor(a,kc)}:x);
+        const exclDay=new Set([...(excl||[]),fk]);
+        enforceDailyCalorieBand(day, target, dri, exclDay); yield {phase:"weekly",n:++n};
+        const c1=counts();
+        if (bandOk() && overOf(c1)<O0 && shortOf()<=S0+0.001) { done=true; break; }
+        restoreWeek(wsnap);
+      }
+      if (done) break;
+    }
+    if (!done) skip.add(fk); // אין החלפה שלא פוגעת בתזונה — משאירים את הפריט הזה (התזונה קודמת לגיוון)
+  }
+}
+function* enforceWeeklyMicrosGen(daysArr, target, dri, excl, maxPasses=4){
   dri=planDRI(dri);
   let __wn=0;
   if (!dri || !daysArr || !daysArr.length) return;
   const KEYS=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&dri[k]);
   const dayTot=d=>sumNuts(Object.values(d).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
-  for (let pass=0; pass<4; pass++){
+  for (let pass=0; pass<maxPasses; pass++){
     const tots=daysArr.map(dayTot); const W=sumNuts(tots);
-    const short=KEYS.filter(k=>(W[k]||0)<dri[k].dri*daysArr.length*0.98);
+    const short=KEYS.filter(k=>(W[k]||0)<wkDri(dri[k])*daysArr.length*0.98);
     if (!short.length) return;
     for (const k of short){
       const order=daysArr.map((d,i)=>i).sort((a,b)=>(tots[a][k]||0)-(tots[b][k]||0));
       for (const i of order.slice(0,7)){
-        const boosted={...dri,[k]:{...dri[k],dri:dri[k].dri*1.4},_microSwap:k};
+        const boosted={...dri,[k]:{...dri[k],dri:wkDri(dri[k])*1.26},_microSwap:k};
         enforceDailyCalorieBand(daysArr[i], target, boosted, excl); yield {phase:"weekly",n:++__wn};
-        const W2=sumNuts(daysArr.map(dayTot)); if ((W2[k]||0)>=dri[k].dri*daysArr.length*0.98) break;
+        const W2=sumNuts(daysArr.map(dayTot)); if ((W2[k]||0)>=wkDri(dri[k])*daysArr.length*0.98) break;
       }
     }
   }
@@ -5623,9 +5826,10 @@ function diagnoseGaps(totals,target,wKg,hp,dri) {
 
   // יחס אומגה 6:3
   const o3=totals.omega3||0,o6=totals.omega6||0;
-  if(o6 > 0 && (o3<=0 || o6/o3 > 5)){
-    const neededO3 = Math.max(0.3, o6/5 - o3);
-    issues.push({type:"omega_ratio",priority:4,gap:neededO3,he:`יחס Ω6:Ω3 גבוה מדי — ${o3>0?fmtN(o6/o3,1):"∞"}:1 (יעד ≤5:1)`,en:`Ω6:Ω3 ratio too high — ${o3>0?fmtN(o6/o3,1):"∞"}:1 (target ≤5:1)`});
+  const alaMinD=alaMinOf(dri);
+  if(o3 < alaMinD){
+    const neededO3 = Math.max(0.3, alaMinD - o3);
+    issues.push({type:"omega_ratio",priority:4,gap:neededO3,he:`אומגה 3 (ALA) נמוכה — ${fmtN(o3,1)} גר' (יעד ≥${alaMinD} גר')`,en:`Omega-3 (ALA) low — ${fmtN(o3,1)}g (target ≥${alaMinD}g)`});
   }
 
   // יחס נתרן/אשלגן — יעד: אשלגן ≥ פי 2 מנתרן. מדלגים על הבדיקה הזו כשאשלגן עצמו מוגבל (CKD) — אחרת ה"תיקון" של
@@ -5788,8 +5992,8 @@ function budgetWeight(x){
 function budgetMicroDeficits(plan, dri){
   if (!dri||!plan) return 0;
   const T=sumNuts(Object.values(plan).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
-  // חריגה בשומן (מעל 30%) או ביחס אומגה 6:3 (מעל 5) נחשבת חמורה יותר מכל חוסר מיקרו
-  const kc=calcKcalActual(T)||1; const bad=((T.fat||0)*9>kc*GLOBAL_FAT_MAX.v+1e-6) || ((T.omega3||0)>0 && (T.omega6||0)/T.omega3>5);
+  // חריגה בשומן (מעל 30%) או ALA מתחת למינימום נחשבת חמורה יותר מכל חוסר מיקרו
+  const kc=calcKcalActual(T)||1; const bad=((T.fat||0)*9>kc*GLOBAL_FAT_MAX.v+1e-6) || ((T.omega3||0)<alaMinOf(dri));
   return (bad?100:0) + MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&dri[k]&&(T[k]||0)<dri[k].dri*0.98).length;
 }
 // בחירת היום (לבקשת המשתמש — התזונה קודמת לתקציב): עד 6 ניסיונות. יום מתקבל מיד רק אם הוא גם בתוך התקציב (+5%)
@@ -5922,7 +6126,7 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
 
   // תקרת נתרן: כברירת מחדל מיושרת עם היעד שכבר מוצג למשתמש בלוח נתרן/אשלגן (2300mg) — לא ה-AI השמרני (1500)
   // שהיה צר מדי כדי לאפשר גם מלח מיודד וגם נורי יחד. עכשיו ניתנת לדריסה לפי hp.sodiumMax (פרופילי CKD, בד"כ 2000)
-  const sodiumCap = hp?.sodiumMax || 3000;
+  const sodiumCap = hp?.sodiumMax || 2300;
   let sodiumUsed = 0;
   // תקרות אשלגן/זרחן — שדות חדשים, undefined כברירת מחדל (ללא תקרה כלל, ההתנהגות המקורית נשמרת בדיוק אצל כל
   // משתמש שאין לו פרופיל CKD). מוגדרות רק כשהפרופיל הבריאותי דורש זאת. נבדקות בנפרד מנתרן (בבלוק אחרי כל הלוגיקה
@@ -6874,8 +7078,8 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
       guardO++;
       const totals = sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
       const o3=totals.omega3||0, o6=totals.omega6||0;
-      if (!(o6>0 && (o3<=0 || o6/o3>4))) break; // מתוקן: גם o3=0 (יחס אינסופי בפועל) חייב להפעיל את התיקון, לא רק יחס מספרי>4
-      const neededO3 = (o6/4 - o3) * 1.15; // כמות אומגה-3 (גר') הדרושה כדי להביא את היחס ל-4:1, עם מרווח ביטחון קטן
+      if (o3>=ALA_PLAN_MIN) break; // ביקורת דיאטנית: מינימום ALA במקום יחס 6:3
+      const neededO3 = (ALA_PLAN_MIN - o3) * 1.15; // כמות אומגה-3 (גר') הדרושה כדי להביא את היחס ל-4:1, עם מרווח ביטחון קטן
       const richO3Keys=["flaxseed","chiaseeds","walnuts"];
       let done=false;
       for (const fk of richO3Keys) {
@@ -7063,8 +7267,8 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
       guardO2++;
       const totals = sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
       const o3=totals.omega3||0, o6=totals.omega6||0;
-      if (!(o6>0 && (o3<=0 || o6/o3>5))) break; // מתוקן: גם o3=0 חייב להפעיל את התיקון
-      const neededO3 = (o6/4.5 - o3) * 1.15;
+      if (o3>=ALA_PLAN_MIN) break; // ביקורת דיאטנית: מינימום ALA במקום יחס 6:3
+      const neededO3 = (ALA_PLAN_MIN - o3) * 1.15;
       const richO3Keys2=["flaxseed","chiaseeds","walnuts"];
       let done2=false;
       for (const fk of richO3Keys2) {
@@ -7981,13 +8185,13 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
   // מה לעשות. בדיוק אותו עיקרון שכלי ה"אופטימיזציה" הידני כבר משתמש בו, רק מופעל אוטומטית כאן בזמן היצירה.
   {
     const dayNutNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
-    const currentRatio = () => { const n=dayNutNow(); return n.omega3>0 ? n.omega6/n.omega3 : (n.omega6>0?Infinity:0); };
+    const currentRatio = () => { const n=dayNutNow(); return (n.omega3||0)<ALA_PLAN_MIN ? 99 : 0; }; // ביקורת דיאטנית: מפעיל רק כשה-ALA מתחת למינימום (היחס — מידע בלבד)
     // תיקון (לבקשת המשתמש: "יש חריגה ביחס האומגות... השתמש בעיקר בזרעי פשתן וצ'יה") — תקרות-הגדילה הקודמות
     // (14/16 גרם) הצטמצמו מדי מהר, בלי לתת מספיק מקום לתקן ימים עם חריגה-קשה; אגוזי-מלך (walnuts) גם פחות
     // יעילים לתיקון-היחס (הם עצמם עתירי-אומגה-6 יחסית, לא כמו פשתן/צ'יה שכמעט טהורי-אומגה-3) - נשארים כאן
     // רק כמוצא-אחרון-שלישי, אחרי שפשתן וצ'יה כבר מוצו במלואם. תקרות-הגדילה הוכפלו בערך (עד 2 כפות טבעיות)
     const O3_BOOST_CAPS = {flaxseed:24, chiaseeds:28, walnuts:15};
-    const HIGH_O6_ITEMS = new Set(["hazelnuts","brazilNuts","cashews","almonds","sunflowerS","pumpkinS","tahiniFullRaw","tahiniRaw","peanutButter","almondbutter","peanuts","pistachio","sesame"]);
+    const HIGH_O6_ITEMS = new Set(); // לא מקטינים אומגה 6 (ההנחיות העדכניות לא ממליצות על כך)
     let guardOmega=0;
     while (currentRatio() > 5 && guardOmega<16) {
       guardOmega++;
@@ -8306,10 +8510,10 @@ function generateMixedWeekPlan__impl(...a){ return runGenSync(generateMixedWeekP
 function* generateMixedWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set(),intensity="moderate"){
   const days=[];
   for (let d=0; d<7; d++) {
-    days.push(budgetPick(()=>generateMixedDayPlan(target,wKg,hp,dri,recipeIds,{},excludedFks,intensity), d0=>d0.mixedPlan)); yield {phase:"build",i:days.length};
+    days.push(budgetPick(()=>generateMixedDayPlan(target,wKg,hp,dri,recipeIds,{},varietyExclFor(excludedFks,days.map(x=>x.mixedPlan)),intensity), d0=>d0.mixedPlan)); yield {phase:"build",i:days.length};
   }
-  yield {phase:"weekly"}; yield* recipeQuotaGen(days.map(d=>d.mixedPlan), target, dri, excludedFks, recipeIds, (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(days.map(d=>d.mixedPlan), target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(days.map(d=>d.mixedPlan), target, dri, excludedFks);
-  yield* enforceWeeklyMicrosGen(days.map(d=>d.plantPlan), target, dri, excludedFks);
+  yield {phase:"weekly"}; yield* recipeQuotaGen(days.map(d=>d.mixedPlan), target, dri, excludedFks, recipeIds, (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(days.map(d=>d.mixedPlan), target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(days.map(d=>d.mixedPlan), target, dri, varietyExclFor(excludedFks,days.map(d=>d.mixedPlan)), 1); yield* enforceWeeklyMicrosGen(days.map(d=>d.mixedPlan), target, dri, excludedFks); yield* enforceWeeklyVarietyGen(days.map(d=>d.mixedPlan), target, dri, excludedFks);
+  yield* enforceWeeklyMicrosGen(days.map(d=>d.plantPlan), target, dri, varietyExclFor(excludedFks,days.map(d=>d.plantPlan)), 1); yield* enforceWeeklyMicrosGen(days.map(d=>d.plantPlan), target, dri, excludedFks); yield* enforceWeeklyVarietyGen(days.map(d=>d.plantPlan), target, dri, excludedFks);
   const plantWeek={}, mixedWeek={};
   days.forEach((d,i)=>{ plantWeek[`d${i}`]=d.plantPlan; mixedWeek[`d${i}`]=d.mixedPlan; });
   const plantWeekTotals = sumNuts(days.flatMap(d=>Object.values(d.plantPlan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))));
@@ -8437,7 +8641,7 @@ function generatePersonalDayPlan__impl(target, recipes=[], existingMeals=null, d
   let dayKcalUsed = sumNuts(
     slots.flatMap(mk=>(existingMeals?.[mk]||[])).map(({fk,g,soaked})=>ingNut(fk,g,soaked))
   ).kcal||0;
-  const sodiumCap2 = healthProfile.sodiumMax || 3000, QTSP2 = 1.5;
+  const sodiumCap2 = healthProfile.sodiumMax || 2300, QTSP2 = 1.5;
   // תקרות אשלגן/זרחן (CKD בלבד) — אותו עיקרון בדיוק כמו sodiumCap2, undefined כברירת מחדל אצל כל שאר המשתמשים
   const potassiumCap2 = healthProfile.potassiumMax, phosphorusCap2 = healthProfile.phosphorusMax;
   // מעקב נתרן לרוחב כל היום: מתחילים מכל מה שכבר קיים בארוחות (אם המשתמש כבר בנה משהו ידנית), כדי שמילוי הפערים
@@ -9913,9 +10117,9 @@ function generatePersonalDayPlan__impl(target, recipes=[], existingMeals=null, d
   // עדיין לא מספיק — מקטינים/מסירים את הפריט עתיר-האומגה6 שתורם הכי הרבה בפועל. צעד אחד מדויק בכל סבב.
   {
     const dayNutNowP = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
-    const currentRatioP = () => { const n=dayNutNowP(); return n.omega3>0 ? n.omega6/n.omega3 : (n.omega6>0?Infinity:0); };
+    const currentRatioP = () => { const n=dayNutNowP(); return (n.omega3||0)<ALA_PLAN_MIN ? 99 : 0; }; // ביקורת דיאטנית: מפעיל רק כשה-ALA מתחת למינימום (היחס — מידע בלבד)
     const O3_BOOST_CAPS_P = {flaxseed:24, chiaseeds:28, walnuts:15};
-    const HIGH_O6_ITEMS_P = new Set(["hazelnuts","brazilNuts","cashews","almonds","sunflowerS","pumpkinS","tahiniFullRaw","tahiniRaw","peanutButter","almondbutter","peanuts","pistachio","sesame"]);
+    const HIGH_O6_ITEMS_P = new Set(); // לא מקטינים אומגה 6 (ההנחיות העדכניות לא ממליצות על כך)
     let guardOmegaP=0;
     while (currentRatioP() > 5 && guardOmegaP<16) {
       guardOmegaP++;
@@ -10281,7 +10485,7 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
   // הזו הייתה 2300 מ"ג לכל אורך השלבים העיקריים (לא רק בשלבי המילוי המאוחרים שכבר תוקנו), כך שברוב הזמן זה נראה
   // בסדר במקרה בלבד. כעת התקרה האפקטיבית לכל הפונקציה (כולל כל הלוגיקה הראשית, לא רק שלבי המילוי) היא 2000 מ"ג
   // כברירת מחדל — ומחמירה עוד יותר אם לפרופיל הבריאותי יש הגבלת נתרן נמוכה יותר מזו
-  const sodiumCap = hp?.sodiumMax || 3000;
+  const sodiumCap = hp?.sodiumMax || 2300;
   const potassiumCap = hp?.potassiumMax, phosphorusCap = hp?.phosphorusMax;
   let sodiumUsed=0, potassiumUsed=0, phosphorusUsed=0, dayKcalUsed=0;
   // תיקון (לבקשת המשתמש: "בצע את השינוי הנדרש" — הפוך את שלב הבחירה עצמו למודע-מצטבר לשומן/מנגן, לא רק תיקון
@@ -11823,9 +12027,9 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
   // לגמרי, ורק אם זה עדיין לא מספיק — מקטינים/מסירים את הפריט עתיר-האומגה6 שתורם הכי הרבה בפועל
   {
     const dayNutNowR = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
-    const currentRatioR = () => { const n=dayNutNowR(); return n.omega3>0 ? n.omega6/n.omega3 : (n.omega6>0?Infinity:0); };
+    const currentRatioR = () => { const n=dayNutNowR(); return (n.omega3||0)<ALA_PLAN_MIN ? 99 : 0; }; // ביקורת דיאטנית: מפעיל רק כשה-ALA מתחת למינימום (היחס — מידע בלבד)
     const O3_BOOST_CAPS_R = {flaxseed:24, chiaseeds:28, walnuts:15};
-    const HIGH_O6_ITEMS_R = new Set(["hazelnuts","brazilNuts","cashews","almonds","sunflowerS","pumpkinS","tahiniFullRaw","tahiniRaw","peanutButter","almondbutter","peanuts","pistachio","sesame"]);
+    const HIGH_O6_ITEMS_R = new Set(); // לא מקטינים אומגה 6 (ההנחיות העדכניות לא ממליצות על כך)
     let guardOmegaR=0;
     while (currentRatioR() > 5 && guardOmegaR<16) {
       guardOmegaR++;
@@ -13115,12 +13319,12 @@ function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
   const week={}; const daysArr=[];
   const recipeIdSet = new Set(recipeIds);
   const recipeUsage = {};
-  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>generateDayPlan(target,wKg,hp,dri,recipeIds,recipeUsage,excludedFks), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage);  yield {phase:"build",i:d+1}; }
+  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>generateDayPlan(target,wKg,hp,dri,recipeIds,recipeUsage,varietyExclFor(excludedFks,daysArr)), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage);  yield {phase:"build",i:d+1}; }
   // השלמת מלח מיודד ברבעי-כפית ברמת השבוע (לבקשת המשתמש): לא להשאיר מחסור שבועי בנתרן/יוד, כל עוד לא חורגים
   // מתקרת הנתרן היומית. applySodiumSaltTopup כבר עוצרת מעצמה אם היום הספציפי מגיע לתקרה או שהיוד כבר קרוב/מעל
   // היעד היומי שלו (למשל בגלל וואקמה/נורי שכבר קיימים בו) — לכן מריצים על כל הימים שיש בהם עדיין מחסור נתרן,
   // לא רק על מספר קבוע של ימים, כדי שהגירעון השבועי ייסגר במידת האפשר בפועל ולא רק חלקית
-  const sodiumCap = hp?.sodiumMax || 3000;
+  const sodiumCap = hp?.sodiumMax || 2300;
   const SODIUM_TARGET_WK = 1500;
   for (let pass=0; pass<2; pass++){
     const shortfalls = daysArr.map((day,i)=>{
@@ -13250,7 +13454,7 @@ function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
     finalTrimOnlyIfOverCeiling(day, target);
     enforceDailyCalorieBand(day, target, dri, excludedFks); // שער 98-100% סופי לכל יום בשבוע
   yield {phase:"polish",i:__di+1}; }
-  yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipeIds, (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks);
+  yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipeIds, (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
   return week;
 }
 // גרסה שבועית של מחולל "הצע ארוחות ממתכונים" (generateRecipesNSFDayPlan) — לבקשת המשתמש. מריצה את אותו
@@ -13572,8 +13776,8 @@ function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=nu
   const recipeUsage = {...recentUsageSeed};
   // applySalt=false כאן: משלימים יוד (וואקמה) בכל יום כרגיל בתוך generateRecipesNSFDayPlan עצמו, אבל דוחים את
   // השלמת הנתרן-ע"י-מלח לאחרי שרואים את הנתרן הסופי של *כל* 7 הימים ביחד
-  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>generateRecipesNSFDayPlan(target,recipes,dri,wKg,hp,d,recipeUsage,excludedFks,false), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage);  yield {phase:"build",i:d+1}; }
-  const sodiumCap = hp?.sodiumMax || 3000;
+  for(let d=0; d<7; d++){ const day=generateUniqueDay(()=>generateRecipesNSFDayPlan(target,recipes,dri,wKg,hp,d,recipeUsage,varietyExclFor(excludedFks,daysArr),false), daysArr); week[`d${d}`]=day; daysArr.push(day); accumulateRecipeUsage(day,recipeIdSet,recipeUsage);  yield {phase:"build",i:d+1}; }
+  const sodiumCap = hp?.sodiumMax || 2300;
   const SODIUM_TARGET_WK = 1500;
   // עדכון לבקשת המשתמש: להבטיח שלא יהיה מחסור שבועי בנתרן/יוד, כל עוד תקרת הנתרן היומית לא נחרגת — לכן במקום
   // להגביל ל-3 ימים בלבד (הגבלה קודמת), ממשיכים להריץ את השלמת המלח על כל יום עם מחסור נתרן שנותר, בכמה סבבים,
@@ -14180,7 +14384,7 @@ function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=nu
     finalTrimOnlyIfOverCeiling(day, target);
     enforceDailyCalorieBand(day, target, dri, excludedFks); // שער 98-100% סופי לכל יום בשבוע
   yield {phase:"polish",i:__di+1}; } }
-  yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id), (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id)); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks);
+  yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id), (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id)); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
   return {week, updatedUsage: finalUsage};
 }
 // גרסה אישית לשבוע (generatePersonalWeekPlan) הוסרה לבקשת המשתמש — נותר רק המנגנון האישי היומי (generatePersonalDayPlan)
@@ -14496,7 +14700,7 @@ const DEF_RECIPES=[
 {id:"cbk02th",name:"סלט כרוב סיני וכרוב סגול בטחינה",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"bokChoy",g:210},{fk:"cabbageRed",g:140},{fk:"tahiniFullRaw",g:30},{fk:"lemon",g:25},{fk:"parsley",g:15}],instructions:"קוצצים דק כרוב סיני וכרוב סגול. מדללים את הטחינה במיץ הלימון ומעט מים עד לרוטב חלק. מערבבים את הירקות עם הרוטב והפטרוזיליה הקצוצה ומגישים מיד."},
 {id:"kle03th",name:"סלט קייל בטחינה ולימון",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"kale",g:120},{fk:"cucumber",g:150},{fk:"tahiniFullRaw",g:30},{fk:"lemon",g:25},{fk:"garlic",g:3}],instructions:"מסירים את הגבעולים הקשים מהקייל, קורעים לחתיכות ומעסים דקה עם מעט מיץ לימון עד שהעלים מתרככים. מוסיפים מלפפון פרוס. מערבבים טחינה, שאר הלימון, שום ומעט מים לרוטב ויוצקים על הסלט."},
 {id:"cbw04kl",name:"סלט כרוב לבן וקולורבי",servings:4,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"cabbageWhite",g:300},{fk:"kohlrabi",g:270},{fk:"carrot",g:61},{fk:"parsley",g:15},{fk:"lemon",g:25},{fk:"oliveOil",g:15}],instructions:"פורסים דק את הכרוב, מקלפים ומגררים גס את הקולרבי והגזר. מוסיפים פטרוזיליה קצוצה, מתבלים בלימון ושמן זית ומערבבים. טעים במיוחד אחרי 15 דקות במקרר."},
-{id:"wkm05cu",name:"סלט וואקמה ומלפפון",servings:4,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"wakame",g:8},{fk:"cucumber",g:400},{fk:"springOnion",g:20},{fk:"sesame",g:9},{fk:"appleCiderVinegar",g:15}],instructions:"משרים את הוואקמה היבשה במים 10 דקות, מסננים וסוחטים קלות. פורסים מלפפונים דק ובצל ירוק. מערבבים עם הוואקמה, חומץ תפוחים ושומשום קלוי. (4 מנות — כפית וואקמה יבשה למנה.)"},
+{id:"wkm05cu",name:"סלט וואקמה ומלפפון",servings:4,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"wakame",g:4},{fk:"cucumber",g:400},{fk:"springOnion",g:20},{fk:"sesame",g:9},{fk:"appleCiderVinegar",g:15}],instructions:"משרים את הוואקמה היבשה במים 10 דקות, מסננים וסוחטים קלות. פורסים מלפפונים דק ובצל ירוק. מערבבים עם הוואקמה, חומץ תפוחים ושומשום קלוי. (4 מנות — כפית וואקמה יבשה למנה.)"},
 {id:"chc06mg",name:"תבשיל חומוס ומנגולד",servings:4,type:"תבשיל",preferredMeal:"any",foodGroup:"קטנית",ings:[{fk:"chickpeas",g:400},{fk:"swisschard",g:360},{fk:"onion",g:110},{fk:"garlic",g:9},{fk:"oliveOil",g:15},{fk:"turmericGround",g:2},{fk:"lemon",g:25}],instructions:"מאדים בצל ושום בשמן זית. מוסיפים את גבעולי המנגולד הקצוצים ומבשלים 5 דקות, ואז את העלים הקצוצים והכורכום. מוסיפים חומוס מבושל וחצי כוס מים ומבשלים 10 דקות. מסיימים במיץ לימון."},
 {id:"shg07tf",name:"שקשוקה ירוקה עם טופו",servings:2,type:"תבשיל מחבת",preferredMeal:"any",foodGroup:"",ings:[{fk:"tofu",g:300},{fk:"spinach",g:150},{fk:"swisschard",g:108},{fk:"leek",g:90},{fk:"garlic",g:9},{fk:"oliveOil",g:15},{fk:"turmericGround",g:1},{fk:"blackPepperGround",g:0.5}],instructions:"מאדים כרישה ושום בשמן זית עד ריכוך. מוסיפים תרד ומנגולד קצוצים ומבשלים עד שהעלים נובלים. מפוררים את הטופו לתוך המחבת, מתבלים בכורכום ופלפל ומבשלים עוד 5 דקות. מגישים עם לחם."},
 {id:"okr08lb",name:"תבשיל במיה ולוביה ברוטב עגבניות",servings:4,type:"תבשיל",preferredMeal:"any",foodGroup:"קטנית",ings:[{fk:"okra",g:300},{fk:"blackEyedPeas",g:516},{fk:"tomato",g:300},{fk:"onion",g:110},{fk:"garlic",g:9},{fk:"oliveOil",g:15},{fk:"lemon",g:25}],instructions:"מאדים בצל ושום בשמן זית. מוסיפים עגבניות קצוצות ומבשלים לרוטב. מוסיפים במיה שלמה (קוטמים את הקצה) ולוביה מבושלת, מכסים ומבשלים על אש נמוכה 25 דקות. מסיימים במיץ לימון."},
@@ -14570,9 +14774,9 @@ function triColor(value,thresholds){
 // את מספר-הגרסה כאן; שינוי טקסט-ברירת-המחדל בקוד בלי להעלות את המספר משאיר משתמשים עם עותק-ישן-שמור מוצג
 // במקום הטקסט המעודכן. הועלו הגרסאות של calories/protein/userGuide (שכולן עודכנו בסבבים האחרונים: יעד-
 // שומן 25%→30%, התאמת-חלבון לפי-פעילות-וגיל, PWA) - זה מכריח את כולם לראות את הטקסט המעודכן מחדש
-const INFO_VERSION={calories:3,fiber:3,protein:3,omega:2,spices:2,swapExplain:2,bmi:2,goalLose:2,goalGain:2,userGuide:33,wfpb:2,activityLevels:1,cap:5,satfat:1};
+const INFO_VERSION={calories:5,fiber:5,protein:4,omega:4,micro:5,weeklyMicro:3,weeklyOmega:2,kna:2,weeklyKna:2,spices:2,swapExplain:2,bmi:2,goalLose:2,goalGain:2,userGuide:46,wfpb:4,activityLevels:1,cap:5,satfat:1};
 const INFO_DEFAULTS={
-  he:{macroFormula:"🧮 איך מחשבים את אחוזי הקלוריות מכל אב-מזון?\n\nהאפליקציה משתמשת בנוסחת Atwater מותאמת (Modified Atwater System), שבה כל גרם משויך לכמות קלוריות משלו: פחמימות נטו (סך הפחמימות בניכוי סיבים) = 4 קק\"ל לגרם, חלבון = 4 קק\"ל לגרם, שומן = 9 קק\"ל לגרם — וסיבים תזונתיים = כ-2 קק\"ל לגרם בלבד, לא 4 כמו שאר הפחמימות.\n\nלמה סיבים מקבלים רק 2 קק\"ל לגרם? סיבים תזונתיים אינם מתעכלים ונספגים במעי הדק כמו פחמימות רגילות (עמילן וסוכר). חלקם מותסס על ידי חיידקי המעי הגס לחומצות שומן קצרות-שרשרת (Short-Chain Fatty Acids), שמספקות אנרגיה חלקית וזמינה פחות בהשוואה לפירוק ישיר של פחמימה רגילה. ה-FDA וה-USDA (וגופים דומים ברחבי העולם) משתמשים בערך מוסכם של כ-2 קק\"ל לגרם סיבים במקום ה-4 קק\"ל הרגילים לפחמימה — זו בדיוק שיטת Atwater המותאמת.\n\nמה זה אומר בפועל: כדי לחשב את אחוז הקלוריות שמגיע מכל אב-מזון, מפרידים תחילה את הסיבים מסך הפחמימות (\"פחמימות נטו\" = סך הפחמימות פחות סיבים), ומחשבים אותם בנפרד. סך הקלוריות מורכב אז מסכימת: (פחמימות נטו × 4) + (חלבון × 4) + (שומן × 9) + (סיבים × 2). זו הסיבה שסך גרמי המאקרו-נוטריאנטים לא 'יסתדר' בדיוק מול סך הקלוריות אם תכפיל הכל ב-4/4/9 בלי להפריד את הסיבים בנפרד — הם תמיד מחושבים כקטגוריה נפרדת, במקדם הנמוך יותר.\n\nהלוח הזה מציג את הכמויות בגרמים (היום ומול השבוע) ואת ההתפלגות האחוזית של הקלוריות, בדיוק לפי הנוסחה הזו — זהה למה שמוצג בכרטיס הסיכום היומי הרגיל בלשונית 'ארוחות', רק עם פירוט גרמים נוסף וסיכום שבועי.",calories:"📊 קלוריות — איך מחשבים את היעד שלך?\n\nהאפליקציה מחשבת קודם את קצב חילוף החומרים הבסיסי (BMR) שלך לפי נוסחת Mifflin-St Jeor, המבוססת על גובה, משקל, גיל ומין. לאחר מכן היא מכפילה את התוצאה במקדם הפעילות שבחרת (מועטה/בינונית/גבוהה) כדי לקבל את סך ההוצאה האנרגטית היומית (TDEE) — הקלוריות הדרושות לשמירה על המשקל הנוכחי.\n\nלבסוף, בהתאם למטרה שהוגדרה בפרופיל (שמירה/ירידה/עלייה), מתווסף גירעון או עודף קלורי מתון (ראו את חלוני 'ירידה זהירה' ו'עלייה נקייה').\n\nחלוקת המאקרו-נוטריאנטים היעד: פחמימות עד 55% מהקלוריות, חלבון לפחות 20% (ולפחות כ-1.0-1.5 גרם לכל ק״ג משקל גוף, בהתאם לרמת-הפעילות שבחרת בפרופיל), ושומן עד 30% — חלוקה מאוזנת לתזונת WFPB, ברמה המתונה יותר בתוך הספקטרום: לא תוכניות-ריפוי-קיצוניות כמו Esselstyn/Ornish (~10% שומן), אלא הגישה הרחבה יותר של NutritionFacts.org/ד\"ר גרגר וכותבי-WFPB עדכניים נוספים, שרואה ב-25-30% שומן תקין לחלוטין — כל עוד המקור הוא מזון-שלם (אגוזים, זרעים, אבוקדו) ולא שמן-מופק, ושהשומן הרווי נשאר נמוך (יעד נפרד, ≤10%). טווח זה נמצא גם בתוך ה-AMDR הכללי (20-35%) המקובל לאוכלוסייה בריאה.",fiber:"🌿 סיבים תזונתיים — למה זה חשוב?\n\n🐢 חדשים בתזונה צמחית? כדאי לעלות לכמות הזו בהדרגה, במשך 2–3 שבועות: להתחיל בחצי מנת קטניות ודגנים מלאים ולהגדיל כל כמה ימים, לשתות הרבה מים, להשרות קטניות ולבשל אותן היטב (או להעדיף עדשים אדומות ואפונה צהובה מפוצלת בתבשילים, שקלות לעיכול), וללעוס לאט. גזים ונפיחות בשבועות הראשונים הם תגובה נפוצה של חיידקי המעי לשינוי, ובדרך כלל פוחתים.\n\nהיעד היומי באפליקציה הוא 50 גרם — משמעותית מעל ההמלצה הרפואית הכללית (כ-25-38 גרם), משום שתזונת WFPB עשירה טבעית בסיבים ומאפשרת בקלות להגיע ואף לעבור את הסף המומלץ.\n\nסיבים תומכים בעיכול תקין, מזינים את חיידקי המעי הידידותיים, מסייעים בוויסות רמות הסוכר והכולסטרול בדם, ותורמים לתחושת שובע ממושכת.\n\nמקורות עשירים בסיבים: כל הקטניות (עדשים, שעועית, חומוס), דגנים מלאים (שיבולת שועל, קינואה, גריסים), ירקות עליים, ברוקולי, זרעי צ׳יה ופשתן, אגוזים ופירות עם קליפה.\n\nטיפ: אם אינך רגיל/ה לצריכת סיבים גבוהה, מומלץ להעלות את הכמות בהדרגה ולשתות מספיק מים, כדי למנוע אי-נוחות עיכולית.",protein:"💪 חלבון בתזונה מבוססת-צומח\n\nהיעד באפליקציה הוא כפול: לפחות 20% מסך הקלוריות היומיות, וגם לפחות 1.35 גרם חלבון לכל ק״ג משקל גוף — יעד המתאים לאדם פעיל השואף לשמר או לבנות מסת שריר, ומעט מעל ההמלצה הרפואית הכללית (0.8 גרם/ק״ג).\n\nמיתוס נפוץ הוא שקשה להגיע לחלבון מספק בתזונה טבעונית — בפועל, שילוב מגוון של קטניות (עדשים, שעועית, חומוס, תורמוס), סויה מלאה (טופו, טמפה, אדממה), דגנים מלאים ושמרים תזונתיים (המכילים כ-50 גרם חלבון ל-100 גרם) מספק בקלות את כל חומצות האמינו החיוניות לאורך היום, גם ללא 'שילוב חלבונים' מדויק בכל ארוחה בנפרד.\n\nמקורות מומלצים: טמפה, עדשים, שעועית שחורה, טופו קשה, שמרים תזונתיים, קינואה וסייטן.\n\n📏 הנחיות רשמיות לצריכת חלבון (ק\"ג משקל גוף) — ישראל וארה\"ב: שתי המדינות מתבססות על אותה ספרות DRI (Institute of Medicine/NASEM), ומגדירות RDA בסיסי זהה של כ-0.8 גר'/ק\"ג ליום למבוגר בריא ממוצע בפעילות מועטה — זהו סף המניעה למחסור, לא בהכרח היעד האופטימלי. משם, הטווחים מתרחבים לפי כמה גורמים:\n• גיל: מבוגרים מעל גיל 65 — ארגוני תזונה לגריאטריה (כגון קבוצת PROT-AGE) ממליצים על כ-1.0-1.2 גר'/ק\"ג כדי לסייע במניעת סרקופניה (אובדן מסת שריר עם הגיל).\n• מין: אין הבדל משמעותי ביעד לק\"ג משקל גוף בין גברים לנשים — ההבדל בא לידי ביטוי בעיקר בהריון והנקה, שם ה-RDA עולה בכ-25 גר' ליום נוספים מעבר לבסיס.\n• רמת פעילות גופנית: פעילות מועטה — כ-0.8 גר'/ק\"ג מספיק ברוב המקרים. פעילות סיבולת (ריצה, רכיבה) — כ-1.2-1.4 גר'/ק\"ג לפי עמדת ה-ISSN/ACSM. אימוני התנגדות/כוח — כ-1.6-2.2 גר'/ק\"ג לתמיכה בבניית ותחזוקת מסת שריר.\n• היבטים נוספים: ירידה במשקל תחת גירעון קלורי — קצה עליון של הטווח (כ-1.6-2.0 גר'/ק\"ג) מומלץ כדי לשמר מסת שריר תוך כדי הגירעון. מחלת כליות כרונית — ההפך: הגבלה מתחת ל-0.8 גר'/ק\"ג לפי הנחיית רופא/דיאטן.\nהיעד שהאפליקציה משתמשת בו (1.2 גר'/ק\"ג ברמת-פעילות בינונית) מתעדכן כעת אוטומטית לפי רמת-הפעילות שנבחרה בפרופיל: כ-1.0 גר'/ק\"ג בפעילות מועטה, 1.2 בבינונית (ללא שינוי מהיום), וכ-1.5 בגבוהה — במקום ערך-קבוע-אחד זהה לכולם כמו קודם. זה מתאים את עצמו לטווח שתואר למעלה (0.8 בסיסי, עד 1.6-2.2 לאימוני-התנגדות), בלי צורך בקלט נוסף מעבר לרמת-הפעילות שכבר קיימת בפרופיל.",omega:"יחס אומגה 6:3 — מה זה ולמה זה חשוב?\n\nאומגה 6 ואומגה 3 הן חומצות שומן חיוניות המתחרות על אותם אנזימים בגוף לצורך עיבוד. בתזונה מערבית טיפוסית העשירה בשמנים צמחיים מזוקקים (כגון שמן חמניות, תירס וסויה), היחס נוטה להיות גבוה מדי לטובת אומגה 6 (לעיתים 15:1 ומעלה), מה שעלול לקדם תהליכים דלקתיים בגוף.\n\nהיעד באפליקציה הוא יחס של עד 5:1, כאשר האידיאל התזונתי הוא 4:1 ואף פחות.\n\nמקורות אומגה 3 מהצומח: זרעי פשתן טחונים, זרעי צ׳יה, אגוזי מלך, זרעי המפ ושמן אצות (המספק ישירות EPA/DHA — הצורות הפעילות ביולוגית, בניגוד ל-ALA שדורש המרה חלקית בגוף).\n\nטיפ: הגבלת שמנים מזוקקים עתירי אומגה 6 (כגון שמן חמניות ותירס) לצד הקפדה על מקורות אומגה 3 יומיים, היא הדרך הפשוטה ביותר לשמור על יחס בריא.",micro:"💊 B12: תוסף יומי. D: 1000IU. סידן: טחינה+כייל. ברזל: עדשים+ויטC. 💧 השריה: קטניות/דגנים שסומנו כ\"מושרה\" (לחיצה על התג ליד הרכיב בכרטיס הארוחה) מקבלים בונוס זמינות ביולוגית — ברזל +15%, אבץ +25%, סידן +10% — כי השריה מפחיתה פיטאט, המעכב ספיגה. ברירת המחדל היא ללא בונוס.\n\n⚖️ יחס אומגה 6:3: היחס הרצוי הוא עד 4:1 (יעד באפליקציה ≤5:1). אומגה 6 ואומגה 3 מתחרות על אותם אנזימים בגוף — יחס גבוה מדי לרעת אומגה 6 (נפוץ בתזונה מערבית טיפוסית, לעיתים 15:1 ומעלה) עלול לקדם דלקתיות. מקורות אומגה 3 טובים: זרעי פשתן טחונים, זרעי צ׳יה, אגוזי מלך.\n\n⚖️ יחס נתרן:אשלגן: מומלץ שאשלגן יהיה לפחות פי 2 מנתרן (יחס ≥2:1), ועדיף גבוה יותר. תזונת WFPB עשירה טבעית באשלגן (ירקות, פירות, קטניות) ודלה בנתרן — מה שתומך בוויסות לחץ דם תקין.",wfpb:"🌱 טבעוני (Vegan): ללא מוצרים מן החי כלל — לא בשר, עוף, דגים, ביצים, חלב או דבש.\n\n🌿 WFPB (תזונה מבוססת-צמחים מלאה): טבעוני, ועוד צעד קדימה — דגנים מלאים, קטניות, ירקות, פירות, אגוזים וזרעים בצורתם הטבעית, בעיקר ללא סוכר מזוקק או מזון מעובד.\n\n🫒 מדיניות-שומן מתונה, לא WFPB קלאסי-קיצוני: בניגוד לגרסה ההיסטורית-המחמירה של WFPB (ללא שום שמן מופק בכלל, כמו אצל Esselstyn/Ornish), האפליקציה הזו מיישמת את הגישה המתונה יותר של NutritionFacts.org/ד\"ר גרגר — כוללת במידה מתונה שמן זית כמקור-שומן (ראו פאנל 'קלוריות' לגבי יעד-השומן המלא, 30%), לצד אגוזים/זרעים/אבוקדו כמקורות-שומן-שלם עיקריים.\n\n🧂 מלח מיודד, לא ללא-מלח: תזונת-צומח-מלאה (בעיקר ללא מוצרים מן-החי ומזון-ים) חשופה למחסור-יוד, שכן רוב מקורות-היוד הטבעיים הם מן-החי (דגים, מוצרי-חלב). לכן האפליקציה משתמשת במלח מיודד (לא מלח-ים/הימלאיה נטול-יוד) כדי להבטיח כיסוי-יוד סביר מהתזונה עצמה, בנוסף לתוסף (ראו פאנל 'מיקרו').",nds:"🏆 מדד צפיפות נוטריאנטים (NDS) — מה זה?\n\nהמדד בודק כמה טוב היום שלך מכסה את כל הוויטמינים והמינרלים החיוניים, לא רק קלוריות וחלבון.\n\nאיך זה מחושב:\nעבור כל ויטמין/מינרל (כ-21 בסך הכול — ללא B12, D ויוד שנחשבים תלויי-תוסף), נבדק אחוז הכיסוי מהיעד היומי (RDA). אם עברת 100% מיעד מסוים, הוא נספר כ-100% בלבד ולא יותר — כלומר עודף עצום בוויטמין אחד (למשל ברזל) לא יכול \"לפצות\" על חוסר בוויטמין אחר (למשל אבץ). לבסוף נלקח הממוצע של כל האחוזים האלה יחד.\n\nלמה זה שימושי:\nציון גבוה מעיד על תפריט מגוון שמכסה טווח רחב של נוטריינטים — לא רק תפריט עתיר קלוריות/חלבון עם מעט ירקות ופירות. שני ימים עם אותה כמות קלוריות יכולים לקבל ציוני NDS שונים מאוד בהתאם למגוון המזון.\n\nמה זה לא מודד:\nזה לא כולל קלוריות, חלבון, פחמימות, שומן או סיבים (אלה נמדדים בנפרד), ולא בודק חוסרים קליניים (לכך יש את חיווי ה-EAR בלוח המיקרו-נוטריינטים).\n\nטווחי הציון:\n80-100 מצוין · 50-79 טוב · מתחת ל-50 — כדאי לגוון יותר (עוד ירקות עלים, פירות, קטניות, אגוזים וזרעים).",disclaimer:"⚠️ מידע כללי בלבד — לא ייעוץ רפואי. האפליקציה מיועדת למבוגרים (גיל 18 ומעלה) בלבד, ואינה מיועדת להריון ולהנקה ללא ליווי רופא/דיאטן/ית. אפליקציה זו אינה כלי רפואי ואינה מיועדת לאבחון, טיפול או ניהול מצב בריאותי. הערכים התזונתיים במאגר המזון (קלוריות, מאקרו ומיקרו-נוטריאנטים) נבדקו והוצלבו על ידי Claude (AI), בסיוע מפתח/ת האפליקציה, מול מאגר המזון הישראלי של משרד הבריאות, אך עדיין אינם תוצאה של בדיקת-מעבדה או שאילתה חיה למאגר מאומת בזמן אמת, ועשויים לסטות במידה מסוימת מנתוני מקור רשמיים. לפני כל שינוי תזונתי, ובמיוחד אם יש לך מצב רפואי הדורש מעקב תזונתי מדויק (כגון מחלת כליות, סוכרת או רגישות), התייעץ עם רופא/דיאטן/ית ואל תסתמך על האפליקציה כמקור יחיד.",spices:"🧂 תבלינים ועשבי תיבול — יותר מסתם טעם\n\nמעבר לתרומתם לטעם ולגיוון הקולינרי, תבלינים רבים מכילים תרכובות בעלות תכונות אנטי-דלקתיות ונוגדות חמצון, שתומכות באורח חיים בריא במסגרת תזונת WFPB.\n\nכורכום + פלפל שחור: הקורקומין בכורכום נספג טוב יותר בנוכחות פיפרין שבפלפל שחור — שילוב מומלץ תמיד יחד.\nקינמון: עשוי לסייע בוויסות רמות הסוכר בדם.\nג׳ינג׳ר: מסייע לעיכול ובעל השפעה אנטי-דלקתית.\nשום טרי: תומך במערכת החיסונית ובבריאות הלב וכלי הדם.\nכמון: עשיר בברזל ותומך בעיכול.\n\nניתן וכדאי לשלב את התבלינים הללו באופן חופשי בארוחות היומיות — הם אינם משפיעים משמעותית על ספירת הקלוריות אך תורמים לערך התזונתי הכולל של הארוחה.",swapExplain:"🔄 כלי האופטימיזציה — איך זה עובד?\n\nכלי זה סורק את הארוחות המתוכננות שלך ומחפש הזדמנויות לשפר את האיזון התזונתי מבלי לשנות את סך הקלוריות היומי.\n\nכיצד הוא בוחר החלפות: הוא מזהה פריט מזון קיים בארוחה שיש לו 'תחליף' דומה מבחינת סוג המזון והכמות הקלורית, אך עם פרופיל תזונתי עשיר יותר — למשל, יותר סיבים, יותר סידן, יחס אומגה טוב יותר, או כיסוי טוב יותר של ויטמין/מינרל שבו יש חוסר יחסי אצלך.\n\nכל הצעה מוצגת בנפרד עם אפשרות '✅ החל' או 'דלג' — כך שנשארת לך שליטה מלאה על כל שינוי. אם הארוחות כבר מאוזנות היטב, הכלי יציין שאין הצעות נוספות.\n\nהערה: ההחלפות הן ניטרליות קלורית (לא משנות את סך הקלוריות של הארוחה) ומתמקדות אך ורק בשיפור איכות התזונה.",bmi:"⚖️ BMI (מדד מסת גוף) — מה זה אומר ומה המגבלות שלו?\n\nהחישוב: BMI = משקל (ק״ג) ÷ גובה² (מטרים).\n\nטווחי הסיווג המקובלים:\n<18.5 — תת-משקל\n18.5–25 — משקל תקין\n25–30 — עודף משקל\n30+ — השמנה\n\nחשוב לדעת: BMI הוא מדד גס ומהיר, אך אינו מבחין בין מסת שריר למסת שומן, ואינו מתחשב בגיל, מין, מבנה גוף או פיזור השומן בגוף. אדם עם מסת שריר גבוהה (למשל ספורטאי) עשוי לקבל BMI 'גבוה' למרות אחוז שומן נמוך.\n\nלכן, מומלץ להתייחס ל-BMI ככלי התמצאות כללי בלבד, ולא כמדד יחיד לבריאות מטבולית — במיוחד אם יש לך שאלות פרטניות, מומלץ להתייעץ עם רופא/דיאטן/ית שיוכלו להעריך את התמונה המלאה.",goalLose:"📉 ירידה זהירה במשקל — הגישה של האפליקציה\n\nכאשר בוחרים במטרת 'ירידה', האפליקציה מיישמת גירעון קלורי מתון של כ-6.25% מתחת לתצרוכת האחזקה שלך (בטווח גמיש של 5%-7.5%), ולא גירעון אגרסיבי.\n\nלמה גישה מתונה? ירידה מהירה מדי (גירעון גדול) מעלה סיכון לאובדן מסת שריר, ירידה בקצב חילוף החומרים, עייפות, ותחושת רעב מתמשכת שמקשה על התמדה לאורך זמן. גירעון מתון תומך בירידה איטית ובת-קיימא — לרוב כ-0.3-0.5 ק״ג בשבוע — שסביר יותר שתישמר לאורך זמן וללא 'אפקט יו-יו'.\n\nחשוב לשלב פעילות גופנית (במיוחד אימוני התנגדות) לשימור מסת השריר תוך כדי הירידה במשקל. אפשר להוסיף כאן הערות אישיות משלך.",goalGain:"📈 עלייה נקייה במסה — הגישה של האפליקציה\n\nכאשר בוחרים במטרת 'עלייה', האפליקציה מיישמת תיעדוף (עודף) קלורי מתון של כ-6.25% מעל תצרוכת האחזקה שלך (בטווח גמיש של 5%-7.5%).\n\nלמה גישה מתונה ולא עודף גדול? עודף קלורי גדול מדי מוביל לרוב לצבירת שומן מיותרת יחד עם מסת השריר, ולא בהכרח לבניית שריר מהירה יותר — הגוף מסוגל לבנות שריר בקצב מוגבל, ומעבר לכך העודף 'מתפזר' כשומן. עודף מתון תומך בעלייה 'נקייה' יחסית, עם יחס טוב יותר בין שריר לשומן שנצבר.\n\nלתוצאות מיטביות, חשוב לשלב אימוני התנגדות סדירים לצד הקפדה על צריכת חלבון מספקת (ראו את חלון 'חלבון'). אפשר להוסיף כאן הערות אישיות משלך.",userGuide:"📘 PlantVitalis Vegetarian — מדריך למשתמש\n\nמטרת האפליקציה:\nPlantVitalis היא אפליקציה לתכנון ארוחות ולמעקב תזונתי בגישת WFPB (מזון מלא מן הצומח), עם אפשרות לשלב מוצרי חלב וביצים. היא בונה תפריט יומי ושבועי שעומד ביעד הקלורי, ביעדי המאקרו והמיקרו-נוטריאנטים, ושומר על יחסים בריאים כמו אומגה 6:3 ואשלגן:נתרן.\nהאפליקציה מיועדת למבוגרים (גיל 18 ומעלה) בלבד, ואינה מיועדת להריון ולהנקה ללא ליווי רופא/דיאטן/ית.\n\n🥗 ארוחות: 4 ארוחות ביום (בוקר / ביניים / צהריים / ערב) מתוך מאגר של 200+ פריטי מזון ו-14 קטגוריות מתכונים, בגרמים או ביחידות מטבח. תפריט 'תכנון אוטומטי' בונה יום או שבוע שלם; 'השלם יום' משלים סביב מה שכבר בחרת; 'אופטימיזציה' מציעה החלפות לשיפור האיזון. ליד כל מזון ברשימת החיפוש אפשר לסמן 🚫 — והוא לא יוצע לעולם (בגלל אלרגיה, רגישות או פשוט כי אינך אוהב/ת אותו).\n\n🍽 אבות המזון: ארבעה מסכים — מאקרו וחלבון; יחס אומגות והמרת ALA ל-EPA/DHA; חומצות אמינו חיוניות (לאוצין וליזין); שומן רווי וכולסטרול.\n\n💊 מיקרו: 22 ויטמינים ומינרלים מול היעד — יומי ושבועי, ויחסי אשלגן:נתרן וסידן:זרחן. בכרטיס הוויטמינים והמינרלים: הסבר על יעד הברזל והאבץ המותאם לתזונה צמחית, ומדד \"ספיגת ברזל\" — כמה מהברזל היום נאכל בארוחה עם מקור ויטמין C, עם המלצות להרחקת תה, קפה ותוסף סידן מארוחות עתירות ברזל.\n\n📝 יומן: תיעוד מה נאכל בפועל, בנפרד מהתכנון. בלשונית המשנה ⚖️ משקל ותוספים: שקילה שבועית — אחרי 3 שקילות על פני 3 שבועות מוצעת תיקון ליעד הקלורי לפי מגמת המשקל (הנוסחה טועה אצל כל אדם בכ-10%). משקל שנרשם ב\"דיווחים עצמיים\" (החודשי) נכנס אוטומטית גם ליומן השקילות, והיקף המותניים האחרון מוצג שם; ויומן תוספים יומי (B12 וויטמין D, ולבחירה אומגה 3 מאצות וברזל) עם אחוז היענות שבועי.\n🔬 מקורות הנתונים (כפתור בראש המסך): פירוט מלא של הצלבת כל מזון באפליקציה מול מאגר משרד הבריאות — קוד המצרך, מה עודכן, אילו פערים נשארו, לאילו מזונות אין מקבילה, ואילו מזונות נוספו ישירות מהמאגר (נבט חיטה, רוקט, חסה ערבית, תאנה ומשמש מיובשים, שעועית ירוקה, דלורית, קלמנטינה ונבטי עדשים).\n🖨️ דוח שבועי למטפל: בלשונית המשנה 📊 מעקב שבועי, כפתור \"דוח שבועי למטפל\" מפיק סיכום של השבוע שנבחר: אנרגיה ומאקרו, ויטמינים ומינרלים מול היעד, פירוט יומי, תוספים ומשקל. בשבוע הנוכחי מופיעה בדוח גם רשימת המזונות שנאכלו. אפשר להדפיס, לשמור כ-PDF, לשתף או להוריד, ולשלוח לדיאטן/ית או לרופא/ה. הדוח מבוסס על ימים שתועדו ביומן בלבד.\n\n🚫 רגישויות ואלרגיות (בפרופיל): סויה, גלוטן (כולל נבט חיטה), אגוזים, בוטנים ושומשום — מזונות ומתכונים שמכילים אותם לא יוצעו. ללא סויה קשה יותר להגיע לסידן — מומלץ משקה צמחי מועשר בסידן.\n🍷 פסח: 'פסח — ללא חמץ' מסיר חיטה, שעורה, שיפון, כוסמין ושיבולת שועל ומוצריהם; 'פסח — ללא קטניות' (מנהג אשכנז) מסיר גם קטניות (כולל שעועית ירוקה ונבטי עדשים), סויה, אורז, תירס, כוסמת, בוטנים ושומשום. בשילוב שניהם התפריט הצמחוני מצומצם מאוד וקשה יותר לעמוד ביעדים — זה מיועד לימי החג בלבד; כבו את הסימון אחרי פסח. קינואה — לוודא הכשר לפסח.\n\n📖 מתכונים: מתכונים עם ערכים תזונתיים למנה, ספר מתכונים דיגיטלי, והוספה ישירה לארוחות.\n\n📏 כללי התכנון (חלים על כל ההצעות האוטומטיות):\n• קלוריות: 98%–100% מהיעד היומי — לעולם לא מעל 100%.\n• כמויות: רק מנות ויחידות שלמות. חריגים: אגוזים וזרעים (מותר חלקי) ו-¼ כפית מלח מיודד.\n• פירות: לפחות יחידה אחת בכל ארוחה ולפחות 4 ביום. ארוחת ביניים: כ-6% מהיום — פרי אחד או שניים, או פרי ומאפה מתוק (עוגייה / מאפין / פרוסת לחם בננה).\n• ירקות: ירק גלוי בכל ארוחה עיקרית (פריט ירק או סלט ירקות — ירק שבתוך תבשיל או חביתה לא מספיק, ובטטה / תפוח אדמה / תירס אינם נחשבים ירק לכלל הזה), לפחות 7 יחידות ירק ביום (סלט ירקות = 3), ולפחות סלט ירקות אחד ביום עם עלים ועשבי תיבול. כל ירק גולמי מוצע ביחידה אחת בארוחה (לא שתי יחידות מאותו ירק — במקום זה ירק נוסף אחר). פטריות מוצעות רק במתכון או יחד עם ירקות נוספים. כשבארוחה יש עלים גולמיים או פטריות לצד ירקות נוספים, הם מוצגים יחד כסלט אחד ('סלט ירקות ועלים' / 'סלט ירקות ופטריות') — אותם רכיבים ואותן כמויות.\n• הצמדות: דגן / תבשיל דגנים ↔ קטנית / תבשיל קטניות — לחם אינו השותף של קטנית (ליד תורמוס מוצע תבשיל דגנים), ומשקה או יוגורט סויה אינם השותף של תבשיל דגנים (לצידו תבשיל קטניות או קטנית). לחם / פיתה / לחמנייה / טורטייה / קרקרים ↔ ממרח (במיעוט המקרים — יוגורט סויה). מאפים מתוקים (מאפינס, עוגיות, לחם בננה) — בלי ממרח: לצד פרי בארוחת הביניים או כרכיב בפני עצמו. מנת מחבת (חביתה / שקשוקה) — תמיד עם לחם.\n• יחידות: סלט או ממרח — מנה אחת לארוחה. מאפים מוצגים ביחידה טבעית (פרוסה, לחמנייה, טורטייה, מאפין, עוגייה); פיתה — פיתה שלמה, אחת לארוחה; לחם — עד 2 פרוסות.\n• חלוקה בין הארוחות: בוקר וצהריים עד 38% מהיום כל אחת, ערב עד 28% — וארוחת הערב לא גדולה מארוחת הבוקר.\n• בלי כפילויות: אותה משפחת קטנית לא פעמיים באותה ארוחה; מוצר סויה אחד לארוחה (חריג: כוס משקה סויה מועשר כשהסידן חסר); אגוזים וזרעים לא באותה ארוחה; פריט לא חוזר באותו יום.\n• רק בתוך מתכון: טופו קשה, עדשים אדומות, ניצני כרוב, ברוקולי, כרובית, מנגולד, סלרי (גבעול בלבד) ועשבי תיבול (פטרוזיליה, שמיר, ריחן, נענע, כוסברה). עלים שיכולים להופיע כפריט עצמאי: חסה, חסה ערבית, רוקט, גבעול סלרי עם עלים, תרד, כרוב סיני ומעט קייל (יחידה אחת).\n• שומן עד 30% מהקלוריות (מגיל 65 — עד 35%, כדי לפנות מקום לטחינה, שקדים וזרעים כמקורות סידן וויטמין E); אומגה 6:3 עד 5:1; מנגן עד 15 מ\"ג ביום.\n• מיקרו: יעד של 98%+ ביום; ברמה השבועית חובה 98%+ בכל רכיב. תרד ומנגולד אינם משמשים להשלמת סידן וברזל (בגלל האוקסלטים נספג מהם רק כ-5% מהסידן, והברזל נספג גרוע). בין מקורות ההשלמה: נבט חיטה לכולין, ויטמין E ואבץ (עד 2 כפות ביום); רוקט ותאנה מיובשת לסידן; נבטי עדשים ומשמש מיובש לברזל. פירות מיובשים — עד 3 תאנים או 5 משמשים ביום. כשהסידן חסר — המערכת מחליפה, לפי הצורך, יוגורט סויה ביתי ביוגורט אורגני קנוי, ומוסיפה כוס משקה סויה או שיבולת שועל מועשר — עד כוס ביום, גם בארוחה שיש בה מוצר סויה אחר, ומפנה לה מקום בהקטנת פריט אחר.\n• ברזל ואבץ — יעד מותאם לתזונה צמחית (IOM): ברזל ×1.8 (14.4 מ\"ג; לנשים בגיל הפוריות 32.4 מ\"ג) ואבץ ×1.5 (16.5 מ\"ג לגברים, 12 מ\"ג לנשים), כי ברזל צמחי נספג פחות ופיטאטים מעכבים ספיגה. לנשים בגיל הפוריות קשה להגיע ל-32.4 מ\"ג ממזון בלבד — תפריט צמחי טיפוסי מספק כ-20–25 מ\"ג, היעד המלא מוצג בשקיפות, ומומלץ לבדוק פריטין ולהתייעץ עם רופא/דיאטן/ית לגבי תוסף. בארוחה העשירה ביותר בברזל התפריט דואג למקור ויטמין C (פלפל, הדרים, קיווי, תותים, עגבנייה), שמשפר את ספיגת הברזל.\n• לאוצין: לפחות 2 ארוחות עיקריות מעל הסף (2 גר', ומגיל 65 — 2.5 גר'). מגיל 65 הצהריים והערב הן \"ארוחות חלבון\" (תורמוס / טמפה / אדממה).\n• בשבוע: קערת יוגורט סויה, שיבולת שועל וזרעי פשתן בשני ערבים; שני מרקים ושני משקאות (מלבד משקה סויה); מנות \"מעשה מחבת\" במקום חלק מתבשילי הקטניות; ארוחות סלט קטנות ובינוניות; וכל 14 קטגוריות המתכונים מקבלות מקום. בתקציב קלורי נמוך (מתחת ל-1,800 קק\"ל) — פחות שיבוצים כאלה, כדי להשאיר מקום לסידן ולוויטמין E.\n\n🎯 יעדים תזונתיים בקצרה:\nקלוריות: נוסחת Mifflin-St Jeor + מקדם פעילות + מטרה (שמירה / ירידה זהירה / עלייה נקייה).\nמאקרו: פחמימות עד 55% · חלבון לפחות 20% וכ-1.0–1.5 גר'/ק\"ג (עם רצפה נוספת לגיל 65+) · שומן עד 30% (מגיל 65 — עד 35%).\nסיבים: 50 גר' ביום — מי שחדש בתזונה צמחית, כדאי לעלות בהדרגה במשך 2–4 שבועות ולשתות הרבה מים (פירוט בחלון 'סיבים'). 💪 מגיל 65: חלבון מספיק עובד הכי טוב יחד עם אימוני כוח 2–3 פעמים בשבוע. אומגה 6:3: עד 5:1 (אידיאלי עד 4:1).\n\n────────────────\n\n📚 מדריך מורחב\n\n🧭 מבנה וניווט\n5 לשוניות: ארוחות, אבות המזון, מיקרו, יומן, מתכונים. מעליהן: 👤 פרופיל, בורר היום ותפריט 'תכנון אוטומטי'. 💰 ניהול תקציב פותח מעקב עלויות. ✨ מסך פתיחה ו-📘 מדריך נמצאים בראש המסך. אחרי סיום הסיור המודרך או דילוג עליו — האפליקציה חוזרת ללשונית הארוחות.\n\n🥗 לשונית ארוחות — בנייה ידנית\nלכל ארוחה כרטיס משלה:\n• בנה וערוך — חיפוש מזון מתוך 200+ פריטים, כמות בגרמים או ביחידות מטבח.\n• 📂 ארוחות שמורות — טעינה או מחיקה; 💾 שמירת ארוחה חדשה בשם.\n• שעת ארוחה, השריה (בונוס זמינות לברזל / אבץ / סידן בחישוב בלבד), והעברת פריט בין ארוחות.\n• 🚫 לעולם לא להציע — מסומן ליד מזון ברשימת החיפוש; מוציא אותו מכל ההצעות האוטומטיות.\n\n🤖 תכנון אוטומטי\n• הצע ארוחות ליום / ×7 לשבוע — מהמאגר הכללי ומהמתכונים.\n• הצע ארוחות ממתכונים ליום / ×7 לשבוע — בעיקר מהמתכונים, עם אגוזים, זרעים ופרי.\n• שלב מוצרים מן החי (יום / שבוע) — גרסה הכוללת מוצרי חלב וביצים.\n• השלם יום — מה שכבר בחרת נשאר בדיוק כפי שהוא (אותו פריט, אותה כמות, באותה ארוחה), והמערכת רק משלימה ומאזנת את מה שהיא עצמה מוסיפה.\n• כל הצעה נפתחת בתצוגה מקדימה: ✅ להחיל, 🔄 להציע שוב, או לבטל.\n• 💰 אם הגדרת תקציב חודשי — אחרי בחירת המנגנון תוכל לבחור 'תכנון לפי תקציב' (ראו 'ניהול תקציב').\n• תכנון שבועי רץ ברקע עם פס התקדמות ('בונה יום 3 מתוך 7') וכפתור ביטול — המסך לא קופא.\n• אחרי עדכון גרסה — תפריטים שכבר שמורים לא משתנים מעצמם; כדי לקבל את הכללים החדשים, נקו את השבוע וצרו אותו מחדש.\n\n🗓️ שמירת ימים שלמים\n'💾 שמור יום' ו-'📂 ימים שמורים' ליד 'השלם יום' / 'נקה יום': שמירת תפריט של יום שלם לשימוש חוזר.\n\n🍽 לשונית אבות המזון — 4 מסכי משנה\n(בדסקטופ — כפתורים בסרגל הצד מתחת ל'אבות המזון'; במובייל — שורת כפתורים בראש הלשונית)\n• 🍽 מאקרו — גרמים ואחוזים של פחמימות, חלבון, שומן וסיבים, וחלבון לק\"ג; יומי ושבועי.\n• ⚖️ יחס אומגות והמרת ALA — יחס אומגה 6:3 (יומי ושבועי) והערכת EPA/DHA מ-ALA.\n• 🧬 חומצות אמינו חיוניות — לאוצין וליזין מול היעד לגיל, לאוצין בכל ארוחה, והסבר (עם סימוכין) מדוע עמידה בשתיהן בתפריט מגוון מכסה כמעט תמיד גם את 7 החומצות החיוניות האחרות.\n• 🥓 שומן רווי וכולסטרול — יומי ושבועי. גם במזון צמחי יש מעט שומן רווי (טחינה, סויה, אגוזים, שמן) — זה תקין כל עוד הוא מתחת ל-10% מהקלוריות.\n\n💊 לשונית מיקרו\n• ⚖️ יחסים — אשלגן:נתרן, וסידן:זרחן (עם הסבר המותאם למקור הזרחן — צמחי או מן החי).\n• 💊 ויטמינים ומינרלים — יומי: כל רכיב מול היעד וה-EAR, ו'ספיגה משוערת' לסידן.\n• 📅 ויטמינים ומינרלים — שבועי: סך השבוע מול יעד × 7, ותקרות בטיחות שבועיות לסלניום, יוד ומנגן.\n• ציון העמידה השבועית: 100 נקודות, מינוס 5 לכל רכיב שנמצא מתחת ל-98% מהיעד השבועי. רכיב של 98% ומעלה מסומן בירוק.\n\n📖 לשונית מתכונים\n• ➕ מתכון חדש / ✏️ ערוך / ⧉ שכפל / 🗑 מחק / ☆ מועדף.\n• 📦 ייצוא מתכונים — כל המתכונים שברשימה כקובץ JSON: הורדה כקובץ או העתקה.\n• 👁 צפייה — פתיחת המתכון לקריאה בלבד (רכיבים, כמויות והוראות הכנה בגופן גדול), וסגירה בלי צורך לשמור.\n• בטופס העריכה: '✕ יציאה בלי שמירה' בראש הטופס. אחרי צפייה, שמירה או ביטול — הרשימה חוזרת למתכון שבו היית, לא לראש הרשימה.\n• 📖 ספר המתכונים — שער מאויר, תוכן עניינים לפי 14 קטגוריות, ועמוד לכל מתכון.\n• קטגוריות: תבשילי קטניות, תבשילי דגנים, מרקים, סלטי ירקות, סלטי קטניות, סלטי פירות, ארוחות סלט, פשטידות, מאפים, ממרחים ומטבלים, דייסות, קערות דגנים, משקאות ומעשה מחבת.\n\n📝 לשונית יומן\nתיעוד מה נאכל בפועל: ✓ 'אכלתי את המתוכנן', + הוספת פריט, ✕ הסרה, 'שארית' (אחוז שלא נאכל), ו-🗑 איפוס יומן היום. התצוגה 'מתוכנן / בפועל' מעל הלשוניות קובעת אילו נתונים מוצגים במסכי הניתוח.\n📊 מעקב שבועי (מסך משנה בלשונית היומן)\n• השבוע מתחיל ביום ראשון. נספרים רק ימים שתועדו (לפחות ארוחה אחת סומנה, נערכה או הוסרה) — יום שלא תועד לא נכנס לחישוב, והמסך מציג \"תועדו X מתוך Y ימים\".\n• בפועל מול המתוכנן של אותם ימים בלבד: מאקרו (קלוריות, חלבון, פחמימות, שומן, סיבים, שומן רווי, לאוצין, ליזין), עלות, וכל רכיבי המיקרו — עם סטייה באחוזים ואחוז מהיעד. הסטיות הגדולות מופיעות ראשונות; לחיצה על רכיב מציגה פירוט לפי יום (ובשבוע הנוכחי — באיזו ארוחה נוצר עיקר הפער).\n• המתוכנן של יום שעבר נשמר כפי שהיה, כך ששינוי תפריט מאוחר לא משנה את ההיסטוריה. ההיסטוריה נשמרת במכשיר ללא הגבלה, עם ציון עמידה לכל שבוע.\n• 🔸 תג שקט על לשונית היומן מופיע כשבימים שתועדו יש רכיב מיקרו שנמוך ב-10% ומעלה מהמתוכנן.\n• 📋 עדכן את שאר השבוע (לפי בקשה): כשהצפי לסוף השבוע (מה שתועד + התכנון לימים שנותרו) נמוך מ-98% ברכיב כלשהו, המערכת מציעה לעדכן רק את הימים שנותרו. שינוי נשמר רק אם הוא מקטין את החוסר השבועי הכולל, כל כללי התכנון נשמרים, ותצוגה מקדימה מראה את השינויים לפני ההחלה. חוסר או עודף קלורי לא מקוזז בימים הבאים.\n\n🔄 אופטימיזציה\nמציעה החלפות לשיפור האיזון התזונתי; כל הצעה מאושרת או מדולגת בנפרד.\n\n👤 פרופיל אישי\nגובה, משקל, גיל, מין, רמת פעילות, מטרה ופרופיל בריאותי. כברירת מחדל הנתונים נשמרים רק לאורך הביקור הנוכחי ומתאפסים עם סגירת האפליקציה; המתג '💾 שמור את נתוני הפרופיל במכשיר' שומר אותם גם לכניסות הבאות.\n\n💰 ניהול תקציב ותכנון לפי תקציב\n• קובעים תקציב חודשי למזון, והאפליקציה מציגה אותו גם ליום (התקציב ÷ מספר הימים בחודש הנוכחי) ולשבוע (התקציב ÷ (ימי החודש ÷ 7)).\n• עלות משוערת לכל ארוחה, ליום ולשבוע מוצגת מול היעד. כדאי לעדכן מחירים לפי מה שמשלמים בפועל.\n• תכנון לפי תקציב: כשמוגדר תקציב חודשי, אחרי בחירת מנגנון הצעות (יום / שבוע / ממתכונים / מוצרים מן החי / 'השלם יום') נפתח חלון בחירה — 'תכנון רגיל' או 'תכנון לפי תקציב'. ההצעה תעמוד בתקציב היומי או השבועי עם סטייה של עד 5%, והתצוגה המקדימה מראה את העלות מול התקציב.\n• כללי התזונה והקלוריות קודמים לתקציב: המערכת מעדיפה פריטים זולים יותר מאותה קבוצת מזון (למשל כרוב במקום בוק צ'וי, בורגול במקום קינואה), ואף רכיב תזונתי שעומד ביעד לא יורד מתחתיו. בין כמה הצעות אפשריות, עדיפות ליום שבו כל רכיבי המיקרו מגיעים ל-98% לפחות. אם אי אפשר לעמוד בתקציב בלי לפגוע בתזונה — מוצגת העלות הנמוכה ביותר שנמצאה, עם אזהרה.\n• ב'השלם יום' — מה שבחרת בעצמך לא מוחלף; החיסכון נעשה רק בפריטים שהמערכת מוסיפה.\n\n📲 התקנה כאפליקציה\nתפריט הדפדפן במובייל ← 'הוסף למסך הבית'.\n\n🌐 שפה\nכפתור EN / עברית מחליף את שפת הממשק.\n\n🔒 עריכת פאנלים\nכל פאנל מידע ניתן לעריכה בלחיצה על ✎ (נשמר במכשיר בלבד). המדריך ואזהרת השימוש מוגנים בקוד גישה.\n\n⚠️ האפליקציה היא כלי מידע ואינה תחליף לייעוץ רפואי או תזונתי מקצועי.",weeklyMicro:"💊 עמידה שבועית ביעדים — מה זה מראה?\n\nהבר הזה מסכם כמה טוב אתה עומד ביעדי המיקרו-נוטריאנטים על פני שבוע שלם, ולא רק ביום בודד.\n\nאיך מחשבים את הציון: מתחילים מ-100 נקודות, ומורידים 5 נקודות עבור כל מיקרו-נוטריאנט (מתוך הרשימה בלוח המיקרו) שלא הגיע ל-100% מהיעד השבועי שלו (יעד יומי × 7). ציון מלא (100) מתקבל רק כאשר כל הנוטריאנטים כוסו במלואם על פני השבוע.\n\nמתוכנן מול בפועל: העמודה 'מתוכנן' מחושבת מהארוחות שתכננת לשבוע; העמודה 'בפועל' מחושבת ממה שתיעדת ביומן האכילה. פער גדול בין השתיים מצביע על כך שמה שנאכל בפועל סטה מהתוכנית.\n\nלחצו על הבר כדי לראות פירוט מלא לכל מיקרו-נוטריאנט בנפרד.",weeklyOmega:"יחס אומגה 3:6 שבועי — מה זה מראה?\n\nהבר הזה מציג את יחס האומגה 6 לאומגה 3 המצטבר על פני שבוע שלם — לא ממוצע של יחסים יומיים, אלא סכימת כל הכמויות תחילה, ורק אז חישוב יחס אחד. שיטה זו מדויקת יותר, כי ממוצע יחסים יומיים יכול להטעות כשיש ימים עם צריכה נמוכה מאוד.\n\nמתוכנן מול בפועל: משווה בין מה שתוכנן לשבוע לבין מה שתועד בפועל ביומן.\n\nהיעד: יחס של עד 5:1 (✅), אחרת מסומן כדורש שיפור (⚠️). לחצו על הבר לפירוט מלא של כמויות Ω3/Ω6/Ω9.",kna:"⚖️ נתרן / אשלגן — למה זה חשוב?\n\nאשלגן ונתרן הם מינרלים שפועלים יחד בוויסות לחץ הדם ואיזון הנוזלים בגוף. תזונת WFPB עשירה טבעית באשלגן (ירקות, פירות, קטניות) ודלה בנתרן, מה שתומך בבריאות הלב וכלי הדם.\n\nהיעד הכללי: יחס אשלגן לנתרן של לפחות 2:1 (כלומר לפחות פי 2 אשלגן מנתרן).\n\nמצב מיוחד — פרופיל בריאותי עם הגבלת אשלגן (למשל מחלת כליות כרונית): כאשר מוגדרת תקרת אשלגן קלינית בפרופיל הבריאותי, ההיגיון מתהפך לחלוטין — המטרה היא להישאר מתחת לתקרה, לא להגיע ליחס גבוה. במקרה כזה הלוח יציג תקרה קלינית במקום יעד היחס הרגיל.",weeklyKna:"⚖️ יחס נתרן:אשלגן שבועי — מה זה מראה?\n\nזהו סיכום שבועי של יחס האשלגן לנתרן — סכום כל הכמויות שנצברו במהלך השבוע, ולא ממוצע ימים בודדים. כמו הבר היומי, היעד הכללי הוא יחס של לפחות 2:1.\n\nמתוכנן מול בפועל: משווה בין הארוחות שתוכננו לשבוע לבין מה שתועד בפועל ביומן האכילה, כדי לתת תמונה אמינה יותר על פני זמן ולא רק תמונת מצב חד-יומית.",foodLog:"📝 יומן אכילה — איך משתמשים בו?\n\nלשונית זו מיועדת לתעד מה אכלת בפועל בכל יום, בנפרד מהתפריט המתוכנן שלך.\n\nאיך מנווטים בין ימים: השתמשו בחצים משני צידי התאריך כדי לעבור בין ימים, או לחצו 'חזרה להיום' כדי לחזור מיד לתאריך הנוכחי.\n\nאיך מתעדים ארוחה: לחצו על כל ארוחה (בוקר/ביניים/צהריים/ערב) כדי לפתוח אותה. משם יש שתי אפשרויות:\n1. אם אכלתם בדיוק את מה שתוכנן — לחצו על '✓ אכלתי בדיוק את המתוכנן'. הארוחה תסומן כתואמת לתכנון, ללא צורך להזין שום דבר נוסף.\n2. אם אכלתם משהו שונה — לחצו '+ הוסף פריט' כדי להוסיף מזון ספציפי שאכלתם, או לחצו על ה-✕ ליד פריט קיים כדי להסירו. אפשר גם ללחוץ 'נקה' כדי לאפס את כל התיעוד של אותה ארוחה ולהתחיל מחדש.\n\n🍽️ שארית: ליד כל פריט תוכלו לסמן 'שארית' אם לא אכלתם אותו במלואו — 10%/20%/25% או אחוז ידני. ברירת המחדל היא שהפריט נאכל במלואו; ברגע שמסמנים שיעור שנותר, החישוב התזונתי (קלוריות, אבות מזון, סיבים ושאר הנוטריאנטים) מתעדכן אוטומטית לפי מה שבאמת נאכל (100% פחות אחוז השארית).\n\nלמה זה חשוב: כל מה שמתועד כאן מזין את התצוגה 'בפועל (היום)' בלשוניות 'ארוחות' ו'מיקרו', ואת בָּרֵי העמידה השבועית — כך שתוכלו (ובמידת הצורך, גם המטפל/ת שלכם) לראות בבירור עד כמה מה שנאכל בפועל תואם לתכנון המקורי לאורך זמן.",activityLevels:"🏃 רמות פעילות גופנית — מה ההבדל?\n\nהרמה שתבחר משפיעה ישירות על היעד הקלורי שלך (TDEE) — כל רמה מוכפלת במקדם שונה על קצב חילוף החומרים הבסיסי (BMR).\n\nמועטה (מקדם 1.375): מעט מאוד או ללא פעילות גופנית מובנית — עבודת משרד או ישיבה רוב היום, הליכה מזדמנת בלבד, לכל היותר אימון קל 1-2 פעמים בשבוע.\n\nבינונית (מקדם 1.55): פעילות גופנית מובנית 3-5 פעמים בשבוע — ריצה, אימוני כוח, שחייה, הליכה נמרצת או ספורט אחר ברמה בינונית.\n\nגבוהה (מקדם 1.725): פעילות גופנית אינטנסיבית 6-7 פעמים בשבוע, או עבודה פיזית תובענית (למשל בנייה, חקלאות, משלוחים) בשילוב אימונים סדירים.\n\nטיפ: אם אתה לא בטוח באיזו רמה לבחור, עדיף לבחור ברמה נמוכה יותר משנדמה לך — הערכת-יתר של הפעילות היא הטעות הנפוצה ביותר, והיא מובילה ליעד קלורי גבוה מדי מהנדרש בפועל.",cap:"🦴 יחס סידן:זרחן — למה זה חשוב?\n\nסידן וזרחן הם שני המינרלים הנפוצים ביותר ברקמת העצם, ופועלים יחד בוויסות בריאות השלד. היחס התזונתי המקובל בספרות הוא כ-1:1 עד 2:1 (סידן שווה או גבוה יותר מזרחן).\n\nלמה זה משנה: כאשר צריכת הזרחן עולה משמעותית מעבר לסידן לאורך זמן (בעיקר ממזון מעובד עם תוספי זרחן, פחות מתזונת WFPB טבעית) — הגוף עשוי להגביר הפרשת הורמון פארתירואיד (PTH), מה שעלול להאיץ שאיבת סידן מהעצם ולפגוע בצפיפותה לאורך זמן.\n\nבתזונת WFPB: מקורות טובים לסידן כוללים ירקות מצליבים (כרוב, ברוקולי, קייל), טופו, טחינה ומשקה סויה מועשר. זרחן קיים כמעט בכל מזון (קטניות, דגנים מלאים, אגוזים) — ברוב המקרים תזונה מבוססת-צומח מאוזנת שומרת על יחס סביר מעצמה, ללא צורך במעקב קפדני, אלא אם יש מצב רפואי ספציפי (כגון מחלת כליות) הדורש תשומת לב נפרדת לזרחן — במקרה כזה ראה את פאנל נתרן/אשלגן, שם מוצגת תקרת זרחן קלינית נפרדת כשרלוונטי.\n\nℹ️ הבהרה חשובה: זהו יחס אחד ויחיד (סידן חלקי זרחן), לא שני יחסים שונים — התצוגה היומית והשבועית הן שתי חלוני-זמן על אותה נוסחה בדיוק, בדיוק כמו שקורה ביחס נתרן:אשלגן.\n\n🏭 איכות ומקור הזרחן — אורגני מול אנאורגני: מעבר לכמות הזרחן הכוללת, יש הבדל משמעותי במקור שלו. זרחן אורגני (טבעי, מצמחים או ממוצרי חלב/ביצים בסיסיים) נספג בשיעור חלקי בלבד (כ-40-60%), כי חלקו קשור למטריצה הטבעית של המזון (כולל פיטאט בצמחים). זרחן אנאורגני מוסף (מלחי-היתוך בגבינה מעובדת, תוספי E339-E341/E450-E452 במזון מעובד) נספג כמעט 100% — עומס מטבולי גבוה משמעותית מאותה כמות-מ\"ג בדיוק. כשהאפליקציה מזהה פריט עם זרחן אנאורגני מוסף בתפריט שלך, תופיע הערה ייעודית מתחת ליחס — לא יחס נוסף, רק שכבת מידע על איכות המקור.\n\nℹ️ למה היחס יכול להישאר נמוך גם כשעומדים ב-100% מהיעד היומי של שני המינרלים בנפרד: הסידן והזרחן נקבעים כל אחד מול יעד RDA משלו, לא מול יחס-יעד משותף. כלומר גם אם צריכת הסידן שלך מגיעה ל-100%+ מהיעד היומי (1000-1200mg) וגם צריכת הזרחן מגיעה ל-100%+ מהיעד שלו (700mg) — היחס ביניהם עדיין יכול לצאת נמוך מ-1:1 (למשל 0.7:1), כי היעד לזרחן עצמו נמוך יותר במספרים אבסולוטיים מיעד הסידן, אבל תזונת WFPB טיפוסית נוטה לספק זרחן בעודף ניכר מעבר ליעד שלו (בזכות שפע קטניות/דגנים/אגוזים), בעוד שסידן נשאר קרוב יותר ליעד שלו בלבד. זו הסיבה שהיחס יכול \"להיכשל\" גם כשכל מינרל בנפרד \"עובר\" — זה בדיוק מה שהפאנל הזה נועד להראות, מעבר למה שכל אחד מהיעדים הנפרדים ברשימת הוויטמינים/מינרלים כבר מציג.\n\n⚠️ הסתייגות מדעית: בשונה מיחס נתרן:אשלגן (שיש לו גיבוי אפידמיולוגי חזק לאוכלוסייה הבריאה), היחס הספציפי סידן:זרחן אצל אדם בריא הוא הרבה פחות מוסכם — הדוחות התזונתיים העדכניים (NASEM) קובעים יעד נפרד לכל מינרל בפני עצמו, לא יחס-יעד רשמי ביניהם. חשוב לזכור שהאפליקציה מיועדת כרגע לאנשים בריאים בלבד — עבורם, הפאנל הזה הוא דגל לתשומת-לב שמעודד תוספת מקור סידן (לא בהכרח הפחתת זרחן), ולא אזעקת חירום כמו יחס אומגה חורג או חריגה מתקרת נתרן.",satfat:"🥓 שומן רוֹווי וכולסטרול — למה זה נמצא רק בגרסה הזו?\n\nשני הנתונים האלה כלל לא היו קיימים בגרסת ה-WFPB המקורית (תזונה טבעונית מלאה) — כי מקורות משמעותיים לשומן רוֹווי וכולסטרול כמעט ולא קיימים בתזונה צמחית מלאה. ברגע שנוספו מוצרי חלב וביצים, המעקב הזה הופך לחיוני.\n\nשומן רוֹווי — היעד באפליקציה הוא עד 10% מהקלוריות היומיות (הנחיית האיגוד האמריקאי לקרדיולוגיה ו-WHO), כחלק מהגנה על בריאות הלב וכלי הדם. עודף שומן רוֹווי לאורך זמן קשור לעלייה ב-LDL (\"כולסטרול רע\") ולסיכון קרדיווסקולרי מוגבר. מוצרים כמו חמאה, גבינות קשות ובשר מן החי הם המקורות המרוכזים ביותר.\n\nכולסטרול — בעבר הומלץ במפורש להגביל ל-300 מ\"ג ליום; ההנחיות התזונתיות העדכניות (כולל בארה\"ב) הסירו תקרה מספרית רשמית, מכיוון שהמחקר מראה שכולסטרול תזונתי משפיע פחות על כולסטרול בדם אצל רוב האנשים מכפי שהוערך בעבר — ההשפעה המשמעותית יותר היא בדרך כלל משומן רוֹווי, לא מכולסטרול תזונתי כשלעצמו. עדיין, 300 מ\"ג מוצג כאן כרף-ייחוס כללי ושמרני, לא כתקרה רפואית מוחלטת.\n\n⚠️ הסתייגות: כמו בשאר האפליקציה, אלה הנחיות כלליות לאוכלוסייה הבריאה, לא ייעוץ קליני אישי — אם יש לך היסטוריה משפחתית של מחלת לב, כולסטרול גבוה או גורמי סיכון אחרים, התייעץ עם רופא/דיאטן/ית לגבי היעד המתאים לך."},en:{macroFormula:"🧮 How are the calorie percentages for each macronutrient calculated?\n\nThe app uses a Modified Atwater System, where each gram is assigned its own calorie value: net carbs (total carbs minus fiber) = 4 kcal/g, protein = 4 kcal/g, fat = 9 kcal/g — and dietary fiber = only about 2 kcal/g, not 4 like other carbs.\n\nWhy does fiber only get 2 kcal/g? Dietary fiber isn't digested and absorbed in the small intestine the way regular carbs (starch and sugar) are. Some of it is fermented by gut bacteria in the colon into short-chain fatty acids, which provide partial, less readily available energy compared to direct breakdown of a regular carbohydrate. The FDA and USDA (and similar bodies worldwide) use an agreed value of about 2 kcal/g for fiber instead of the usual 4 kcal for carbs — this is exactly the Modified Atwater System.\n\nWhat this means in practice: to calculate the percentage of calories coming from each macronutrient, fiber is first separated out from total carbs (\"net carbs\" = total carbs minus fiber), and calculated separately. Total calories are then the sum of: (net carbs × 4) + (protein × 4) + (fat × 9) + (fiber × 2). That's why total macronutrient grams won't line up exactly with total calories if you multiply everything by 4/4/9 without separating out fiber — it's always calculated as its own category, at the lower factor.\n\nThis panel shows the amounts in grams (today vs. this week) and the calorie percentage split, using exactly this formula — identical to what's shown on the regular daily summary card in the 'Meals' tab, just with additional gram detail and a weekly summary.",calories:"📊 Calories — how your target is calculated\n\nThe app first calculates your Basal Metabolic Rate (BMR) using the Mifflin-St Jeor formula, based on height, weight, age, and sex. It then multiplies that by your chosen activity multiplier (low/moderate/high) to get your Total Daily Energy Expenditure (TDEE) — the calories needed to maintain your current weight.\n\nFinally, based on your goal (maintain/lose/gain), a moderate calorie deficit or surplus is added (see the 'Careful Loss' and 'Clean Gain' panels).\n\nTarget macronutrient split: carbs up to 55% of calories, protein at least 20% (and roughly 1.0-1.5g per kg body weight, based on your selected activity level), and fat up to 30% — a balanced split reflecting the more moderate end of the WFPB spectrum: not the stricter reversal-oriented programs like Esselstyn/Ornish (~10% fat), but the broader approach of NutritionFacts.org/Dr. Greger and similar contemporary WFPB writers, who consider 25-30% fat perfectly healthy as long as it comes from whole foods (nuts, seeds, avocado) rather than extracted oil, and saturated fat stays low (separate target, ≤10%). This also sits within the general AMDR range (20-35%) used for the healthy population.",fiber:"🌿 Dietary Fiber — why it matters\n\n🐢 New to plant-based eating? Build up to this amount gradually over 2–3 weeks: start with half portions of legumes and whole grains and increase every few days, drink plenty of water, soak legumes and cook them well (or favor red lentils and split peas in stews, which are easier to digest), and chew slowly. Gas and bloating in the first weeks are a common response of gut bacteria to the change and usually ease.\n\nThe app's daily target is 50g — notably above the general medical recommendation (roughly 25-38g), since a WFPB diet is naturally rich in fiber and easily reaches, or exceeds, that threshold.\n\nFiber supports healthy digestion, feeds beneficial gut bacteria, helps regulate blood sugar and cholesterol levels, and contributes to lasting satiety.\n\nRich sources: all legumes (lentils, beans, chickpeas), whole grains (oats, quinoa, barley), leafy greens, broccoli, chia and flax seeds, nuts, and fruit with the skin on.\n\nTip: if you're not used to a high-fiber diet, increase your intake gradually and drink enough water to avoid digestive discomfort.",protein:"💪 Protein on a plant-based diet\n\nThe app's target is twofold: at least 20% of total daily calories, and at least 1.35g of protein per kg of body weight — a target suited to an active person aiming to maintain or build muscle, somewhat above the general medical recommendation (0.8g/kg).\n\nA common myth is that it's hard to get enough protein on a vegan diet — in practice, a varied combination of legumes (lentils, beans, chickpeas, lupin), whole soy (tofu, tempeh, edamame), whole grains, and nutritional yeast (about 50g protein per 100g) easily covers all essential amino acids across the day, even without precisely 'combining proteins' in every single meal.\n\nRecommended sources: tempeh, lentils, black beans, firm tofu, nutritional yeast, quinoa, and seitan.\n\n📏 Official g/kg protein guidelines — Israel and the US: both draw on the same DRI literature (Institute of Medicine/NASEM) and set an identical baseline RDA of about 0.8g/kg/day for an average healthy adult at low activity — this is the deficiency-prevention floor, not necessarily the optimal target. From there, ranges widen based on several factors:\n• Age: adults over 65 — geriatric nutrition bodies (e.g. the PROT-AGE group) recommend about 1.0-1.2g/kg to help prevent sarcopenia (age-related muscle loss).\n• Sex: there's no meaningful difference in the g/kg target between men and women — the main difference is during pregnancy and lactation, where the RDA rises by about 25g/day above baseline.\n• Activity level: low activity — about 0.8g/kg is usually sufficient. Endurance training (running, cycling) — about 1.2-1.4g/kg per ISSN/ACSM position stands. Resistance/strength training — about 1.6-2.2g/kg to support building and maintaining muscle mass.\n• Other factors: weight loss under a calorie deficit — the upper end of the range (about 1.6-2.0g/kg) is recommended to help preserve muscle mass during the deficit. Chronic kidney disease — the opposite: intake below 0.8g/kg under a physician/dietitian's guidance.\nThe target this app uses (1.2g/kg at moderate activity) now automatically adjusts based on the activity level selected in your profile: about 1.0g/kg at low activity, 1.2 at moderate (unchanged from before), and about 1.5 at high activity — rather than one fixed value for everyone as before. This scales it within the range described above (0.8 baseline, up to 1.6-2.2 for resistance training), with no extra input needed beyond the activity level already in your profile.",omega:"Omega-6:3 Ratio — what it is and why it matters\n\nOmega-6 and omega-3 are essential fatty acids that compete for the same enzymes in the body during processing. A typical Western diet, rich in refined vegetable oils (like sunflower, corn, and soy oil), tends to skew heavily toward omega-6 (sometimes 15:1 or higher), which can promote inflammatory processes in the body.\n\nThe app's target is a ratio of up to 5:1, while the dietary ideal is 4:1 or lower.\n\nPlant-based omega-3 sources: ground flaxseed, chia seeds, walnuts, hemp seeds, and algae oil (which directly supplies EPA/DHA — the biologically active forms, unlike ALA which requires partial conversion in the body).\n\nTip: limiting refined oils high in omega-6 (like sunflower and corn oil) alongside daily omega-3 sources is the simplest way to maintain a healthy ratio.",micro:"💊 B12: daily supplement. D: 1000IU. Calcium: tahini+kale. Iron: lentils+VitC. 💧 Soaking: legumes/grains marked \"soaked\" (tap the tag next to the ingredient on the meal card) get a bioavailability bonus — iron +15%, zinc +25%, calcium +10% — since soaking reduces phytate, which inhibits absorption. Default is no bonus.\n\n⚖️ Omega-6:3 ratio: the ideal ratio is up to 4:1 (this app targets ≤5:1). Omega-6 and omega-3 compete for the same enzymes in the body — too high a ratio favoring omega-6 (common in a typical Western diet, sometimes 15:1 or higher) can promote inflammation. Good omega-3 sources: ground flaxseed, chia seeds, walnuts.\n\n⚖️ Potassium:Sodium ratio: potassium should ideally be at least double sodium (ratio ≥2:1), and higher is better. A WFPB diet is naturally rich in potassium (vegetables, fruit, legumes) and low in sodium — which supports healthy blood pressure regulation.",wfpb:"🌱 Vegan: no animal products at all — no meat, poultry, fish, eggs, dairy, or honey.\n\n🌿 WFPB (Whole Food Plant-Based): vegan, and one step further — whole grains, legumes, vegetables, fruits, nuts and seeds in their natural form, mainly without refined sugar or processed food.\n\n🫒 A moderate fat policy, not the strictest classic WFPB: unlike the historically stricter version of WFPB (zero extracted oil at all, as in Esselstyn/Ornish), this app follows the more moderate approach of NutritionFacts.org/Dr. Greger — it includes a moderate amount of olive oil as a fat source (see the 'Calories' panel for the full fat target, 30%), alongside nuts/seeds/avocado as the main whole-food fat sources.\n\n🧂 Iodized salt, not salt-free: a whole-food plant-based diet (mostly without animal products or seafood) is exposed to iodine deficiency, since most natural iodine sources are animal-derived (fish, dairy). So the app uses iodized salt (not iodine-free sea/Himalayan salt) to ensure reasonable iodine coverage from diet itself, alongside the supplement (see the 'Micro' panel).",nds:"🏆 Nutrient Density Score (NDS) — what is it?\n\nThis score measures how well your day covers the full range of essential vitamins and minerals — not just calories and protein.\n\nHow it's calculated:\nFor each of ~21 vitamins/minerals (excluding B12, D and iodine, which are treated as supplement-dependent), we check what % of the daily target (RDA) you reached. Any nutrient above 100% is capped at 100% — so a huge surplus of one nutrient (say, iron) can't 'cover for' a shortfall in another (say, zinc). The score is the average of all these percentages.\n\nWhy it's useful:\nA high score reflects a varied diet covering a broad nutrient range — not just a high-calorie/high-protein day with few vegetables or fruits. Two days with identical calories can score very differently depending on food variety.\n\nWhat it doesn't measure:\nIt excludes calories, protein, carbs, fat and fiber (tracked separately), and it isn't a clinical-deficiency check (that's what the EAR indicator on the micronutrient panel is for).\n\nScore ranges:\n80-100 Excellent · 50-79 Good · Below 50 — add more variety (leafy greens, fruit, legumes, nuts and seeds).",disclaimer:"⚠️ General info only — not medical advice. The app is intended for adults (18+) only, and not for pregnancy or breastfeeding without guidance from a physician/dietitian. This app is not a medical device and is not intended to diagnose, treat, or manage any health condition. Nutritional values in the food database (calories, macros, and micronutrients) have been checked and cross-referenced by Claude (AI), with the app developer's assistance, against the Israeli Ministry of Health food database, but are still not the result of lab analysis or a live verified database query, and may deviate somewhat from official reference sources. Before making dietary changes — especially if you have a health condition requiring precise nutritional tracking (e.g. kidney disease, diabetes, or a sensitivity) — consult a physician/dietitian and don't rely on this app as your sole source.",spices:"🧂 Herbs & Spices — more than just flavor\n\nBeyond adding flavor and culinary variety, many spices contain compounds with anti-inflammatory and antioxidant properties that support a healthy lifestyle within a WFPB diet.\n\nTurmeric + black pepper: curcumin in turmeric absorbs much better in the presence of piperine from black pepper — always recommended together.\nCinnamon: may help regulate blood sugar levels.\nGinger: aids digestion and has anti-inflammatory effects.\nFresh garlic: supports the immune system and cardiovascular health.\nCumin: rich in iron and supports digestion.\n\nYou can and should freely incorporate these spices into your daily meals — they don't significantly affect calorie counts but add to the overall nutritional value of the meal.",swapExplain:"🔄 The Optimization Tool — how it works\n\nThis tool scans your planned meals and looks for opportunities to improve nutritional balance without changing your total daily calories.\n\nHow it chooses swaps: it identifies an existing food item in a meal that has a similar substitute in terms of food type and calorie amount, but with a richer nutritional profile — for example, more fiber, more calcium, a better omega ratio, or better coverage of a vitamin/mineral you're relatively short on.\n\nEach suggestion is shown separately with an '✅ Apply' or 'Skip' option — so you stay in full control of every change. If your meals are already well balanced, the tool will indicate there are no further suggestions.\n\nNote: swaps are calorie-neutral (they don't change the meal's total calories) and focus solely on improving nutritional quality.",bmi:"⚖️ BMI (Body Mass Index) — what it means and its limits\n\nCalculation: BMI = weight (kg) ÷ height² (meters).\n\nStandard classification ranges:\n<18.5 — Underweight\n18.5–25 — Normal weight\n25–30 — Overweight\n30+ — Obese\n\nImportant to know: BMI is a quick, rough measure, but it doesn't distinguish muscle mass from fat mass, and doesn't account for age, sex, body frame, or fat distribution. Someone with high muscle mass (e.g. an athlete) may get a 'high' BMI despite low body fat.\n\nSo it's best to treat BMI as a general orientation tool only, not a single measure of metabolic health — especially if you have specific questions, it's recommended to consult a physician/dietitian who can assess the full picture.",goalLose:"📉 Careful Weight Loss — the app's approach\n\nWhen you select the 'Lose' goal, the app applies a moderate calorie deficit of about 6.25% below your maintenance intake (within a flexible 5%-7.5% range), rather than an aggressive deficit.\n\nWhy a moderate approach? Losing weight too quickly (a large deficit) raises the risk of muscle mass loss, a slower metabolic rate, fatigue, and persistent hunger that makes it hard to stick with over time. A moderate deficit supports slow, sustainable loss — typically around 0.3-0.5kg per week — which is more likely to stick and avoid a 'yo-yo effect'.\n\nIt's important to combine this with exercise (especially resistance training) to preserve muscle mass while losing weight. You can add your own personal notes here.",goalGain:"📈 Clean Mass Gain — the app's approach\n\nWhen you select the 'Gain' goal, the app applies a moderate calorie surplus of about 6.25% above your maintenance intake (within a flexible 5%-7.5% range).\n\nWhy a moderate approach rather than a large surplus? Too large a calorie surplus tends to lead to excess fat gain alongside muscle mass, rather than necessarily faster muscle building — the body can only build muscle at a limited rate, and beyond that the surplus is 'stored' as fat. A moderate surplus supports relatively 'clean' gain, with a better ratio of muscle to fat gained.\n\nFor best results, it's important to combine this with regular resistance training alongside sufficient protein intake (see the 'Protein' panel). You can add your own personal notes here.",userGuide:"📘 PlantVitalis Vegetarian — User Guide\n\nPurpose:\nPlantVitalis is a meal-planning and nutrition-tracking app built on a WFPB (whole-food, plant-based) approach, with the option to include dairy and eggs. It builds daily and weekly menus that meet your calorie target, macro and micronutrient targets, and healthy ratios such as omega-6:3 and potassium:sodium.\nThe app is intended for adults (18+) only, and not for pregnancy or breastfeeding without guidance from a physician/dietitian.\n\n🥗 Meals: 4 meals a day (Breakfast / Snack / Lunch / Dinner) from a database of 200+ foods and 14 recipe categories, in grams or kitchen units. The 'Auto-plan' menu builds a full day or week; 'Complete Day' fills in around what you already chose; 'Optimize' suggests swaps to improve balance. Next to each food in the search list you can mark 🚫 — it will never be suggested (because of an allergy, a sensitivity, or simply because you don't like it).\n\n🍽 Macronutrients: four screens — macros & protein; omega ratio and ALA→EPA/DHA conversion; essential amino acids (leucine & lysine); saturated fat & cholesterol.\n\n💊 Micro: 22 vitamins and minerals vs. target — daily and weekly, plus potassium:sodium and calcium:phosphorus ratios. In the vitamins & minerals card: an explanation of the plant-based iron and zinc targets, and an \"iron absorption\" indicator — how much of today's iron was eaten in a meal with a vitamin C source, with tips to keep tea, coffee and calcium supplements away from iron-rich meals.\n\n📝 Log: record what you actually ate, separately from the plan. In the ⚖️ Weight & supplements sub-tab: a weekly weigh-in — after 3 weigh-ins over 3 weeks, a correction to the calorie target is suggested from your weight trend (the formula is off by about 10% for any individual). A weight entered in the monthly \"Self Reports\" also goes into the weigh-in log automatically, and the latest waist measurement is shown there; and a daily supplement log (B12 and vitamin D, optionally algae omega-3 and iron) with weekly adherence.\n🔬 Data sources (button at the top): full detail of how every food in the app was checked against the Israeli Ministry of Health database — item code, what was updated, which gaps remain, which foods have no equivalent, and which foods were added straight from the database (wheat germ, arugula, romaine, dried figs and apricots, green beans, butternut squash, clementine and lentil sprouts).\n🖨️ Weekly practitioner report: in the 📊 Weekly tracking sub-tab, the \"Weekly report for your practitioner\" button produces a summary of the selected week: energy and macros, vitamins and minerals vs target, a daily breakdown, supplements and weight. For the current week it also lists the foods eaten. Print it, save as PDF, share or download it for your dietitian or physician. The report uses logged days only.\n\n🚫 Sensitivities & allergies (in the profile): soy, gluten (including wheat germ), tree nuts, peanuts and sesame — foods and recipes containing them won't be suggested. Without soy, calcium is harder to reach — a calcium-fortified plant milk is recommended.\n🍷 Passover: 'Passover — no chametz' removes wheat, barley, rye, spelt and oats and their products; 'Passover — no kitniyot' (Ashkenazi custom) also removes legumes (including green beans and lentil sprouts), soy, rice, corn, buckwheat, peanuts and sesame. With both, the vegetarian menu becomes very narrow and targets are harder to meet — meant for the holiday only; turn it off after Passover. Quinoa — check for Passover certification.\n\n📖 Recipes: recipes with per-serving nutrition, a digital recipe book, and direct adding to meals.\n\n📏 Planning rules (apply to all automatic suggestions):\n• Calories: 98%–100% of the daily target — never above 100%.\n• Quantities: whole servings and units only. Exceptions: nuts and seeds (partial allowed) and ¼ tsp iodized salt.\n• Fruit: at least one per meal and at least 4 per day. Snack: about 6% of the day — one or two fruits, or a fruit and a sweet bake (cookie / muffin / slice of banana bread).\n• Vegetables: a visible vegetable in every main meal (a vegetable item or a vegetable salad — vegetables inside a stew or omelet don't count, and sweet potato / potato / corn don't count for this rule), at least 7 vegetable units per day (a vegetable salad = 3), and at least one vegetable salad a day with leaves and herbs. Each raw vegetable is suggested as one unit per meal (not two units of the same vegetable — a different vegetable instead). Mushrooms appear only in recipes or together with other vegetables. When a meal has raw greens or mushrooms alongside other vegetables, they are shown together as one salad ('Vegetable & greens salad' / 'Vegetable & mushroom salad') — same items, same amounts.\n• Pairings: grain / grain dish ↔ legume / legume dish — bread is not a legume's partner (lupini get a grain dish), and soy milk or soy yogurt is not a grain dish's partner (it gets a legume dish or a legume). Bread / pita / roll / tortilla / crackers ↔ spread (in a minority of cases — soy yogurt). Sweet bakes (muffins, cookies, banana bread) — no spread: next to fruit in the snack or on their own. Pan dish (omelet / shakshuka) — always with bread.\n• Units: salads and spreads — one serving per meal. Bakes are shown in natural units (slice, roll, tortilla, muffin, cookie); pita — a whole pita, one per meal; bread — up to 2 slices.\n• Meal split: breakfast and lunch up to 38% of the day each, dinner up to 28% — and dinner is never larger than breakfast.\n• No duplicates: the same legume family not twice in one meal; one soy product per meal (exception: a cup of fortified soy milk when calcium is short); nuts and seeds not in the same meal; no item repeats within a day.\n• Recipe-only: firm tofu, red lentils, Brussels sprouts, broccoli, cauliflower, Swiss chard, celery (plain stalk) and herbs (parsley, dill, basil, mint, cilantro). Leaves that may appear on their own: lettuce, romaine, arugula, celery stalk with leaves, spinach, bok choy and a little kale (one unit).\n• Fat up to 30% of calories (from age 65 — up to 35%, to make room for tahini, almonds and seeds as calcium and vitamin E sources); omega-6:3 up to 5:1; manganese up to 15 mg/day.\n• Micros: 98%+ target each day; weekly, 98%+ is mandatory for every nutrient. Spinach and Swiss chard are not used to top up calcium or iron (their oxalates allow only ~5% calcium absorption, and iron absorption is poor). Top-up sources include wheat germ for choline, vitamin E and zinc (up to 2 tbsp a day); arugula and dried figs for calcium; lentil sprouts and dried apricots for iron. Dried fruit — up to 3 figs or 5 apricots a day. When calcium is short, the system swaps homemade soy yogurt for store-bought organic yogurt as needed and adds a cup of fortified soy or oat milk — up to one cup a day, even in a meal that already has another soy product, making room by trimming another item.\n• Iron and zinc — targets adjusted for plant-based eating (IOM): iron ×1.8 (14.4 mg; 32.4 mg for women of reproductive age) and zinc ×1.5 (16.5 mg for men, 12 mg for women), because plant iron is absorbed less and phytates inhibit absorption. For women of reproductive age 32.4 mg is hard to reach from food alone — a typical plant-based menu provides about 20–25 mg, the full target is shown transparently, and a ferritin test plus a talk with a physician/dietitian about a supplement is recommended. In the day's most iron-rich meal the menu includes a vitamin C source (pepper, citrus, kiwi, strawberries, tomato), which improves iron absorption.\n• Leucine: at least 2 main meals above the threshold (2 g; from age 65 — 2.5 g). From 65, lunch and dinner are \"protein meals\" (lupini / tempeh / edamame).\n• Weekly: a soy-yogurt, oat and flaxseed bowl on two evenings; two soups and two drinks (other than soy milk); \"pan dishes\" in place of some legume dishes; small and medium meal salads; and all 14 recipe categories get a place. With a low calorie budget (under 1,800 kcal) — fewer such placements, to leave room for calcium and vitamin E.\n\n🎯 Nutrition targets in brief:\nCalories: Mifflin-St Jeor + activity factor + goal (maintain / gentle loss / lean gain).\nMacros: carbs up to 55% · protein at least 20% and about 1.0–1.5 g/kg (with an extra floor at 65+) · fat up to 30% (from age 65 — up to 35%).\nFiber: 50 g/day — if you're new to plant-based eating, ramp up gradually over 2–4 weeks and drink plenty of water (details in the 'Fiber' window). 💪 From 65: enough protein works best together with strength training 2–3 times a week. Omega-6:3: up to 5:1 (ideally up to 4:1).\n\n────────────────\n\n📚 Extended guide\n\n🧭 Layout & navigation\n5 tabs: Meals, Macronutrients, Micro, Log, Recipes. Above them: 👤 Profile, the day selector and the 'Auto-plan' menu. 💰 Budget opens cost tracking. ✨ Welcome and 📘 Guide are at the top of the screen. After finishing or skipping the guided tour, the app returns to the Meals tab.\n\n🥗 Meals tab — manual building\nEach meal has its own card:\n• Build & edit — search 200+ foods, amount in grams or kitchen units.\n• 📂 Saved meals — load or delete; 💾 save a new meal by name.\n• Meal time, soaking (an iron / zinc / calcium availability bonus, in calculations only), and moving an item between meals.\n• 🚫 Never suggest — marked next to a food in the search list; removes it from all automatic suggestions.\n\n🤖 Auto-planning\n• Suggest meals for a day / ×7 for a week — from the general database and recipes.\n• Suggest recipe-based meals for a day / ×7 for a week — mostly recipes, with nuts, seeds and fruit.\n• Include animal products (day / week) — a version with dairy and eggs.\n• Complete Day — what you already chose stays exactly as is (same item, same amount, same meal); the system only completes and balances what it adds itself.\n• Every suggestion opens in a preview: ✅ apply, 🔄 suggest again, or cancel.\n• 💰 If you set a monthly budget — after choosing the mechanism you can pick 'Plan by budget' (see 'Budget').\n• Weekly planning runs in the background with a progress bar ('Building day 3 of 7') and a cancel button — the screen doesn't freeze.\n• After an app update, menus you already saved don't change by themselves; to get the new rules, clear the week and generate it again.\n\n🗓️ Saving whole days\n'💾 Save day' and '📂 Saved days' next to 'Complete Day' / 'Clear day': save a full day's menu for reuse.\n\n🍽 Macronutrients tab — 4 sub-screens\n(on desktop — buttons in the sidebar under 'Macronutrients'; on mobile — a row of buttons at the top of the tab)\n• 🍽 Macros — grams and percentages of carbs, protein, fat and fiber, and protein per kg; daily and weekly.\n• ⚖️ Omega ratio & ALA conversion — omega-6:3 ratio (daily and weekly) and estimated EPA/DHA from ALA.\n• 🧬 Essential amino acids — leucine and lysine vs. the age target, leucine per meal, and an explanation (with references) of why meeting both in a varied menu almost always covers the other 7 essential amino acids too.\n• 🥓 Saturated fat & cholesterol — daily and weekly. Plant foods also contain a little saturated fat (tahini, soy, nuts, oil) — that's fine as long as it stays under 10% of calories.\n\n💊 Micro tab\n• ⚖️ Ratios — potassium:sodium and calcium:phosphorus (with an explanation adapted to the phosphorus source — plant or animal).\n• 💊 Vitamins & minerals — daily: each nutrient vs. target and EAR, and 'estimated absorption' for calcium.\n• 📅 Vitamins & minerals — weekly: the week's total vs. target × 7, and weekly safety caps for selenium, iodine and manganese.\n• Weekly compliance score: 100 points, minus 5 for each nutrient below 98% of its weekly target. A nutrient at 98% or more is shown in green.\n\n📖 Recipes tab\n• ➕ New recipe / ✏️ Edit / ⧉ Duplicate / 🗑 Delete / ☆ Favorite.\n• 📦 Export recipes — every recipe in the list as a JSON file: download it or copy the text.\n• 👁 View — opens the recipe read-only (ingredients, amounts and instructions in a large font), closes without saving.\n• In the edit form: '✕ Exit without saving' at the top. After viewing, saving or cancelling, the list returns to the recipe you were on, not to the top.\n• 📖 Recipe book — an illustrated cover, a table of contents by 14 categories, and a page per recipe.\n• Categories: legume dishes, grain dishes, soups, vegetable salads, legume salads, fruit salads, meal salads, casseroles, pastries, spreads & dips, porridges, grain bowls, drinks and pan dishes.\n\n📝 Log tab\nRecord what you actually ate: ✓ 'Ate as planned', + add item, ✕ remove, 'leftover' (percent not eaten), and 🗑 reset today's log. The 'Planned / Actual' toggle above the tabs sets which data the analysis screens show.\n📊 Weekly tracking (a sub-screen of the Log tab)\n• The week starts on Sunday. Only logged days count (at least one meal marked, edited or removed) — unlogged days are left out, and the screen shows \"X of Y days logged\".\n• Actual vs. planned for those same days: macros (calories, protein, carbs, fat, fiber, saturated fat, leucine, lysine), cost, and every micronutrient — with % deviation and % of target. The largest deviations come first; tap a nutrient for a daily breakdown (and, for the current week, which meal caused most of the gap).\n• A past day's plan is kept as it was, so a later menu change doesn't alter history. History is kept on the device without limit, with an adherence score per week.\n• 🔸 A quiet badge on the Log tab appears when, on logged days, a micronutrient is 10% or more below plan.\n• 📋 Update the rest of the week (on request): when the end-of-week forecast (logged + plan for remaining days) is below 98% for any nutrient, the system offers to update only the remaining days. A change is kept only if it reduces the total weekly shortfall, all planning rules are kept, and a preview shows the changes before applying. Calorie shortfalls or excesses are not offset on later days.\n\n🔄 Optimize\nSuggests swaps to improve nutritional balance; each suggestion is approved or skipped separately.\n\n👤 Personal profile\nHeight, weight, age, sex, activity level, goal and health profile. By default the data is kept only for the current visit and resets when the app is closed; the '💾 Save my profile on this device' switch keeps it for future visits.\n\n💰 Budget & planning by budget\n• Set a monthly food budget; the app also shows it per day (budget ÷ days in the current month) and per week (budget ÷ (days in month ÷ 7)).\n• Estimated cost per meal, day and week is shown against the target. It's worth updating prices to what you actually pay.\n• Plan by budget: when a monthly budget is set, after choosing a suggestion mechanism (day / week / recipes / animal products / 'Complete Day') a small window opens — 'Regular planning' or 'Plan by budget'. The suggestion will meet the daily or weekly budget with up to 5% deviation, and the preview shows cost vs. budget.\n• Nutrition and calorie rules come before the budget: the system prefers cheaper foods from the same group (e.g., cabbage instead of bok choy, bulgur instead of quinoa), and no nutrient that meets its target drops below it. Among possible suggestions, a day where every micronutrient reaches at least 98% is preferred. If the budget can't be met without hurting nutrition, the lowest cost found is shown with a warning.\n• In 'Complete Day', what you chose yourself is never replaced; savings come only from what the system adds.\n\n📲 Install as an app\nMobile browser menu → 'Add to Home Screen'.\n\n🌐 Language\nThe EN / עברית button switches the interface language.\n\n🔒 Panel editing\nEvery info panel can be edited by tapping ✎ (saved on the device only). The guide and the disclaimer are protected by an access code.\n\n⚠️ The app is an information tool and is not a substitute for professional medical or nutritional advice.",weeklyMicro:"💊 Weekly Target Adherence — what does this show?\n\nThis bar summarizes how well you're meeting micronutrient targets across a full week, not just a single day.\n\nHow the score is calculated: it starts at 100 points, and 5 points are deducted for every micronutrient (from the list in the Micro panel) that didn't reach 100% of its weekly target (daily target x 7). A perfect score (100) is only achieved when every nutrient is fully covered across the week.\n\nPlanned vs Actual: the 'Planned' column is calculated from the meals you've planned for the week; the 'Actual' column is calculated from what you've logged in the food log. A large gap between the two indicates that what you actually ate deviated from the plan.\n\nTap the bar to see a full breakdown for each micronutrient individually.",weeklyOmega:"Weekly Omega 3:6 Ratio — what does this show?\n\nThis bar shows the omega-6 to omega-3 ratio accumulated across a full week — not an average of daily ratios, but all amounts summed first, then one ratio calculated. This method is more accurate, since averaging daily ratios can be misleading when some days have very low intake.\n\nPlanned vs Actual: compares what was planned for the week against what was actually logged.\n\nTarget: a ratio of up to 5:1 (✅), otherwise flagged as needing improvement (⚠️). Tap the bar for a full breakdown of omega-3/6/9 amounts.",kna:"⚖️ Potassium / Sodium — why does it matter?\n\nPotassium and sodium are minerals that work together to regulate blood pressure and fluid balance in the body. A WFPB diet is naturally rich in potassium (vegetables, fruit, legumes) and low in sodium, which supports cardiovascular health.\n\nThe general target: a potassium-to-sodium ratio of at least 2:1 (i.e. at least double the potassium relative to sodium).\n\nSpecial case — a health profile with potassium restriction (e.g. chronic kidney disease): when a clinical potassium ceiling is set in the health profile, the logic flips completely — the goal is to stay under the ceiling, not to reach a high ratio. In this case the panel will show a clinical ceiling instead of the usual ratio target.",weeklyKna:"⚖️ Weekly Potassium:Sodium Ratio — what does this show?\n\nThis is a weekly summary of the potassium-to-sodium ratio — the sum of all amounts accumulated over the week, not an average of individual days. Like the daily panel, the general target is a ratio of at least 2:1.\n\nPlanned vs Actual: compares meals planned for the week against what was actually logged in the food log, giving a more reliable picture over time rather than a single-day snapshot.",foodLog:"📝 Food Log — how do you use it?\n\nThis tab is for recording what you actually ate each day, separately from your planned menu.\n\nNavigating between days: use the arrows on either side of the date to move between days, or tap 'Back to today' to jump straight back to the current date.\n\nLogging a meal: tap any meal (breakfast/snack/lunch/dinner) to open it. From there you have two options:\n1. If you ate exactly what was planned — tap the 'Ate exactly as planned' button. The meal will be marked as matching the plan, with nothing further to enter.\n2. If you ate something different — tap 'Add item' to add the specific food you ate, or tap the x next to an existing item to remove it. You can also tap 'Clear' to reset that meal's log entirely and start over.\n\n🍽️ Leftover: next to each item you can mark a 'Leftover' amount if you didn't finish it — 10%/20%/25%, or a manual percentage. The default is that the item was fully eaten; once you mark a leftover percentage, the nutritional calculation (calories, macros, fiber and other nutrients) automatically updates to reflect what was actually eaten (100% minus the leftover percentage).\n\nWhy it matters: everything logged here feeds the 'Actual (today)' view in the Meals and Micro tabs, and the weekly adherence bars — so you (and, if relevant, your practitioner) can clearly see how closely what was actually eaten matched the original plan over time.",activityLevels:"🏃 Activity Levels — what's the difference?\n\nThe level you choose directly affects your calorie target (TDEE) — each level is multiplied by a different factor on your Basal Metabolic Rate (BMR).\n\nLow (factor 1.375): very little or no structured exercise — a desk job or mostly sitting, occasional walking only, at most light exercise 1-2 times a week.\n\nModerate (factor 1.55): structured exercise 3-5 times a week — running, strength training, swimming, brisk walking, or other moderate-level sport.\n\nHigh (factor 1.725): intense exercise 6-7 times a week, or physically demanding work (e.g. construction, farming, delivery) combined with regular training.\n\nTip: if you're unsure which level to pick, it's better to pick a lower one than it seems — overestimating activity is the most common mistake, and it leads to a calorie target higher than actually needed.",cap:"🦴 Calcium:Phosphorus Ratio — why it matters?\n\nCalcium and phosphorus are the two most abundant minerals in bone tissue, working together to regulate skeletal health. The commonly cited dietary ratio target is about 1:1 to 2:1 (calcium equal to or higher than phosphorus).\n\nWhy it matters: when phosphorus intake rises significantly above calcium over time (mainly from processed foods with phosphorus additives, less so from natural WFPB eating) — the body may increase parathyroid hormone (PTH) secretion, which can accelerate calcium withdrawal from bone and harm bone density over time.\n\nOn a WFPB diet: good calcium sources include cruciferous vegetables (cabbage, broccoli, kale), tofu, tahini and fortified soy milk. Phosphorus is present in nearly all food (legumes, whole grains, nuts) — in most cases a balanced plant-based diet keeps a reasonable ratio on its own, with no need for strict tracking, unless a specific medical condition (such as kidney disease) requires separate attention to phosphorus — in that case see the Sodium/Potassium panel, where a separate clinical phosphorus ceiling is shown when relevant.\n\nℹ️ Important clarification: this is one single ratio (calcium divided by phosphorus), not two different ratios — the daily and weekly views are two time-windows on the exact same formula, just like the sodium:potassium ratio.\n\n🏭 Phosphorus quality and source — organic vs inorganic: beyond the total amount of phosphorus, its source matters significantly. Organic phosphorus (natural, from plants or basic dairy/egg products) is only partially absorbed (about 40-60%), since part of it is bound within the food's natural matrix (including phytate in plants). Added inorganic phosphorus (melting salts in processed cheese, additives E339-E341/E450-E452 in processed food) is absorbed nearly 100% — a significantly higher metabolic load from the exact same mg amount. When the app detects an item with added inorganic phosphorus in your menu, a dedicated note appears below the ratio — not an additional ratio, just an added layer of information about source quality.\n\nℹ️ Why the ratio can stay low even when meeting 100% of the daily target for both minerals separately: calcium and phosphorus are each set against their own RDA target, not a shared target ratio. So even if your calcium intake reaches 100%+ of its daily target (1000-1200mg) and your phosphorus intake also reaches 100%+ of its own target (700mg) — the ratio between them can still come out below 1:1 (e.g. 0.7:1), because phosphorus's own target is numerically lower than calcium's target, yet a typical WFPB diet tends to supply phosphorus well beyond its target (thanks to abundant legumes/grains/nuts), while calcium tends to stay closer to just its own target. That's why the ratio can \"fail\" even when each mineral separately \"passes\" — this is exactly what this panel is meant to show, beyond what each separate target already shows in the vitamins/minerals list.\n\n⚠️ Scientific caveat: unlike the sodium:potassium ratio (which has strong epidemiological backing for the healthy population), this specific calcium:phosphorus ratio for a healthy individual is far less agreed upon — current dietary reports (NASEM) set a separate target for each mineral on its own, not an official target ratio between them. Keep in mind this app is currently meant for healthy individuals only — for them, this panel is a flag worth noting that encourages adding a calcium source (not necessarily reducing phosphorus), not an emergency alert like an off-target omega ratio or exceeding a sodium ceiling.",satfat:"🥓 Saturated Fat & Cholesterol — why is this only in this version?\n\nNeither of these existed in the original WFPB (whole food plant-based) version — meaningful sources of saturated fat and cholesterol are almost absent from a fully plant-based diet. Once dairy and eggs were added, tracking this became essential.\n\nSaturated fat — the app targets up to 10% of daily calories (American Heart Association / WHO guidance), as part of protecting cardiovascular health. Excess saturated fat over time is linked to higher LDL (\"bad cholesterol\") and increased cardiovascular risk. Butter, hard cheeses and animal meat are the most concentrated sources.\n\nCholesterol — previously explicitly recommended to limit to 300mg/day; current dietary guidelines (including in the US) removed an official numeric ceiling, since research shows dietary cholesterol affects blood cholesterol less than previously thought for most people — saturated fat tends to have the larger effect, not dietary cholesterol itself. Still, 300mg is shown here as a general, conservative reference point, not an absolute medical ceiling.\n\n⚠️ Caveat: as with the rest of the app, these are general guidelines for a healthy population, not personal clinical advice — if you have a family history of heart disease, high cholesterol, or other risk factors, consult a physician/dietitian about the target that fits you."}
+  he:{macroFormula:"🧮 איך מחשבים את אחוזי הקלוריות מכל אב-מזון?\n\nהאפליקציה משתמשת בנוסחת Atwater מותאמת (Modified Atwater System), שבה כל גרם משויך לכמות קלוריות משלו: פחמימות נטו (סך הפחמימות בניכוי סיבים) = 4 קק\"ל לגרם, חלבון = 4 קק\"ל לגרם, שומן = 9 קק\"ל לגרם — וסיבים תזונתיים = כ-2 קק\"ל לגרם בלבד, לא 4 כמו שאר הפחמימות.\n\nלמה סיבים מקבלים רק 2 קק\"ל לגרם? סיבים תזונתיים אינם מתעכלים ונספגים במעי הדק כמו פחמימות רגילות (עמילן וסוכר). חלקם מותסס על ידי חיידקי המעי הגס לחומצות שומן קצרות-שרשרת (Short-Chain Fatty Acids), שמספקות אנרגיה חלקית וזמינה פחות בהשוואה לפירוק ישיר של פחמימה רגילה. ה-FDA וה-USDA (וגופים דומים ברחבי העולם) משתמשים בערך מוסכם של כ-2 קק\"ל לגרם סיבים במקום ה-4 קק\"ל הרגילים לפחמימה — זו בדיוק שיטת Atwater המותאמת.\n\nמה זה אומר בפועל: כדי לחשב את אחוז הקלוריות שמגיע מכל אב-מזון, מפרידים תחילה את הסיבים מסך הפחמימות (\"פחמימות נטו\" = סך הפחמימות פחות סיבים), ומחשבים אותם בנפרד. סך הקלוריות מורכב אז מסכימת: (פחמימות נטו × 4) + (חלבון × 4) + (שומן × 9) + (סיבים × 2). זו הסיבה שסך גרמי המאקרו-נוטריאנטים לא 'יסתדר' בדיוק מול סך הקלוריות אם תכפיל הכל ב-4/4/9 בלי להפריד את הסיבים בנפרד — הם תמיד מחושבים כקטגוריה נפרדת, במקדם הנמוך יותר.\n\nהלוח הזה מציג את הכמויות בגרמים (היום ומול השבוע) ואת ההתפלגות האחוזית של הקלוריות, בדיוק לפי הנוסחה הזו — זהה למה שמוצג בכרטיס הסיכום היומי הרגיל בלשונית 'ארוחות', רק עם פירוט גרמים נוסף וסיכום שבועי.",calories:"📊 קלוריות — איך מחשבים את היעד שלך?\n\nהאפליקציה מחשבת קודם את קצב חילוף החומרים הבסיסי (BMR) שלך לפי נוסחת Mifflin-St Jeor, המבוססת על גובה, משקל, גיל ומין. לאחר מכן היא מכפילה את התוצאה במקדם הפעילות שבחרת (מועטה/בינונית/גבוהה) כדי לקבל את סך ההוצאה האנרגטית היומית (TDEE) — הקלוריות הדרושות לשמירה על המשקל הנוכחי.\n\nלבסוף, בהתאם למטרה שהוגדרה בפרופיל (שמירה/ירידה/עלייה), מתווסף גירעון או עודף קלורי מתון (ראו את חלוני 'ירידה זהירה' ו'עלייה נקייה').\n\nחלוקת המאקרו-נוטריאנטים היעד: פחמימות עד 55% מהקלוריות, חלבון לפחות 18% (ולפחות כ-1.0-1.5 גרם לכל ק״ג משקל גוף, בהתאם לרמת-הפעילות שבחרת בפרופיל), ושומן עד 30% — חלוקה מאוזנת לתזונת WFPB, ברמה המתונה יותר בתוך הספקטרום: לא תוכניות-ריפוי-קיצוניות כמו Esselstyn/Ornish (~10% שומן), אלא גישה מתונה שהיא החלטה של האפליקציה, ורואה ב-25-30% שומן תקין — כשרוב המקור הוא מזון שלם (טחינה, אגוזים, זרעים, אבוקדו) ולצידו כמות מתונה של שמן זית, ושהשומן הרווי נשאר נמוך (יעד נפרד, ≤10%). טווח זה נמצא גם בתוך ה-AMDR הכללי (20-35%) המקובל לאוכלוסייה בריאה.",fiber:"🌿 סיבים תזונתיים — למה זה חשוב?\n\n🐢 חדשים בתזונה צמחית? כדאי לעלות לכמות הזו בהדרגה, במשך 2–3 שבועות: להתחיל בחצי מנת קטניות ודגנים מלאים ולהגדיל כל כמה ימים, לשתות הרבה מים, להשרות קטניות ולבשל אותן היטב (או להעדיף עדשים אדומות ואפונה צהובה מפוצלת בתבשילים, שקלות לעיכול), וללעוס לאט. גזים ונפיחות בשבועות הראשונים הם תגובה נפוצה של חיידקי המעי לשינוי, ובדרך כלל פוחתים.\n\n🎯 היעד באפליקציה: מינימום לפי ההמלצה המקובלת — 14 גרם לכל 1,000 קק\"ל (כ-25–38 גרם ביום, לפי היעד הקלורי שלך), ושאיפה של 50 גרם (מגיל 65 — 40 גרם). תזונה צמחית מגיעה למינימום בקלות. מעל השאיפה אין תועלת נוספת מוכחת, ובגיל מבוגר או עם תיאבון קטן כמות גדולה מדי עלולה לגרום לשובע מוקדם על חשבון חלבון וקלוריות, ולהגביר את השפעת הפיטאטים על ספיגת מינרלים. לכן בתכנון יש גם תקרה רכה: כשהיום עובר כ-70 גרם (מגיל 65 — כ-50; ובתקציב קלורי גבוה — כ-30 גרם לכל 1,000 קק\"ל), המערכת מעדיפה פריטים דלי-סיבים מאותה קבוצה (למשל אורז מלא במקום בורגול, ענבים במקום אגס), כל עוד הוויטמינים והמינרלים לא נפגעים.\n\nסיבים תומכים בעיכול תקין, מזינים את חיידקי המעי הידידותיים, מסייעים בוויסות רמות הסוכר והכולסטרול בדם, ותורמים לתחושת שובע ממושכת.\n\nמקורות עשירים בסיבים: כל הקטניות (עדשים, שעועית, חומוס), דגנים מלאים (שיבולת שועל, קינואה, גריסים), ירקות עליים, ברוקולי, זרעי צ׳יה ופשתן, אגוזים ופירות עם קליפה.\n\nטיפ: אם אינך רגיל/ה לצריכת סיבים גבוהה, מומלץ להעלות את הכמות בהדרגה ולשתות מספיק מים, כדי למנוע אי-נוחות עיכולית.",protein:"💪 חלבון בתזונה מבוססת-צומח\n\nהיעד באפליקציה הוא כפול: לפחות 18% מסך הקלוריות היומיות, וגם כ-1.0–1.5 גרם חלבון לכל ק״ג משקל גוף לפי רמת הפעילות (מגיל 65 — לפחות 1.1) — מעל ההמלצה הרפואית הכללית (0.8 גרם/ק״ג), כדי לפצות על עיכול חלבון צמחי מעט נמוך יותר ולשמר מסת שריר.\n\nמיתוס נפוץ הוא שקשה להגיע לחלבון מספק בתזונה טבעונית — בפועל, שילוב מגוון של קטניות (עדשים, שעועית, חומוס, תורמוס), סויה מלאה (טופו, טמפה, אדממה), דגנים מלאים ושמרים תזונתיים (המכילים כ-50 גרם חלבון ל-100 גרם) מספק בקלות את כל חומצות האמינו החיוניות לאורך היום, גם ללא 'שילוב חלבונים' מדויק בכל ארוחה בנפרד.\n\nמקורות מומלצים: טמפה, עדשים, שעועית שחורה, טופו קשה, שמרים תזונתיים, קינואה וסייטן.\n\n📏 הנחיות רשמיות לצריכת חלבון (ק\"ג משקל גוף) — ישראל וארה\"ב: שתי המדינות מתבססות על אותה ספרות DRI (Institute of Medicine/NASEM), ומגדירות RDA בסיסי זהה של כ-0.8 גר'/ק\"ג ליום למבוגר בריא ממוצע בפעילות מועטה — זהו סף המניעה למחסור, לא בהכרח היעד האופטימלי. משם, הטווחים מתרחבים לפי כמה גורמים:\n• גיל: מבוגרים מעל גיל 65 — ארגוני תזונה לגריאטריה (כגון קבוצת PROT-AGE) ממליצים על כ-1.0-1.2 גר'/ק\"ג כדי לסייע במניעת סרקופניה (אובדן מסת שריר עם הגיל).\n• מין: אין הבדל משמעותי ביעד לק\"ג משקל גוף בין גברים לנשים — ההבדל בא לידי ביטוי בעיקר בהריון והנקה, שם ה-RDA עולה בכ-25 גר' ליום נוספים מעבר לבסיס.\n• רמת פעילות גופנית: פעילות מועטה — כ-0.8 גר'/ק\"ג מספיק ברוב המקרים. פעילות סיבולת (ריצה, רכיבה) — כ-1.2-1.4 גר'/ק\"ג לפי עמדת ה-ISSN/ACSM. אימוני התנגדות/כוח — כ-1.6-2.2 גר'/ק\"ג לתמיכה בבניית ותחזוקת מסת שריר.\n• היבטים נוספים: ירידה במשקל תחת גירעון קלורי — קצה עליון של הטווח (כ-1.6-2.0 גר'/ק\"ג) מומלץ כדי לשמר מסת שריר תוך כדי הגירעון. מחלת כליות כרונית — ההפך: הגבלה מתחת ל-0.8 גר'/ק\"ג לפי הנחיית רופא/דיאטן.\nהיעד שהאפליקציה משתמשת בו (1.2 גר'/ק\"ג ברמת-פעילות בינונית) מתעדכן כעת אוטומטית לפי רמת-הפעילות שנבחרה בפרופיל: כ-1.0 גר'/ק\"ג בפעילות מועטה, 1.2 בבינונית (ללא שינוי מהיום), וכ-1.5 בגבוהה — במקום ערך-קבוע-אחד זהה לכולם כמו קודם. זה מתאים את עצמו לטווח שתואר למעלה (0.8 בסיסי, עד 1.6-2.2 לאימוני-התנגדות), בלי צורך בקלט נוסף מעבר לרמת-הפעילות שכבר קיימת בפרופיל.",omega:"🌿 אומגה 3 ואומגה 6 — מה חשוב?\n\nALA (אומגה 3 צמחית) היא חומצת שומן חיונית — הגוף לא מייצר אותה. היעד באפליקציה הוא צריכה מספקת לפי IOM: לפחות 1.1 גרם ביום לנשים ו-1.6 גרם לגברים, והתכנון מקפיד על כך בכל יום. מקורות עשירים: זרעי פשתן טחונים, צ׳יה, אגוזי מלך וזרעי המפ.\n\nאומגה 6 (חומצה לינולאית) חיונית גם היא. ההנחיות העדכניות (למשל של איגוד הלב האמריקאי) לא ממליצות להפחית אותה. לכן יחס אומגה 6:3 מוצג כמידע בלבד (עד כ-5:1 נחשב טוב), ולא משמש אילוץ בתכנון.\n\nEPA ו-DHA: הגוף ממיר חלק קטן מה-ALA ל-EPA, ומעט מאוד ל-DHA — פחות אצל גברים. המסך מציג לכך טווח משוער בלבד.\n\n💊 תוסף DHA/EPA מאצות: לפי ארגוני הדיאטנים (למשל איגוד הדיאטנים האמריקאי, 2025), הוא אינו הכרחי לרוב המבוגרים הבריאים כשצריכת ה-ALA מספיקה. אפשר לשקול אותו בהתייעצות, למשל כשצריכת ה-ALA נמוכה או במחלת לב. בהריון ובהנקה ההמלצה חזקה יותר (האפליקציה לא מיועדת למצבים אלה).",micro:"💊 B12: תוסף יומי. D: 1000IU. סידן: טחינה+כייל. ברזל: עדשים+ויטC. 💧 השריה: קטניות/דגנים שסומנו כ\"מושרה\" (לחיצה על התג ליד הרכיב בכרטיס הארוחה) מקבלים בונוס זמינות ביולוגית — ברזל +15%, אבץ +25%, סידן +10% — כי השריה מפחיתה פיטאט, המעכב ספיגה. זו הערכה בלבד: הראיות מוגבלות, וגודל ההשפעה משתנה מאוד בין מזונות, זמני השריה ושיטות בישול. ברירת המחדל היא ללא בונוס.\n\n🌊 יוד מאצות: תכולת היוד באצות משתנה פי כמה בין מוצרים ומותגים. האפליקציה משתמשת בוואקמה בכמויות קטנות מאוד (חצי גרם, עד גרם ביום), אבל המקור העיקרי והיציב הוא מלח מיודד. עם מחלת בלוטת התריס — להתייעץ לפני שימוש באצות.\n\n🌿 אומגה 3: מה שקובע הוא כמות ה-ALA (לפחות 1.1 גרם ביום לנשים, 1.6 לגברים), והיחס בין אומגה 6 לאומגה 3 מוצג כמידע בלבד. פירוט בחלון האומגות.\n\n⚖️ נתרן ואשלגן: נתרן עד 2,300 מ\"ג ביום (מגיל 65 או עם יתר לחץ דם — 2,000), ואשלגן לפחות פי 2 מהנתרן לפי משקל. המזון הצמחי דל בנתרן, ורוב הנתרן בתפריט מגיע מהמלח המיודד. פירוט בחלון נתרן ואשלגן.",wfpb:"🌿 WFPB – תזונה מבוססת צומח מלא: הבסיס הוא דגנים מלאים, קטניות, ירקות, פירות, אגוזים וזרעים, קרוב ככל האפשר לצורתם הטבעית. האפליקציה שואפת לצמצם סוכר מוסף ומזון מעובד.\n\n🥛 טבעוני או צמחוני: כל סוגי התכנון צמחיים לגמרי, חוץ מ״שלב מוצרים מן החי״ (🥚🥛), שמשלב חלב וביצים במידה — כהשלמה לבסיס הצמחי ולא כמרכז הצלחת. מי שטבעוני מסמן ״טבעוני״ בפרופיל, והמזונות מן החי לא יוצעו כלל.\n\n🫒 שומן במידה, לא ״ללא שמן״: בניגוד לגישה המחמירה (Esselstyn/Ornish) שמוציאה כל שמן מופק, האפליקציה מאפשרת כמות מתונה של שמן זית. מקורות השומן העיקריים נשארים מזון מלא: טחינה, אגוזים, זרעים ואבוקדו. יעד השומן המלא מופיע בפאנל ״קלוריות״.\n\n🧂 מלח מיודד: חלב וביצים תורמים יוד, אבל מעט ובאופן לא אחיד, ודגים ופירות ים אין בתפריט. לכן האפליקציה משתמשת במלח מיודד ולא במלח ים או מלח הימלאיה. היא גם משלבת ואקמה במגבלת כמות, בנוסף לתוסף (ראו פאנל ״מיקרו״).\n\n💊 תוספים: B12 חובה בתזונה טבעונית ומומלץ בצמחונית (פירוט ומינונים ביומן התוספים), וויטמין D לפי ההנחיה המקובלת. בנוסף, יעדי הברזל והאבץ מוגדלים (×1.8 ו-×1.5) כי הספיגה ממקורות צמחיים נמוכה יותר.\n\n🔬 ערכי המזון מוצלבים מול מאגר משרד הבריאות. הפירוט המלא נמצא ב״מקורות הנתונים״.",nds:"🏆 מדד צפיפות נוטריאנטים (NDS) — מה זה?\n\nהמדד בודק כמה טוב היום שלך מכסה את כל הוויטמינים והמינרלים החיוניים, לא רק קלוריות וחלבון.\n\nאיך זה מחושב:\nעבור כל ויטמין/מינרל (כ-21 בסך הכול — ללא B12, D ויוד שנחשבים תלויי-תוסף), נבדק אחוז הכיסוי מהיעד היומי (RDA). אם עברת 100% מיעד מסוים, הוא נספר כ-100% בלבד ולא יותר — כלומר עודף עצום בוויטמין אחד (למשל ברזל) לא יכול \"לפצות\" על חוסר בוויטמין אחר (למשל אבץ). לבסוף נלקח הממוצע של כל האחוזים האלה יחד.\n\nלמה זה שימושי:\nציון גבוה מעיד על תפריט מגוון שמכסה טווח רחב של נוטריינטים — לא רק תפריט עתיר קלוריות/חלבון עם מעט ירקות ופירות. שני ימים עם אותה כמות קלוריות יכולים לקבל ציוני NDS שונים מאוד בהתאם למגוון המזון.\n\nמה זה לא מודד:\nזה לא כולל קלוריות, חלבון, פחמימות, שומן או סיבים (אלה נמדדים בנפרד), ולא בודק חוסרים קליניים (לכך יש את חיווי ה-EAR בלוח המיקרו-נוטריינטים).\n\nטווחי הציון:\n80-100 מצוין · 50-79 טוב · מתחת ל-50 — כדאי לגוון יותר (עוד ירקות עלים, פירות, קטניות, אגוזים וזרעים).",disclaimer:"⚠️ מידע כללי בלבד — לא ייעוץ רפואי. האפליקציה מיועדת למבוגרים (גיל 18 ומעלה) בלבד, ואינה מיועדת להריון ולהנקה ללא ליווי רופא/דיאטן/ית. אפליקציה זו אינה כלי רפואי ואינה מיועדת לאבחון, טיפול או ניהול מצב בריאותי. הערכים התזונתיים במאגר המזון (קלוריות, מאקרו ומיקרו-נוטריאנטים) נבדקו והוצלבו על ידי Claude (AI), בסיוע מפתח/ת האפליקציה, מול מאגר המזון הישראלי של משרד הבריאות, אך עדיין אינם תוצאה של בדיקת-מעבדה או שאילתה חיה למאגר מאומת בזמן אמת, ועשויים לסטות במידה מסוימת מנתוני מקור רשמיים. לפני כל שינוי תזונתי, ובמיוחד אם יש לך מצב רפואי הדורש מעקב תזונתי מדויק (כגון מחלת כליות, סוכרת או רגישות), התייעץ עם רופא/דיאטן/ית ואל תסתמך על האפליקציה כמקור יחיד.",spices:"🧂 תבלינים ועשבי תיבול — יותר מסתם טעם\n\nמעבר לתרומתם לטעם ולגיוון הקולינרי, תבלינים רבים מכילים תרכובות בעלות תכונות אנטי-דלקתיות ונוגדות חמצון, שתומכות באורח חיים בריא במסגרת תזונת WFPB.\n\nכורכום + פלפל שחור: הקורקומין בכורכום נספג טוב יותר בנוכחות פיפרין שבפלפל שחור — שילוב מומלץ תמיד יחד.\nקינמון: עשוי לסייע בוויסות רמות הסוכר בדם.\nג׳ינג׳ר: מסייע לעיכול ובעל השפעה אנטי-דלקתית.\nשום טרי: תומך במערכת החיסונית ובבריאות הלב וכלי הדם.\nכמון: עשיר בברזל ותומך בעיכול.\n\nניתן וכדאי לשלב את התבלינים הללו באופן חופשי בארוחות היומיות — הם אינם משפיעים משמעותית על ספירת הקלוריות אך תורמים לערך התזונתי הכולל של הארוחה.",swapExplain:"🔄 כלי האופטימיזציה — איך זה עובד?\n\nכלי זה סורק את הארוחות המתוכננות שלך ומחפש הזדמנויות לשפר את האיזון התזונתי מבלי לשנות את סך הקלוריות היומי.\n\nכיצד הוא בוחר החלפות: הוא מזהה פריט מזון קיים בארוחה שיש לו 'תחליף' דומה מבחינת סוג המזון והכמות הקלורית, אך עם פרופיל תזונתי עשיר יותר — למשל, יותר סיבים, יותר סידן, יחס אומגה טוב יותר, או כיסוי טוב יותר של ויטמין/מינרל שבו יש חוסר יחסי אצלך.\n\nכל הצעה מוצגת בנפרד עם אפשרות '✅ החל' או 'דלג' — כך שנשארת לך שליטה מלאה על כל שינוי. אם הארוחות כבר מאוזנות היטב, הכלי יציין שאין הצעות נוספות.\n\nהערה: ההחלפות הן ניטרליות קלורית (לא משנות את סך הקלוריות של הארוחה) ומתמקדות אך ורק בשיפור איכות התזונה.",bmi:"⚖️ BMI (מדד מסת גוף) — מה זה אומר ומה המגבלות שלו?\n\nהחישוב: BMI = משקל (ק״ג) ÷ גובה² (מטרים).\n\nטווחי הסיווג המקובלים:\n<18.5 — תת-משקל\n18.5–25 — משקל תקין\n25–30 — עודף משקל\n30+ — השמנה\n\nחשוב לדעת: BMI הוא מדד גס ומהיר, אך אינו מבחין בין מסת שריר למסת שומן, ואינו מתחשב בגיל, מין, מבנה גוף או פיזור השומן בגוף. אדם עם מסת שריר גבוהה (למשל ספורטאי) עשוי לקבל BMI 'גבוה' למרות אחוז שומן נמוך.\n\nלכן, מומלץ להתייחס ל-BMI ככלי התמצאות כללי בלבד, ולא כמדד יחיד לבריאות מטבולית — במיוחד אם יש לך שאלות פרטניות, מומלץ להתייעץ עם רופא/דיאטן/ית שיוכלו להעריך את התמונה המלאה.",goalLose:"📉 ירידה זהירה במשקל — הגישה של האפליקציה\n\nכאשר בוחרים במטרת 'ירידה', האפליקציה מיישמת גירעון קלורי מתון של כ-6.25% מתחת לתצרוכת האחזקה שלך (בטווח גמיש של 5%-7.5%), ולא גירעון אגרסיבי.\n\nלמה גישה מתונה? ירידה מהירה מדי (גירעון גדול) מעלה סיכון לאובדן מסת שריר, ירידה בקצב חילוף החומרים, עייפות, ותחושת רעב מתמשכת שמקשה על התמדה לאורך זמן. גירעון מתון תומך בירידה איטית ובת-קיימא — לרוב כ-0.3-0.5 ק״ג בשבוע — שסביר יותר שתישמר לאורך זמן וללא 'אפקט יו-יו'.\n\nחשוב לשלב פעילות גופנית (במיוחד אימוני התנגדות) לשימור מסת השריר תוך כדי הירידה במשקל. אפשר להוסיף כאן הערות אישיות משלך.",goalGain:"📈 עלייה נקייה במסה — הגישה של האפליקציה\n\nכאשר בוחרים במטרת 'עלייה', האפליקציה מיישמת תיעדוף (עודף) קלורי מתון של כ-6.25% מעל תצרוכת האחזקה שלך (בטווח גמיש של 5%-7.5%).\n\nלמה גישה מתונה ולא עודף גדול? עודף קלורי גדול מדי מוביל לרוב לצבירת שומן מיותרת יחד עם מסת השריר, ולא בהכרח לבניית שריר מהירה יותר — הגוף מסוגל לבנות שריר בקצב מוגבל, ומעבר לכך העודף 'מתפזר' כשומן. עודף מתון תומך בעלייה 'נקייה' יחסית, עם יחס טוב יותר בין שריר לשומן שנצבר.\n\nלתוצאות מיטביות, חשוב לשלב אימוני התנגדות סדירים לצד הקפדה על צריכת חלבון מספקת (ראו את חלון 'חלבון'). אפשר להוסיף כאן הערות אישיות משלך.",userGuide:"📘 PlantVitalis Vegetarian — מדריך למשתמש\n\n⚡ בקצרה\nPlantVitalis בונה תפריט טבעוני או צמחוני מבוסס מזון מלא (WFPB) — חלב וביצים לבחירה — ובודקת שהוא עומד ביעדי הקלוריות, החלבון, הוויטמינים והמינרלים שלך.\n1. 👤 מלאו פרופיל: גובה, משקל, גיל, מין, פעילות ומטרה.\n2. 🤖 'תכנון אוטומטי' מציע יום או שבוע שלם. בתצוגה המקדימה אפשר להחיל, לבקש הצעה אחרת או לבטל.\n3. ✏️ כל ארוחה ניתנת לעריכה ידנית, ו'השלם יום' משלים סביב מה שבחרתם.\n4. 📝 ביומן מסמנים מה נאכל בפועל. המעקב השבועי מראה מה חסר, והדוח השבועי מוכן לשליחה לדיאטן/ית.\n5. ⚖️ שקילה שבועית ביומן מאפשרת לכייל את יעד הקלוריות לאורך זמן.\n6. 🚫 מזון שאינכם אוכלים? סמנו אותו, והוא לא יוצע שוב.\n7. 🩺 יש מצב רפואי או תרופה קבועה? סמנו בפרופיל. התפריט בנוי לאנשים בריאים, והאפליקציה תציג הנחיה והפניה.\n8. ✨ המסכים פשוטים כברירת מחדל. '🔍 פירוט מלא' בראש המסך, או 'פירוט ›' בכרטיס, פותח את כל המספרים והניתוחים.\nהאפליקציה מיועדת למבוגרים בלבד. בהריון, בהנקה או במצב רפואי — רק בליווי רופא/ה או דיאטן/ית.\n\n────────────────\n\n📚 מדריך מורחב\n\n🧭 מבנה וניווט\nהלשוניות: ארוחות, אבות המזון, מיקרו, יומן ומתכונים. מעליהן: 👤 פרופיל, בורר היום ותפריט 'תכנון אוטומטי'. בראש המסך: 🔍 פירוט מלא / ✨ תצוגה פשוטה, 💰 ניהול תקציב, 📋 דיווחים עצמיים, 🔬 מקורות הנתונים, ✨ מסך פתיחה ו-📘 מדריך. בתצוגה הפשוטה המדריך, מקורות הנתונים, מסך הפתיחה (ובטלפון גם התקציב) מרוכזים בכפתור 'ℹ️ מידע'; כפתור האזהרה גלוי תמיד. בסיום הסיור המודרך, או אחרי דילוג עליו, האפליקציה חוזרת ללשונית הארוחות.\n\n🥗 ארוחות\n• ארבע ארוחות ביום: בוקר, ביניים, צהריים וערב. בצהריים ובערב הפריטים מוצגים לפי סדר מנות: 🥗 פתיחה, 🍲 עיקרית ו-🍎 קינוח.\n• בנייה ידנית: חיפוש מזון במאגר, כמות בגרמים או ביחידות מטבח, שעת ארוחה, השריה (משפרת בחישוב את זמינות הברזל, האבץ והסידן) והעברת פריט בין ארוחות.\n• 📂 ארוחות שמורות ו-💾 שמירת ארוחה בשם. '💾 שמור יום' ו-'📂 ימים שמורים' שומרים תפריט של יום שלם לשימוש חוזר.\n• 🚫 לעולם לא להציע: מסמנים ליד מזון ברשימת החיפוש, והוא יוצא מכל ההצעות האוטומטיות (אלרגיה, רגישות או סתם טעם).\n\n🤖 תכנון אוטומטי\n• הצע ארוחות ליום או לשבוע, מהמאגר הכללי ומהמתכונים.\n• הצע ארוחות ממתכונים, בעיקר מספר המתכונים, בתוספת אגוזים, זרעים ופרי.\n• שלב מוצרים מן החי: גרסה הכוללת מוצרי חלב וביצים.\n• השלם יום: מה שכבר בחרתם נשאר בדיוק כפי שהוא, והמערכת רק משלימה ומאזנת את מה שהיא מוסיפה.\n• 🔄 אופטימיזציה: הצעות החלפה לשיפור האיזון, כל אחת מאושרת או מדולגת בנפרד.\n• כל הצעה נפתחת בתצוגה מקדימה: ✅ להחיל, 🔄 להציע שוב, או לבטל.\n• תכנון שבועי רץ ברקע עם פס התקדמות וכפתור ביטול, והמסך לא קופא.\n• אחרי עדכון גרסה, תפריטים שמורים לא משתנים מעצמם. כדי לקבל את הכללים החדשים, נקו את השבוע וצרו אותו מחדש.\n\n📏 עקרונות התכנון\n• קלוריות: התכנון מכוון מעט מתחת ליעד היומי. בתצוגה, סטייה של עד 5% לכל כיוון נחשבת תקינה, כי גם היעד עצמו הוא הערכה.\n• כמויות מעשיות: מנות ויחידות שלמות (מלבד אגוזים, זרעים ומלח).\n• פרי: ארבע עד חמש יחידות ביום, ועדיף אחת בכל ארוחה. כשאין ברירה (למשל בתקציב קלורי צפוף) — שלוש. ירק גלוי בכל ארוחה עיקרית: ירק שבתוך תבשיל, וגם בטטה, תפוח אדמה ותירס, אינם נחשבים. בכל יום גם סלט ירקות עם עלים ועשבי תיבול.\n• הצמדות: דגנים לצד קטניות ולהפך; לחם לצד ממרח; מנת מחבת תמיד עם לחם; מאפה מתוק בלי ממרח.\n• מבנה ארוחה: יוגורט אחד לארוחה; תבשיל או מאפה כבד — מנה אחת, ולצידה מנה משלימה; סלט אחד לארוחה (עדיף מנה כפולה מאותו סלט על פני שני סלטים). בלי כפילויות: אותה קטנית, מוצר סויה או פריט לא חוזרים באותה ארוחה או באותו יום.\n• חלוקה ביום: לכל ארוחה עיקרית יש תקרה סבירה, וארוחת הערב לא חייבת להיות קלה מארוחת הבוקר.\n• גיוון שבועי: פריט עיקרי לא חוזר יותר מכמה פעמים בשבוע, כשהתזונה מאפשרת (בתקציב קלורי נמוך הוויטמינים והמינרלים קודמים). וגם מרקים, משקאות, מנות מחבת, ארוחות סלט ומקום לכל קטגוריות המתכונים. בתקציב קלורי נמוך יש פחות מאלה, כדי להשאיר מקום לרכיבים החיוניים.\n• חלק מהרכיבים מופיעים רק בתוך מתכון (למשל טופו קשה, עדשים אדומות, ברוקולי, כרובית ועשבי תיבול). פטריות מוצעות רק במתכון או לצד ירקות נוספים, ועלים גולמיים או פטריות לצד ירקות מוצגים יחד כסלט אחד.\n• ויטמינים ומינרלים: היעדים נקבעו כממוצע לאורך זמן, ולכן העמידה בהם נמדדת ברמת השבוע. כל יום מתוכנן קרוב ליעד, והבדיקה השבועית משלימה רק רכיב שחסר בשבוע כולו. כך יום בודד לא נדחף לפתרונות מלאכותיים. כשחסר, המערכת משלימה ממזונות מתאימים. כשחסר סידן, למשל, היא מוסיפה משקה צמחי מועשר או יוגורט קנוי מועשר. מזונות מרוכזים (כמו נבט חיטה ופירות מיובשים) מוגבלים בכמות היומית. תרד ומנגולד אינם נחשבים מקור לסידן ולברזל, כי הספיגה מהם נמוכה.\n• ברזל ואבץ: היעד מוגדל לתזונה צמחית (IOM), כי הספיגה ממקורות צמחיים נמוכה יותר: ברזל ×1.8 (14.4 מ\"ג; לנשים בגיל הפוריות 32.4 מ\"ג) ואבץ ×1.5 (16.5 מ\"ג לגברים, 12 מ\"ג לנשים). לנשים בגיל הפוריות קשה לעמוד ביעד הברזל ממזון בלבד, כי תפריט צמחי טיפוסי מספק כ-20–25 מ\"ג. היעד המלא מוצג בשקיפות, ומומלץ לבדוק פריטין ולהתייעץ לגבי תוסף. לצד הארוחה העשירה בברזל מוצע מקור ויטמין C, שמשפר את הספיגה.\n• חלבון ולאוצין: לפחות 2 ארוחות עיקריות עם לאוצין מעל הסף (2 גר', ומגיל 65 — 2.5 גר'). מגיל 65 יש דגש מוגבר על חלבון, והוא עובד הכי טוב יחד עם אימוני כוח.\n• נתרן: תקרה יומית לפי ההמלצות (נמוכה יותר מגיל 65 או עם יתר לחץ דם). רוב הנתרן מגיע מהמלח המיודד, שנשאר בכמות מוגבלת כי הוא מקור היוד, ואת היוד החסר משלימה וואקמה במגבלת כמות. בנוסף, אשלגן לפחות פי 2 מהנתרן.\n• שומן ואומגה: שומן במידה, ומעט יותר מגיל 65 (לטובת טחינה, שקדים וזרעים), ואומגה 3 (ALA) מספיקה בכל יום — לפחות 1.1 גרם לנשים ו-1.6 לגברים. יחס אומגה 6:3 (עד כ-5:1 נחשב טוב) מוצג כמידע בלבד.\n\n🎯 איך נקבעים היעדים\nהקלוריות מחושבות לפי נוסחה מקובלת (Mifflin-St Jeor), רמת הפעילות והמטרה: שמירה, ירידה זהירה או עלייה נקייה. כל נוסחה היא הערכה, ולכן השקילות השבועיות מכיילות אותה. פירוט יעדי המאקרו, הסיבים והאומגה נמצא בחלונות המידע (ⓘ) בכל מסך. יעד הסיבים הוא מינימום לפי הקלוריות ושאיפה (נמוכה יותר מגיל 65), ובתכנון יש לסיבים גם תקרה רכה. מי שחדש בתזונה צמחית כדאי שיעלה בסיבים בהדרגה וישתה הרבה מים. מגיל 65, ירידה לא מתוכננת במשקל מסומנת באזהרה.\n\n🍽 אבות המזון\n(בדסקטופ — בסרגל הצד מתחת ל'אבות המזון'; במובייל — שורת כפתורים בראש הלשונית)\n• 🍽 מאקרו: פחמימות, חלבון, שומן וסיבים, וחלבון לק\"ג, ביום ובשבוע.\n• ⚖️ אומגה 3 ו-6: כמויות ALA ואומגה 6 בגרמים מול היעד, היחס ביניהן כמידע, וטווח משוער להמרת ALA ל-EPA/DHA.\n• 🧬 חומצות אמינו חיוניות: לאוצין וליזין מול היעד, לאוצין בכל ארוחה, והסבר מדוע עמידה בשתיהן בתפריט מגוון מכסה כמעט תמיד גם את שאר החומצות החיוניות.\n• 🥓 שומן רווי וכולסטרול: גם במזון צמחי יש מעט שומן רווי (טחינה, סויה, אגוזים, שמן), וזה תקין כל עוד הוא נמוך.\n\n💊 מיקרו\n• ⚖️ יחסים: אשלגן:נתרן וסידן:זרחן.\n• 💊 יומי: תמונת מצב של היום — אדום (מתחת ל-EAR) הוא הסימן שכדאי לשים לב אליו, וכתום תקין כשהשבוע משלים. כל ויטמין ומינרל מול היעד, ספיגה משוערת לסידן, הסבר על יעד הברזל והאבץ, ומדד 'ספיגת ברזל' עם המלצה להרחיק תה, קפה ותוסף סידן מארוחות עתירות ברזל.\n• 📅 שבועי: סך השבוע מול היעד, עם תקרות בטיחות לסלניום, יוד ומנגן, ותקרת נתרן. מגיל שבו יעד הסידן עולה (נשים מגיל 51, גברים מגיל 71), כשהסידן בשבוע חסר מוצגת הנחיה מעשית.\n• ✨ בתצוגה הפשוטה: סיכום השבוע במילים — מה כדאי לחזק (עד שלושה רכיבים) והצעה מעשית אחת — ואזהרות בטיחות אם יש. באותו אופן: באבות המזון מוצג רק החלבון (✓ או ⚠), ביומן — כפתור '✓ אכלתי כמתוכנן' ו'שיניתי משהו' לכל ארוחה, ובמעקב השבועי — סיכום במילים. מינוני התוספים ותיעוד בדיקות הדם — בתצוגה המלאה.\n• ציון שבועי: 100 נקודות, מינוס 5 לכל רכיב שנמצא מתחת ל-98% מהיעד השבועי. ברזל לנשים בגיל הפוריות נמדד מול יעד שאפשר להגיע אליו ממזון. רכיב של 98% ומעלה מסומן בירוק.\n\n📖 מתכונים\n• ➕ מתכון חדש, ✏️ עריכה, ⧉ שכפול, 🗑 מחיקה ו-☆ מועדף. 👁 צפייה פותחת את המתכון לקריאה בגופן גדול.\n• 📦 ייצוא מתכונים כקובץ JSON, להורדה או להעתקה.\n• 📖 ספר המתכונים: שער מאויר, תוכן עניינים לפי קטגוריות ועמוד לכל מתכון.\n• בטופס העריכה אפשר לצאת בלי לשמור, והרשימה חוזרת למתכון שבו הייתם.\n\n📝 יומן\n• תיעוד מה נאכל בפועל, בנפרד מהתכנון: ✓ 'אכלתי את המתוכנן', + הוספה, ✕ הסרה, 'שארית' ואיפוס היום. התצוגה 'מתוכנן / בפועל' קובעת אילו נתונים מוצגים במסכי הניתוח.\n• ⚖️ משקל ותוספים: שקילה שבועית. אחרי כמה שבועות של שקילות מוצע תיקון ליעד הקלורי לפי מגמת המשקל. יומן תוספים יומי עם אחוז היענות ומינון לכל תוסף, והנחיית מינון מקובלת ל-B12 (חובה לטבעונים, מומלץ לצמחונים): B12 וויטמין D, ולבחירה אומגה 3 מאצות (DHA/EPA — לא הכרחי לרוב המבוגרים הבריאים כשיש מספיק ALA) וברזל.\n• 📊 מעקב שבועי: נספרים רק ימים שתועדו. בפועל מול מתוכנן בכל רכיב, כשהפערים הגדולים ראשונים, ולחיצה מציגה פירוט לפי יום. ההיסטוריה נשמרת במכשיר, עם ציון לכל שבוע. 🔸 תג על לשונית היומן מסמן חוסר משמעותי.\n• 📋 עדכן את שאר השבוע: כשהצפי לסוף השבוע חסר, המערכת מציעה לעדכן רק את הימים שנותרו, תוך שמירה על כל הכללים ועם תצוגה מקדימה.\n• 🍽️ ארוחה חופשית: ארוחה בחוץ, משפחתית או בשבת אפשר לסמן כ'חופשית' (עיקרון 80/20). היא לא נשקלת, לא נספרת כחוסר במעקב השבועי, והיעד השבועי מותאם.\n• 🖨️ דוח שבועי למטפל: סיכום של אנרגיה, מאקרו, ויטמינים ומינרלים, פירוט יומי, תוספים ומינונים, בדיקות מעבדה, מצב רפואי ומשקל. אפשר להדפיס, לשמור כ-PDF או לשתף. הדוח מבוסס על ימים שתועדו בלבד.\n\n📋 דיווחים עצמיים\nמשקל והיקף מותניים פעם בחודש, עם BMI ויחס מותניים/גובה. המשקל נכנס אוטומטית גם ליומן השקילות. 🧪 כאן גם מזינים בדיקות מעבדה (פריטין, המוגלובין, B12, ויטמין D, LDL, HbA1c), והן נכנסות לדוח למטפל.\n\n🔬 מקורות הנתונים\nפירוט הצלבת כל מזון באפליקציה מול מאגר משרד הבריאות: מה עודכן, אילו פערים נשארו, לאילו מזונות אין מקבילה ואילו מזונות נוספו מהמאגר.\n\n🩺 מצב רפואי ותרופות (בפרופיל)\nשאלת סינון: מחלת כליות, וורפרין, תרופות שמעלות אשלגן, יתר לחץ דם (מוריד את תקרת הנתרן), סוכרת, מחלת מעי, בלוטת התריס או מצב אחר. הסימון לא משנה את התפריט — הוא מציג הנחיה ממוקדת והפניה לאיש מקצוע, ונכנס לדוח למטפל.\n\n🌱 טבעוני (בפרופיל)\nסימון 'טבעוני' מסתיר את כל המזונות מן החי מההצעות, ואת מצב 'שלב מוצרים מן החי'. כל שאר סוגי התכנון צמחיים לגמרי ממילא.\n\n🚫 רגישויות ואלרגיות (בפרופיל)\nסויה, גלוטן, אגוזים, בוטנים ושומשום: מזונות ומתכונים שמכילים אותם לא יוצעו. ללא סויה קשה יותר להגיע לסידן, ומומלץ משקה צמחי מועשר בסידן.\n\n🍷 פסח\n'ללא חמץ' מסיר את חמשת מיני הדגן (חיטה, שעורה, שיפון, כוסמין ושיבולת שועל) ומוצריהם. 'ללא קטניות' (מנהג אשכנז) מסיר גם קטניות, סויה, אורז, תירס, כוסמת, בוטנים ושומשום. בשילוב שניהם התפריט מצומצם מאוד וקשה יותר לעמוד ביעדים, ולכן מומלץ רק לימי החג ולכבות אחרי פסח. קינואה — לוודא הכשר לפסח.\n\n👤 פרופיל\nגובה, משקל, גיל, מין, רמת פעילות, מטרה ופרופיל בריאותי. כשה-BMI מתחת לטווח התקין, מטרת הירידה במשקל חסומה. כברירת מחדל הנתונים נשמרים רק לביקור הנוכחי. המתג '💾 שמור את נתוני הפרופיל במכשיר' שומר אותם גם לכניסות הבאות.\n\n💰 ניהול תקציב\n• קובעים תקציב חודשי למזון, והאפליקציה מחלקת אותו ליום ולשבוע ומציגה עלות משוערת לכל ארוחה. כדאי לעדכן מחירים לפי מה שמשלמים בפועל.\n• תכנון לפי תקציב: כשמוגדר תקציב, אחרי בחירת סוג ההצעה אפשר לבחור 'תכנון לפי תקציב'. המערכת מעדיפה פריטים זולים יותר מאותה קבוצת מזון, והתזונה תמיד קודמת: אף רכיב שעומד ביעד לא יורד מתחתיו. אם אי אפשר לעמוד בתקציב בלי לפגוע בתזונה, מוצגת העלות הנמוכה ביותר שנמצאה, עם אזהרה.\n\n📲 התקנה: בתפריט הדפדפן במובייל ← 'הוסף למסך הבית'.\n🌐 שפה: כפתור EN / עברית.\n🔒 עריכת פאנלים: כל חלון מידע ניתן לעריכה ב-✎ (נשמר במכשיר בלבד). המדריך ואזהרת השימוש מוגנים בקוד גישה.\n\n⚠️ האפליקציה היא כלי מידע ואינה תחליף לייעוץ רפואי או תזונתי מקצועי.",weeklyMicro:"💊 עמידה שבועית ביעדים — מה זה מראה?\n\nהבר הזה מסכם כמה טוב אתה עומד ביעדי המיקרו-נוטריאנטים על פני שבוע שלם, ולא רק ביום בודד.\n\nאיך מחשבים את הציון: מתחילים מ-100 נקודות, ומורידים 5 נקודות עבור כל מיקרו-נוטריאנט (מתוך הרשימה בלוח המיקרו) שלא הגיע ל-98% מהיעד השבועי שלו (יעד יומי × 7). ציון מלא (100) מתקבל כאשר כל הנוטריאנטים הגיעו ל-98% לפחות על פני השבוע. B12 וויטמין D לא נספרים — הם מגיעים מתוספים. ברזל לנשים בגיל הפוריות נמדד מול 18 מ\"ג ליום, כמות שאפשר להגיע אליה ממזון (היעד המלא מוצג בשקיפות).\n\n📅 למה שבועי? היעדים (RDA) נקבעו כממוצע צריכה לאורך זמן, לא כחובה ליום בודד. לכן זה המדד העיקרי: יום שחסר בו רכיב מסוים תקין כשהימים האחרים משלימים אותו.\n\nמתוכנן מול בפועל: העמודה 'מתוכנן' מחושבת מהארוחות שתכננת לשבוע; העמודה 'בפועל' מחושבת ממה שתיעדת ביומן האכילה. פער גדול בין השתיים מצביע על כך שמה שנאכל בפועל סטה מהתוכנית.\n\nלחצו על הבר כדי לראות פירוט מלא לכל מיקרו-נוטריאנט בנפרד.",weeklyOmega:"אומגה 3 ואומגה 6 — שבועי\n\nמציג את סך אומגה 3 (ALA), אומגה 6 ואומגה 9 בשבוע, מתוכנן מול בפועל. היעד המחייב הוא ALA: לפחות 1.1 גרם ביום לנשים ו-1.6 לגברים. היחס בין אומגה 6 לאומגה 3 מוצג כמידע בלבד. לחצו על הבר לפירוט מלא.",kna:"⚖️ נתרן ואשלגן — למה זה חשוב?\n\nשני הרכיבים משפיעים על לחץ הדם, וכל אחד מהם חשוב בפני עצמו — לא רק היחס ביניהם. במחקרים גדולים, יותר נתרן קשור לסיכון גבוה יותר לאירועי לב, ויותר אשלגן — לסיכון נמוך יותר.\n\n🧂 נתרן: התכנון מגביל ל-2,300 מ\"ג ביום (האקדמיות הלאומיות בארה\"ב; משרד הבריאות ממליץ על עד 2,000–2,400 מ\"ג, כלומר 5–6 גרם מלח). מגיל 65, או כשמסומן יתר לחץ דם בפרופיל — עד 2,000 מ\"ג (ארגון הבריאות העולמי). המזון הצמחי עצמו דל בנתרן; רוב הנתרן בתפריט מגיע מהמלח המיודד, שנשאר בתפריט בכמות מוגבלת כי הוא מקור היוד העיקרי.\n\n🍌 אשלגן: ארגון הבריאות העולמי ממליץ על לפחות 3,510 מ\"ג ביום. תפריט צמחי עשיר באשלגן (ירקות, פירות, קטניות) ומגיע לכך בקלות.\n\n📐 היחס: היעד באפליקציה הוא אשלגן לפחות פי 2 מהנתרן, לפי משקל (במ\"ג). זה מעט מחמיר מהיחס שנובע מהמלצות ארגון הבריאות העולמי (כ-1:1 במולים, כלומר כפי 1.7 במ\"ג). יחס טוב לא מחליף את תקרת הנתרן.\n\n⚠️ אשלגן והכליות: אשלגן מהמזון בטוח כשהכליות תקינות. במחלת כליות, או עם תרופות שמעלות אשלגן (ACE, ARB, ספירונולקטון), יש צורך בליווי רפואי — סמנו זאת בשאלת הסינון בפרופיל. אותו דבר לגבי תחליפי מלח עשירים באשלגן: במחקר גדול (SSaSS, 2021) הם הפחיתו שבץ ותמותה, אבל אינם מתאימים במצבים אלה.",weeklyKna:"⚖️ נתרן ואשלגן — שבועי\n\nסיכום של כל השבוע: סך האשלגן והנתרן, והיחס ביניהם (אשלגן לפחות פי 2 מהנתרן, לפי משקל). בנוסף ליחס, סך הנתרן השבועי נבדק מול התקרה (2,300 מ\"ג ביום × 7; מגיל 65 או עם יתר לחץ דם — 2,000 × 7).\n\nמתוכנן מול בפועל: משווה בין הארוחות שתוכננו לבין מה שתועד ביומן.",foodLog:"📝 יומן אכילה — איך משתמשים בו?\n\nלשונית זו מיועדת לתעד מה אכלת בפועל בכל יום, בנפרד מהתפריט המתוכנן שלך.\n\nאיך מנווטים בין ימים: השתמשו בחצים משני צידי התאריך כדי לעבור בין ימים, או לחצו 'חזרה להיום' כדי לחזור מיד לתאריך הנוכחי.\n\nאיך מתעדים ארוחה: לחצו על כל ארוחה (בוקר/ביניים/צהריים/ערב) כדי לפתוח אותה. משם יש שתי אפשרויות:\n1. אם אכלתם בדיוק את מה שתוכנן — לחצו על '✓ אכלתי בדיוק את המתוכנן'. הארוחה תסומן כתואמת לתכנון, ללא צורך להזין שום דבר נוסף.\n2. אם אכלתם משהו שונה — לחצו '+ הוסף פריט' כדי להוסיף מזון ספציפי שאכלתם, או לחצו על ה-✕ ליד פריט קיים כדי להסירו. אפשר גם ללחוץ 'נקה' כדי לאפס את כל התיעוד של אותה ארוחה ולהתחיל מחדש.\n\n🍽️ שארית: ליד כל פריט תוכלו לסמן 'שארית' אם לא אכלתם אותו במלואו — 10%/20%/25% או אחוז ידני. ברירת המחדל היא שהפריט נאכל במלואו; ברגע שמסמנים שיעור שנותר, החישוב התזונתי (קלוריות, אבות מזון, סיבים ושאר הנוטריאנטים) מתעדכן אוטומטית לפי מה שבאמת נאכל (100% פחות אחוז השארית).\n\nלמה זה חשוב: כל מה שמתועד כאן מזין את התצוגה 'בפועל (היום)' בלשוניות 'ארוחות' ו'מיקרו', ואת בָּרֵי העמידה השבועית — כך שתוכלו (ובמידת הצורך, גם המטפל/ת שלכם) לראות בבירור עד כמה מה שנאכל בפועל תואם לתכנון המקורי לאורך זמן.",activityLevels:"🏃 רמות פעילות גופנית — מה ההבדל?\n\nהרמה שתבחר משפיעה ישירות על היעד הקלורי שלך (TDEE) — כל רמה מוכפלת במקדם שונה על קצב חילוף החומרים הבסיסי (BMR).\n\nמועטה (מקדם 1.375): מעט מאוד או ללא פעילות גופנית מובנית — עבודת משרד או ישיבה רוב היום, הליכה מזדמנת בלבד, לכל היותר אימון קל 1-2 פעמים בשבוע.\n\nבינונית (מקדם 1.55): פעילות גופנית מובנית 3-5 פעמים בשבוע — ריצה, אימוני כוח, שחייה, הליכה נמרצת או ספורט אחר ברמה בינונית.\n\nגבוהה (מקדם 1.725): פעילות גופנית אינטנסיבית 6-7 פעמים בשבוע, או עבודה פיזית תובענית (למשל בנייה, חקלאות, משלוחים) בשילוב אימונים סדירים.\n\nטיפ: אם אתה לא בטוח באיזו רמה לבחור, עדיף לבחור ברמה נמוכה יותר משנדמה לך — הערכת-יתר של הפעילות היא הטעות הנפוצה ביותר, והיא מובילה ליעד קלורי גבוה מדי מהנדרש בפועל.",cap:"🦴 יחס סידן:זרחן — למה זה חשוב?\n\nסידן וזרחן הם שני המינרלים הנפוצים ביותר ברקמת העצם, ופועלים יחד בוויסות בריאות השלד. היחס התזונתי המקובל בספרות הוא כ-1:1 עד 2:1 (סידן שווה או גבוה יותר מזרחן).\n\nלמה זה משנה: כאשר צריכת הזרחן עולה משמעותית מעבר לסידן לאורך זמן (בעיקר ממזון מעובד עם תוספי זרחן, פחות מתזונת WFPB טבעית) — הגוף עשוי להגביר הפרשת הורמון פארתירואיד (PTH), מה שעלול להאיץ שאיבת סידן מהעצם ולפגוע בצפיפותה לאורך זמן.\n\nבתזונת WFPB: מקורות טובים לסידן כוללים ירקות מצליבים (כרוב, ברוקולי, קייל), טופו, טחינה ומשקה סויה מועשר. זרחן קיים כמעט בכל מזון (קטניות, דגנים מלאים, אגוזים) — ברוב המקרים תזונה מבוססת-צומח מאוזנת שומרת על יחס סביר מעצמה, ללא צורך במעקב קפדני, אלא אם יש מצב רפואי ספציפי (כגון מחלת כליות) הדורש תשומת לב נפרדת לזרחן — במקרה כזה ראה את פאנל נתרן/אשלגן, שם מוצגת תקרת זרחן קלינית נפרדת כשרלוונטי.\n\nℹ️ הבהרה חשובה: זהו יחס אחד ויחיד (סידן חלקי זרחן), לא שני יחסים שונים — התצוגה היומית והשבועית הן שתי חלוני-זמן על אותה נוסחה בדיוק, בדיוק כמו שקורה ביחס נתרן:אשלגן.\n\n🏭 איכות ומקור הזרחן — אורגני מול אנאורגני: מעבר לכמות הזרחן הכוללת, יש הבדל משמעותי במקור שלו. זרחן אורגני (טבעי, מצמחים או ממוצרי חלב/ביצים בסיסיים) נספג בשיעור חלקי בלבד (כ-40-60%), כי חלקו קשור למטריצה הטבעית של המזון (כולל פיטאט בצמחים). זרחן אנאורגני מוסף (מלחי-היתוך בגבינה מעובדת, תוספי E339-E341/E450-E452 במזון מעובד) נספג כמעט 100% — עומס מטבולי גבוה משמעותית מאותה כמות-מ\"ג בדיוק. כשהאפליקציה מזהה פריט עם זרחן אנאורגני מוסף בתפריט שלך, תופיע הערה ייעודית מתחת ליחס — לא יחס נוסף, רק שכבת מידע על איכות המקור.\n\nℹ️ למה היחס יכול להישאר נמוך גם כשעומדים ב-100% מהיעד היומי של שני המינרלים בנפרד: הסידן והזרחן נקבעים כל אחד מול יעד RDA משלו, לא מול יחס-יעד משותף. כלומר גם אם צריכת הסידן שלך מגיעה ל-100%+ מהיעד היומי (1000-1200mg) וגם צריכת הזרחן מגיעה ל-100%+ מהיעד שלו (700mg) — היחס ביניהם עדיין יכול לצאת נמוך מ-1:1 (למשל 0.7:1), כי היעד לזרחן עצמו נמוך יותר במספרים אבסולוטיים מיעד הסידן, אבל תזונת WFPB טיפוסית נוטה לספק זרחן בעודף ניכר מעבר ליעד שלו (בזכות שפע קטניות/דגנים/אגוזים), בעוד שסידן נשאר קרוב יותר ליעד שלו בלבד. זו הסיבה שהיחס יכול \"להיכשל\" גם כשכל מינרל בנפרד \"עובר\" — זה בדיוק מה שהפאנל הזה נועד להראות, מעבר למה שכל אחד מהיעדים הנפרדים ברשימת הוויטמינים/מינרלים כבר מציג.\n\n⚠️ הסתייגות מדעית: בשונה מיחס נתרן:אשלגן (שיש לו גיבוי אפידמיולוגי חזק לאוכלוסייה הבריאה), היחס הספציפי סידן:זרחן אצל אדם בריא הוא הרבה פחות מוסכם — הדוחות התזונתיים העדכניים (NASEM) קובעים יעד נפרד לכל מינרל בפני עצמו, לא יחס-יעד רשמי ביניהם. חשוב לזכור שהאפליקציה מיועדת כרגע לאנשים בריאים בלבד — עבורם, הפאנל הזה הוא דגל לתשומת-לב שמעודד תוספת מקור סידן (לא בהכרח הפחתת זרחן), ולא אזעקת חירום כמו יחס אומגה חורג או חריגה מתקרת נתרן.",satfat:"🥓 שומן רוֹווי וכולסטרול — למה זה נמצא רק בגרסה הזו?\n\nשני הנתונים האלה כלל לא היו קיימים בגרסת ה-WFPB המקורית (תזונה טבעונית מלאה) — כי מקורות משמעותיים לשומן רוֹווי וכולסטרול כמעט ולא קיימים בתזונה צמחית מלאה. ברגע שנוספו מוצרי חלב וביצים, המעקב הזה הופך לחיוני.\n\nשומן רוֹווי — היעד באפליקציה הוא עד 10% מהקלוריות היומיות (הנחיית האיגוד האמריקאי לקרדיולוגיה ו-WHO), כחלק מהגנה על בריאות הלב וכלי הדם. עודף שומן רוֹווי לאורך זמן קשור לעלייה ב-LDL (\"כולסטרול רע\") ולסיכון קרדיווסקולרי מוגבר. מוצרים כמו חמאה, גבינות קשות ובשר מן החי הם המקורות המרוכזים ביותר.\n\nכולסטרול — בעבר הומלץ במפורש להגביל ל-300 מ\"ג ליום; ההנחיות התזונתיות העדכניות (כולל בארה\"ב) הסירו תקרה מספרית רשמית, מכיוון שהמחקר מראה שכולסטרול תזונתי משפיע פחות על כולסטרול בדם אצל רוב האנשים מכפי שהוערך בעבר — ההשפעה המשמעותית יותר היא בדרך כלל משומן רוֹווי, לא מכולסטרול תזונתי כשלעצמו. עדיין, 300 מ\"ג מוצג כאן כרף-ייחוס כללי ושמרני, לא כתקרה רפואית מוחלטת.\n\n⚠️ הסתייגות: כמו בשאר האפליקציה, אלה הנחיות כלליות לאוכלוסייה הבריאה, לא ייעוץ קליני אישי — אם יש לך היסטוריה משפחתית של מחלת לב, כולסטרול גבוה או גורמי סיכון אחרים, התייעץ עם רופא/דיאטן/ית לגבי היעד המתאים לך."},en:{macroFormula:"🧮 How are the calorie percentages for each macronutrient calculated?\n\nThe app uses a Modified Atwater System, where each gram is assigned its own calorie value: net carbs (total carbs minus fiber) = 4 kcal/g, protein = 4 kcal/g, fat = 9 kcal/g — and dietary fiber = only about 2 kcal/g, not 4 like other carbs.\n\nWhy does fiber only get 2 kcal/g? Dietary fiber isn't digested and absorbed in the small intestine the way regular carbs (starch and sugar) are. Some of it is fermented by gut bacteria in the colon into short-chain fatty acids, which provide partial, less readily available energy compared to direct breakdown of a regular carbohydrate. The FDA and USDA (and similar bodies worldwide) use an agreed value of about 2 kcal/g for fiber instead of the usual 4 kcal for carbs — this is exactly the Modified Atwater System.\n\nWhat this means in practice: to calculate the percentage of calories coming from each macronutrient, fiber is first separated out from total carbs (\"net carbs\" = total carbs minus fiber), and calculated separately. Total calories are then the sum of: (net carbs × 4) + (protein × 4) + (fat × 9) + (fiber × 2). That's why total macronutrient grams won't line up exactly with total calories if you multiply everything by 4/4/9 without separating out fiber — it's always calculated as its own category, at the lower factor.\n\nThis panel shows the amounts in grams (today vs. this week) and the calorie percentage split, using exactly this formula — identical to what's shown on the regular daily summary card in the 'Meals' tab, just with additional gram detail and a weekly summary.",calories:"📊 Calories — how your target is calculated\n\nThe app first calculates your Basal Metabolic Rate (BMR) using the Mifflin-St Jeor formula, based on height, weight, age, and sex. It then multiplies that by your chosen activity multiplier (low/moderate/high) to get your Total Daily Energy Expenditure (TDEE) — the calories needed to maintain your current weight.\n\nFinally, based on your goal (maintain/lose/gain), a moderate calorie deficit or surplus is added (see the 'Careful Loss' and 'Clean Gain' panels).\n\nTarget macronutrient split: carbs up to 55% of calories, protein at least 18% (and roughly 1.0-1.5g per kg body weight, based on your selected activity level), and fat up to 30% — a balanced split reflecting the more moderate end of the WFPB spectrum: not the stricter reversal-oriented programs like Esselstyn/Ornish (~10% fat), but a moderate approach that is the app's own choice, treating 25-30% fat as healthy — with most of it from whole foods (tahini, nuts, seeds, avocado) plus a moderate amount of olive oil, and saturated fat stays low (separate target, ≤10%). This also sits within the general AMDR range (20-35%) used for the healthy population.",fiber:"🌿 Dietary Fiber — why it matters\n\n🐢 New to plant-based eating? Build up to this amount gradually over 2–3 weeks: start with half portions of legumes and whole grains and increase every few days, drink plenty of water, soak legumes and cook them well (or favor red lentils and split peas in stews, which are easier to digest), and chew slowly. Gas and bloating in the first weeks are a common response of gut bacteria to the change and usually ease.\n\n🎯 The app's target: a minimum based on the standard recommendation — 14g per 1,000 kcal (about 25–38g a day, depending on your calorie target), and an aim of 50g (40g from age 65). A plant-based diet reaches the minimum easily. Above the aim there's no proven extra benefit, and at older age or with a small appetite too much can cause early fullness at the expense of protein and calories, and increase the effect of phytates on mineral absorption. So planning also has a soft ceiling: when a day goes above about 70g (about 50g from age 65; about 30g per 1,000 kcal on a high calorie budget), the system prefers lower-fiber items from the same group (e.g. brown rice instead of bulgur, grapes instead of pear), as long as vitamins and minerals aren't compromised.\n\nFiber supports healthy digestion, feeds beneficial gut bacteria, helps regulate blood sugar and cholesterol levels, and contributes to lasting satiety.\n\nRich sources: all legumes (lentils, beans, chickpeas), whole grains (oats, quinoa, barley), leafy greens, broccoli, chia and flax seeds, nuts, and fruit with the skin on.\n\nTip: if you're not used to a high-fiber diet, increase your intake gradually and drink enough water to avoid digestive discomfort.",protein:"💪 Protein on a plant-based diet\n\nThe app's target is twofold: at least 18% of total daily calories, and about 1.0–1.5g of protein per kg of body weight depending on activity level (at least 1.1 from age 65) — above the general medical recommendation (0.8g/kg), to allow for slightly lower digestibility of plant protein and to preserve muscle mass.\n\nA common myth is that it's hard to get enough protein on a vegan diet — in practice, a varied combination of legumes (lentils, beans, chickpeas, lupin), whole soy (tofu, tempeh, edamame), whole grains, and nutritional yeast (about 50g protein per 100g) easily covers all essential amino acids across the day, even without precisely 'combining proteins' in every single meal.\n\nRecommended sources: tempeh, lentils, black beans, firm tofu, nutritional yeast, quinoa, and seitan.\n\n📏 Official g/kg protein guidelines — Israel and the US: both draw on the same DRI literature (Institute of Medicine/NASEM) and set an identical baseline RDA of about 0.8g/kg/day for an average healthy adult at low activity — this is the deficiency-prevention floor, not necessarily the optimal target. From there, ranges widen based on several factors:\n• Age: adults over 65 — geriatric nutrition bodies (e.g. the PROT-AGE group) recommend about 1.0-1.2g/kg to help prevent sarcopenia (age-related muscle loss).\n• Sex: there's no meaningful difference in the g/kg target between men and women — the main difference is during pregnancy and lactation, where the RDA rises by about 25g/day above baseline.\n• Activity level: low activity — about 0.8g/kg is usually sufficient. Endurance training (running, cycling) — about 1.2-1.4g/kg per ISSN/ACSM position stands. Resistance/strength training — about 1.6-2.2g/kg to support building and maintaining muscle mass.\n• Other factors: weight loss under a calorie deficit — the upper end of the range (about 1.6-2.0g/kg) is recommended to help preserve muscle mass during the deficit. Chronic kidney disease — the opposite: intake below 0.8g/kg under a physician/dietitian's guidance.\nThe target this app uses (1.2g/kg at moderate activity) now automatically adjusts based on the activity level selected in your profile: about 1.0g/kg at low activity, 1.2 at moderate (unchanged from before), and about 1.5 at high activity — rather than one fixed value for everyone as before. This scales it within the range described above (0.8 baseline, up to 1.6-2.2 for resistance training), with no extra input needed beyond the activity level already in your profile.",omega:"🌿 Omega-3 and omega-6 — what matters?\n\nALA (plant omega-3) is an essential fatty acid — the body can't make it. The app's target is the IOM adequate intake: at least 1.1g a day for women and 1.6g for men, and planning makes sure every day meets it. Rich sources: ground flaxseed, chia, walnuts and hemp seeds.\n\nOmega-6 (linoleic acid) is essential too. Current guidelines (e.g. the American Heart Association) don't recommend cutting it. So the omega-6:3 ratio is shown for information only (up to ~5:1 is considered good) and isn't a planning constraint.\n\nEPA and DHA: the body converts a small part of ALA into EPA, and very little into DHA — less in men. The screen shows a rough range for this.\n\n💊 Algae DHA/EPA supplement: according to dietetic organizations (e.g. the Academy of Nutrition and Dietetics, 2025), it isn't necessary for most healthy adults when ALA intake is adequate. It can be considered with professional advice, for example when ALA intake is low or with heart disease. In pregnancy and breastfeeding the recommendation is stronger (the app isn't intended for these).",micro:"💊 B12: daily supplement. D: 1000IU. Calcium: tahini+kale. Iron: lentils+VitC. 💧 Soaking: legumes/grains marked \"soaked\" (tap the tag next to the ingredient on the meal card) get a bioavailability bonus — iron +15%, zinc +25%, calcium +10% — since soaking reduces phytate, which inhibits absorption. This is an estimate only: evidence is limited, and the size of the effect varies widely between foods, soaking times and cooking methods. Default is no bonus.\n\n🌊 Iodine from seaweed: iodine content in seaweed varies several-fold between products and brands. The app uses wakame in very small amounts (half a gram, up to a gram a day), but the main, reliable source is iodized salt. With thyroid disease, ask before using seaweed.\n\n🌿 Omega-3: what matters is the amount of ALA (at least 1.1g a day for women, 1.6g for men); the omega-6 to omega-3 ratio is shown for information only. Details in the omega window.\n\n⚖️ Sodium and potassium: sodium up to 2,300 mg a day (2,000 from age 65 or with high blood pressure), and potassium at least twice sodium by weight. Plant foods are low in sodium; most sodium in the menu comes from iodized salt. Details in the sodium and potassium window.",wfpb:"🌿 WFPB – Whole Food Plant-Based: the base is whole grains, legumes, vegetables, fruits, nuts and seeds, as close to their natural form as possible. The app aims to minimize added sugar and processed food.\n\n🥛 Vegan or vegetarian: every planning mode is fully plant-based, except 'Combine Animal Products' (🥚🥛), which adds dairy and eggs in moderation — as a complement to the plant base rather than the center of the plate. If you're vegan, mark 'Vegan' in the profile and animal foods won't be suggested at all.\n\n🫒 Fat in moderation, not 'no oil': unlike the strict approach (Esselstyn/Ornish), which excludes all extracted oil, the app allows a moderate amount of olive oil. The main fat sources remain whole foods: tahini, nuts, seeds and avocado. The full fat target is shown in the 'Calories' panel.\n\n🧂 Iodized salt: dairy and eggs provide some iodine, but little and inconsistently, and there is no fish or seafood on the menu. So the app uses iodized salt rather than sea or Himalayan salt. It also includes wakame within a quantity limit, alongside the supplement (see the 'Micro' panel).\n\n💊 Supplements: B12 is essential on a vegan diet and recommended on a vegetarian one (details and doses in the supplement log), and vitamin D per standard guidance. In addition, the iron and zinc targets are raised (×1.8 and ×1.5) because absorption from plant sources is lower.\n\n🔬 Food values are cross-referenced with the Israeli Ministry of Health database. Full details are in 'Data sources'.",nds:"🏆 Nutrient Density Score (NDS) — what is it?\n\nThis score measures how well your day covers the full range of essential vitamins and minerals — not just calories and protein.\n\nHow it's calculated:\nFor each of ~21 vitamins/minerals (excluding B12, D and iodine, which are treated as supplement-dependent), we check what % of the daily target (RDA) you reached. Any nutrient above 100% is capped at 100% — so a huge surplus of one nutrient (say, iron) can't 'cover for' a shortfall in another (say, zinc). The score is the average of all these percentages.\n\nWhy it's useful:\nA high score reflects a varied diet covering a broad nutrient range — not just a high-calorie/high-protein day with few vegetables or fruits. Two days with identical calories can score very differently depending on food variety.\n\nWhat it doesn't measure:\nIt excludes calories, protein, carbs, fat and fiber (tracked separately), and it isn't a clinical-deficiency check (that's what the EAR indicator on the micronutrient panel is for).\n\nScore ranges:\n80-100 Excellent · 50-79 Good · Below 50 — add more variety (leafy greens, fruit, legumes, nuts and seeds).",disclaimer:"⚠️ General info only — not medical advice. The app is intended for adults (18+) only, and not for pregnancy or breastfeeding without guidance from a physician/dietitian. This app is not a medical device and is not intended to diagnose, treat, or manage any health condition. Nutritional values in the food database (calories, macros, and micronutrients) have been checked and cross-referenced by Claude (AI), with the app developer's assistance, against the Israeli Ministry of Health food database, but are still not the result of lab analysis or a live verified database query, and may deviate somewhat from official reference sources. Before making dietary changes — especially if you have a health condition requiring precise nutritional tracking (e.g. kidney disease, diabetes, or a sensitivity) — consult a physician/dietitian and don't rely on this app as your sole source.",spices:"🧂 Herbs & Spices — more than just flavor\n\nBeyond adding flavor and culinary variety, many spices contain compounds with anti-inflammatory and antioxidant properties that support a healthy lifestyle within a WFPB diet.\n\nTurmeric + black pepper: curcumin in turmeric absorbs much better in the presence of piperine from black pepper — always recommended together.\nCinnamon: may help regulate blood sugar levels.\nGinger: aids digestion and has anti-inflammatory effects.\nFresh garlic: supports the immune system and cardiovascular health.\nCumin: rich in iron and supports digestion.\n\nYou can and should freely incorporate these spices into your daily meals — they don't significantly affect calorie counts but add to the overall nutritional value of the meal.",swapExplain:"🔄 The Optimization Tool — how it works\n\nThis tool scans your planned meals and looks for opportunities to improve nutritional balance without changing your total daily calories.\n\nHow it chooses swaps: it identifies an existing food item in a meal that has a similar substitute in terms of food type and calorie amount, but with a richer nutritional profile — for example, more fiber, more calcium, a better omega ratio, or better coverage of a vitamin/mineral you're relatively short on.\n\nEach suggestion is shown separately with an '✅ Apply' or 'Skip' option — so you stay in full control of every change. If your meals are already well balanced, the tool will indicate there are no further suggestions.\n\nNote: swaps are calorie-neutral (they don't change the meal's total calories) and focus solely on improving nutritional quality.",bmi:"⚖️ BMI (Body Mass Index) — what it means and its limits\n\nCalculation: BMI = weight (kg) ÷ height² (meters).\n\nStandard classification ranges:\n<18.5 — Underweight\n18.5–25 — Normal weight\n25–30 — Overweight\n30+ — Obese\n\nImportant to know: BMI is a quick, rough measure, but it doesn't distinguish muscle mass from fat mass, and doesn't account for age, sex, body frame, or fat distribution. Someone with high muscle mass (e.g. an athlete) may get a 'high' BMI despite low body fat.\n\nSo it's best to treat BMI as a general orientation tool only, not a single measure of metabolic health — especially if you have specific questions, it's recommended to consult a physician/dietitian who can assess the full picture.",goalLose:"📉 Careful Weight Loss — the app's approach\n\nWhen you select the 'Lose' goal, the app applies a moderate calorie deficit of about 6.25% below your maintenance intake (within a flexible 5%-7.5% range), rather than an aggressive deficit.\n\nWhy a moderate approach? Losing weight too quickly (a large deficit) raises the risk of muscle mass loss, a slower metabolic rate, fatigue, and persistent hunger that makes it hard to stick with over time. A moderate deficit supports slow, sustainable loss — typically around 0.3-0.5kg per week — which is more likely to stick and avoid a 'yo-yo effect'.\n\nIt's important to combine this with exercise (especially resistance training) to preserve muscle mass while losing weight. You can add your own personal notes here.",goalGain:"📈 Clean Mass Gain — the app's approach\n\nWhen you select the 'Gain' goal, the app applies a moderate calorie surplus of about 6.25% above your maintenance intake (within a flexible 5%-7.5% range).\n\nWhy a moderate approach rather than a large surplus? Too large a calorie surplus tends to lead to excess fat gain alongside muscle mass, rather than necessarily faster muscle building — the body can only build muscle at a limited rate, and beyond that the surplus is 'stored' as fat. A moderate surplus supports relatively 'clean' gain, with a better ratio of muscle to fat gained.\n\nFor best results, it's important to combine this with regular resistance training alongside sufficient protein intake (see the 'Protein' panel). You can add your own personal notes here.",userGuide:"📘 PlantVitalis Vegetarian — User Guide\n\n⚡ In short\nPlantVitalis builds a vegan or vegetarian whole-food plant-based (WFPB) menu — dairy and eggs optional — and checks that it meets your calorie, protein, vitamin and mineral targets.\n1. 👤 Fill in your profile: height, weight, age, sex, activity and goal.\n2. 🤖 'Auto-planning' suggests a full day or week. In the preview you can apply it, ask for another suggestion, or cancel.\n3. ✏️ Every meal can be edited by hand, and 'Complete day' fills in around what you chose.\n4. 📝 In the Log, mark what you actually ate. Weekly tracking shows what is missing, and the weekly report is ready to send to your dietitian.\n5. ⚖️ A weekly weigh-in in the Log lets the app calibrate your calorie target over time.\n6. 🚫 A food you don't eat? Mark it, and it won't be suggested again.\n7. 🩺 A medical condition or regular medication? Mark it in the profile. The menu is designed for healthy adults, and the app will show guidance and a referral.\n8. ✨ Screens are simple by default. '🔍 Full details' at the top, or 'Details ›' on a card, opens all the numbers and analyses.\nThe app is for adults only. During pregnancy, breastfeeding or a medical condition — use it only with a doctor's or dietitian's guidance.\n\n────────────────\n\n📚 Extended guide\n\n🧭 Layout & navigation\nTabs: Meals, Macronutrients, Micro, Log and Recipes. Above them: 👤 Profile, the day selector and the 'Auto-planning' menu. At the top of the screen: 🔍 Full details / ✨ Simple view, 💰 Budget, 📋 Self reports, 🔬 Data sources, ✨ Welcome screen and 📘 Guide. In the simple view the guide, data sources, welcome screen (and on a phone, the budget) are grouped under 'ℹ️ Info'; the Warning button is always visible. After the guided tour ends, or is skipped, the app returns to the Meals tab.\n\n🥗 Meals\n• Four meals a day: breakfast, snack, lunch and dinner. At lunch and dinner items are shown in course order: 🥗 starter, 🍲 main and 🍎 dessert.\n• Manual building: search the food database, amounts in grams or kitchen units, meal time, soaking (improves the calculated availability of iron, zinc and calcium) and moving items between meals.\n• 📂 Saved meals and 💾 save a meal by name. '💾 Save day' and '📂 Saved days' store a whole day's menu for reuse.\n• 🚫 Never suggest: mark it next to a food in the search list, and it is excluded from all automatic suggestions (allergy, sensitivity or just taste).\n\n🤖 Auto-planning\n• Suggest meals for a day or a week, from the general database and the recipes.\n• Suggest meals from recipes: mainly from the recipe book, plus nuts, seeds and fruit.\n• Combine animal products: a version that includes dairy and eggs.\n• Complete day: what you already chose stays exactly as it is; the system only fills in and balances what it adds.\n• 🔄 Optimization: swap suggestions to improve the balance, each approved or skipped separately.\n• Every suggestion opens in a preview: ✅ apply, 🔄 suggest again, or cancel.\n• Weekly planning runs in the background with a progress bar and a cancel button, so the screen doesn't freeze.\n• After a version update, saved menus don't change by themselves. To get the new rules, clear the week and create it again.\n\n📏 Planning principles\n• Calories: planning aims slightly below the daily target. In the display, up to 5% either way counts as fine, since the target itself is an estimate.\n• Practical amounts: whole servings and units (except nuts, seeds and salt).\n• Fruit: four to five units a day, preferably one at each meal. When there's no choice (for example, a tight calorie budget) — three. A visible vegetable at every main meal: vegetables inside a cooked dish, and sweet potato, potato and corn, don't count. Every day also includes a vegetable salad with leaves and herbs.\n• Pairings: grains alongside legumes and vice versa; bread with a spread; a pan dish always with bread; a sweet baked item without a spread.\n• Meal structure: one yogurt per meal; a heavy stew or baked dish — one serving, with a complementary dish beside it; one salad per meal (a double serving of the same salad is preferred over two different salads). No duplicates: the same legume, soy product or item doesn't repeat in the same meal or the same day.\n• Across the day: each main meal has a reasonable ceiling, and dinner doesn't have to be lighter than breakfast.\n• Weekly variety: a main item doesn't repeat more than a few times a week, when nutrition allows (on a low calorie budget vitamins and minerals come first). Plus soups, drinks, pan dishes, salad meals and room for every recipe category. With a low calorie budget there are fewer of these, to leave room for the essential nutrients.\n• Some ingredients appear only inside a recipe (e.g. firm tofu, red lentils, broccoli, cauliflower and herbs). Mushrooms are suggested only in a recipe or with other vegetables, and raw leaves or mushrooms alongside vegetables are shown together as one salad.\n• Vitamins and minerals: targets are long-term averages, so compliance is measured over the week. Each day is planned close to target, and the weekly check tops up only a nutrient that's short across the whole week. That way a single day isn't pushed into artificial fixes. When something is short, the system adds suitable foods. When calcium is short, for example, it adds a fortified plant drink or a store-bought fortified yogurt. Concentrated foods (like wheat germ and dried fruit) have a daily limit. Spinach and chard don't count as calcium or iron sources, because absorption from them is low.\n• Iron and zinc: the target is raised for a plant-based diet (IOM), because absorption from plant sources is lower: iron ×1.8 (14.4 mg; 32.4 mg for women of reproductive age) and zinc ×1.5 (16.5 mg for men, 12 mg for women). For women of reproductive age the iron target is hard to meet from food alone, since a typical plant-based menu provides about 20–25 mg. The full target is shown transparently, and checking ferritin and asking about a supplement is recommended. A vitamin C source is added to the most iron-rich meal to improve absorption.\n• Protein and leucine: at least 2 main meals with leucine above the threshold (2 g, and from age 65 — 2.5 g). From age 65 there is extra emphasis on protein, which works best together with strength training.\n• Sodium: a daily ceiling in line with the recommendations (lower from age 65 or with high blood pressure). Most sodium comes from iodized salt, which stays in a limited amount because it's the iodine source, and wakame tops up the missing iodine within a quantity limit. Also, potassium at least twice sodium.\n• Fat and omega: moderate fat, a little more from age 65 (to make room for tahini, almonds and seeds), and enough omega-3 (ALA) every day — at least 1.1g for women and 1.6g for men. The omega-6:3 ratio (up to ~5:1 is considered good) is shown for information only.\n\n🎯 How targets are set\nCalories are calculated with a standard formula (Mifflin-St Jeor), your activity level and your goal: maintain, gentle loss or lean gain. Any formula is an estimate, so the weekly weigh-ins calibrate it. The macro, fiber and omega targets are detailed in the info windows (ⓘ) on each screen. The fiber target is a minimum based on calories plus an aim (lower from age 65), and planning also has a soft fiber ceiling. If you are new to plant-based eating, increase fiber gradually and drink plenty of water. From age 65, unplanned weight loss is flagged with a warning.\n\n🍽 Macronutrients\n(Desktop — in the sidebar under 'Macronutrients'; mobile — a button row at the top of the tab)\n• 🍽 Macros: carbs, protein, fat and fiber, and protein per kg, daily and weekly.\n• ⚖️ Omega-3 & 6: ALA and omega-6 amounts in grams against target, their ratio for information, and a rough range for ALA-to-EPA/DHA conversion.\n• 🧬 Essential amino acids: leucine and lysine against target, leucine per meal, and why meeting both on a varied menu almost always covers the other essential amino acids too.\n• 🥓 Saturated fat & cholesterol: plant foods also have some saturated fat (tahini, soy, nuts, oil), and that is fine as long as it stays low.\n\n💊 Micro\n• ⚖️ Ratios: potassium:sodium and calcium:phosphorus.\n• 💊 Daily: a snapshot of the day — red (below EAR) is the signal worth attention, and orange is fine when the week makes up for it. Each vitamin and mineral against target, estimated calcium absorption, an explanation of the iron and zinc targets, and an 'iron absorption' indicator with advice to keep tea, coffee and calcium supplements away from iron-rich meals.\n• 📅 Weekly: the week's total against target, with safety caps for selenium, iodine and manganese, and a sodium ceiling. From the age at which the calcium target rises (women from 51, men from 71), practical guidance appears when the week is short on calcium.\n• ✨ In the simple view: the week summed up in words — what to boost (up to three nutrients) and one practical tip — plus safety warnings if any. Likewise: Macronutrients shows only protein (✓ or ⚠), the Log has '✓ Ate as planned' and 'I changed something' for each meal, and Weekly tracking gives a summary in words. Supplement doses and the blood test log are in the full view.\n• Weekly score: 100 points, minus 5 for each nutrient below 98% of the weekly target. Iron for women of reproductive age is measured against a target reachable from food. A nutrient at 98% or above is marked green.\n\n📖 Recipes\n• ➕ New recipe, ✏️ edit, ⧉ duplicate, 🗑 delete and ☆ favorite. 👁 View opens a recipe read-only in a large font.\n• 📦 Export recipes as a JSON file, to download or copy.\n• 📖 Recipe book: an illustrated cover, a table of contents by category and a page per recipe.\n• In the edit form you can exit without saving, and the list returns to the recipe you were on.\n\n📝 Log\n• Record what you actually ate, separately from the plan: ✓ 'Ate as planned', + add, ✕ remove, 'leftover' and reset the day. The 'Planned / Actual' toggle sets which data the analysis screens show.\n• ⚖️ Weight & supplements: weekly weigh-ins. After a few weeks of weigh-ins, a calorie-target correction is suggested based on your weight trend. A daily supplement log with an adherence rate and a dose for each supplement, plus common B12 dosing guidance (essential for vegans, recommended for vegetarians): B12 and vitamin D, and optionally algae omega-3 (DHA/EPA — not necessary for most healthy adults with enough ALA) and iron.\n• 📊 Weekly tracking: only logged days count. Actual vs planned for every nutrient, largest gaps first, and tapping shows a per-day breakdown. History is kept on the device, with a score for each week. 🔸 A badge on the Log tab flags a significant shortfall.\n• 📋 Update the rest of the week: when the end-of-week forecast falls short, the system offers to update only the remaining days, keeping all rules and showing a preview.\n• 🍽️ Free meal: a meal out, with family or on Shabbat can be marked 'free' (the 80/20 principle). It isn't weighed, isn't counted as a shortfall in weekly tracking, and the weekly target adjusts.\n• 🖨️ Weekly practitioner report: a summary of energy, macros, vitamins and minerals, a daily breakdown, supplements and doses, lab results, medical conditions and weight. You can print, save as PDF or share. The report is based on logged days only.\n\n📋 Self reports\nWeight and waist once a month, with BMI and waist-to-height. The weight also goes automatically into the weigh-in log. 🧪 This is also where you enter lab results (ferritin, hemoglobin, B12, vitamin D, LDL, HbA1c), which go into the practitioner report.\n\n🔬 Data sources\nHow every food in the app was checked against the Israeli Ministry of Health database: what was updated, which gaps remain, which foods have no equivalent and which were added from the database.\n\n🩺 Medical conditions & medications (in the profile)\nA screening question: kidney disease, warfarin, potassium-raising drugs, high blood pressure (lowers the sodium ceiling), diabetes, bowel disease, thyroid disease or another condition. Marking doesn't change the menu — it shows targeted guidance and a referral to a professional, and appears in the practitioner report.\n\n🌱 Vegan (in the profile)\nMarking 'Vegan' hides all animal foods from suggestions, and the 'Combine animal products' mode. All other planning modes are fully plant-based anyway.\n\n🚫 Sensitivities & allergies (in the profile)\nSoy, gluten, nuts, peanuts and sesame: foods and recipes containing them won't be suggested. Without soy it is harder to reach calcium, so a calcium-fortified plant drink is recommended.\n\n🍷 Passover\n'No chametz' removes the five grains (wheat, barley, rye, spelt and oats) and their products. 'No kitniyot' (Ashkenazi custom) also removes legumes, soy, rice, corn, buckwheat, peanuts and sesame. With both, the menu is very limited and targets are harder to meet, so use it only for the holiday and switch it off after Passover. Quinoa — check it is kosher for Passover.\n\n👤 Profile\nHeight, weight, age, sex, activity level, goal and health profile. When BMI is below the healthy range, the weight-loss goal is blocked. By default the data is kept only for the current visit. The '💾 Save profile data on this device' switch keeps it for future visits.\n\n💰 Budget\n• Set a monthly food budget; the app splits it by day and week and shows an estimated cost for each meal. It's worth updating prices to what you actually pay.\n• Budget planning: when a budget is set, after choosing the suggestion type you can pick 'Plan by budget'. The system prefers cheaper items from the same food group, and nutrition always comes first: no nutrient that meets its target drops below it. If the budget can't be met without hurting nutrition, the lowest cost found is shown, with a warning.\n\n📲 Install: in the mobile browser menu → 'Add to Home Screen'.\n🌐 Language: the EN / עברית button.\n🔒 Editing panels: every info window can be edited with ✎ (saved on this device only). The guide and the usage warning are protected by an access code.\n\n⚠️ This app is an information tool and is not a substitute for professional medical or nutritional advice.",weeklyMicro:"💊 Weekly Target Adherence — what does this show?\n\nThis bar summarizes how well you're meeting micronutrient targets across a full week, not just a single day.\n\nHow the score is calculated: it starts at 100 points, and 5 points are deducted for every micronutrient (from the list in the Micro panel) that didn't reach 98% of its weekly target (daily target x 7). A perfect score (100) is achieved when every nutrient reaches at least 98% across the week. B12 and vitamin D aren't counted — they come from supplements. Iron for women of reproductive age is measured against 18 mg a day, an amount reachable from food (the full target is shown for transparency).\n\n📅 Why weekly? Targets (RDA) are defined as long-term average intake, not a requirement for any single day. That's why this is the main measure: a day that's short in one nutrient is fine when other days make up for it.\n\nPlanned vs Actual: the 'Planned' column is calculated from the meals you've planned for the week; the 'Actual' column is calculated from what you've logged in the food log. A large gap between the two indicates that what you actually ate deviated from the plan.\n\nTap the bar to see a full breakdown for each micronutrient individually.",weeklyOmega:"Omega-3 and omega-6 — weekly\n\nShows the week's total omega-3 (ALA), omega-6 and omega-9, planned vs actual. The binding target is ALA: at least 1.1g a day for women and 1.6g for men. The omega-6 to omega-3 ratio is shown for information only. Tap the bar for full details.",kna:"⚖️ Sodium and potassium — why it matters\n\nBoth affect blood pressure, and each matters on its own — not just the ratio. In large studies, more sodium is linked to higher risk of heart events, and more potassium to lower risk.\n\n🧂 Sodium: planning caps it at 2,300 mg a day (US National Academies; Israel's Ministry of Health recommends up to 2,000–2,400 mg, i.e. 5–6 g of salt). From age 65, or when high blood pressure is marked in the profile — up to 2,000 mg (World Health Organization). Plant foods themselves are low in sodium; most sodium in the menu comes from iodized salt, which stays in the menu in a limited amount because it's the main iodine source.\n\n🍌 Potassium: the World Health Organization recommends at least 3,510 mg a day. A plant-based menu is rich in potassium (vegetables, fruit, legumes) and reaches this easily.\n\n📐 The ratio: the app's target is potassium at least twice sodium, by weight (mg). That's slightly stricter than the ratio implied by WHO recommendations (about 1:1 in moles, i.e. about 1.7 in mg). A good ratio doesn't replace the sodium ceiling.\n\n⚠️ Potassium and the kidneys: potassium from food is safe when the kidneys work normally. With kidney disease, or drugs that raise potassium (ACE inhibitors, ARBs, spironolactone), medical guidance is needed — mark this in the profile's screening question. The same applies to potassium-rich salt substitutes: in a large trial (SSaSS, 2021) they reduced stroke and death, but they're not suitable in these situations.",weeklyKna:"⚖️ Sodium and potassium — weekly\n\nA summary of the whole week: total potassium and sodium, and the ratio between them (potassium at least twice sodium, by weight). Besides the ratio, the week's total sodium is checked against the ceiling (2,300 mg a day × 7; from age 65 or with high blood pressure — 2,000 × 7).\n\nPlanned vs actual: compares the meals you planned with what you logged.",foodLog:"📝 Food Log — how do you use it?\n\nThis tab is for recording what you actually ate each day, separately from your planned menu.\n\nNavigating between days: use the arrows on either side of the date to move between days, or tap 'Back to today' to jump straight back to the current date.\n\nLogging a meal: tap any meal (breakfast/snack/lunch/dinner) to open it. From there you have two options:\n1. If you ate exactly what was planned — tap the 'Ate exactly as planned' button. The meal will be marked as matching the plan, with nothing further to enter.\n2. If you ate something different — tap 'Add item' to add the specific food you ate, or tap the x next to an existing item to remove it. You can also tap 'Clear' to reset that meal's log entirely and start over.\n\n🍽️ Leftover: next to each item you can mark a 'Leftover' amount if you didn't finish it — 10%/20%/25%, or a manual percentage. The default is that the item was fully eaten; once you mark a leftover percentage, the nutritional calculation (calories, macros, fiber and other nutrients) automatically updates to reflect what was actually eaten (100% minus the leftover percentage).\n\nWhy it matters: everything logged here feeds the 'Actual (today)' view in the Meals and Micro tabs, and the weekly adherence bars — so you (and, if relevant, your practitioner) can clearly see how closely what was actually eaten matched the original plan over time.",activityLevels:"🏃 Activity Levels — what's the difference?\n\nThe level you choose directly affects your calorie target (TDEE) — each level is multiplied by a different factor on your Basal Metabolic Rate (BMR).\n\nLow (factor 1.375): very little or no structured exercise — a desk job or mostly sitting, occasional walking only, at most light exercise 1-2 times a week.\n\nModerate (factor 1.55): structured exercise 3-5 times a week — running, strength training, swimming, brisk walking, or other moderate-level sport.\n\nHigh (factor 1.725): intense exercise 6-7 times a week, or physically demanding work (e.g. construction, farming, delivery) combined with regular training.\n\nTip: if you're unsure which level to pick, it's better to pick a lower one than it seems — overestimating activity is the most common mistake, and it leads to a calorie target higher than actually needed.",cap:"🦴 Calcium:Phosphorus Ratio — why it matters?\n\nCalcium and phosphorus are the two most abundant minerals in bone tissue, working together to regulate skeletal health. The commonly cited dietary ratio target is about 1:1 to 2:1 (calcium equal to or higher than phosphorus).\n\nWhy it matters: when phosphorus intake rises significantly above calcium over time (mainly from processed foods with phosphorus additives, less so from natural WFPB eating) — the body may increase parathyroid hormone (PTH) secretion, which can accelerate calcium withdrawal from bone and harm bone density over time.\n\nOn a WFPB diet: good calcium sources include cruciferous vegetables (cabbage, broccoli, kale), tofu, tahini and fortified soy milk. Phosphorus is present in nearly all food (legumes, whole grains, nuts) — in most cases a balanced plant-based diet keeps a reasonable ratio on its own, with no need for strict tracking, unless a specific medical condition (such as kidney disease) requires separate attention to phosphorus — in that case see the Sodium/Potassium panel, where a separate clinical phosphorus ceiling is shown when relevant.\n\nℹ️ Important clarification: this is one single ratio (calcium divided by phosphorus), not two different ratios — the daily and weekly views are two time-windows on the exact same formula, just like the sodium:potassium ratio.\n\n🏭 Phosphorus quality and source — organic vs inorganic: beyond the total amount of phosphorus, its source matters significantly. Organic phosphorus (natural, from plants or basic dairy/egg products) is only partially absorbed (about 40-60%), since part of it is bound within the food's natural matrix (including phytate in plants). Added inorganic phosphorus (melting salts in processed cheese, additives E339-E341/E450-E452 in processed food) is absorbed nearly 100% — a significantly higher metabolic load from the exact same mg amount. When the app detects an item with added inorganic phosphorus in your menu, a dedicated note appears below the ratio — not an additional ratio, just an added layer of information about source quality.\n\nℹ️ Why the ratio can stay low even when meeting 100% of the daily target for both minerals separately: calcium and phosphorus are each set against their own RDA target, not a shared target ratio. So even if your calcium intake reaches 100%+ of its daily target (1000-1200mg) and your phosphorus intake also reaches 100%+ of its own target (700mg) — the ratio between them can still come out below 1:1 (e.g. 0.7:1), because phosphorus's own target is numerically lower than calcium's target, yet a typical WFPB diet tends to supply phosphorus well beyond its target (thanks to abundant legumes/grains/nuts), while calcium tends to stay closer to just its own target. That's why the ratio can \"fail\" even when each mineral separately \"passes\" — this is exactly what this panel is meant to show, beyond what each separate target already shows in the vitamins/minerals list.\n\n⚠️ Scientific caveat: unlike the sodium:potassium ratio (which has strong epidemiological backing for the healthy population), this specific calcium:phosphorus ratio for a healthy individual is far less agreed upon — current dietary reports (NASEM) set a separate target for each mineral on its own, not an official target ratio between them. Keep in mind this app is currently meant for healthy individuals only — for them, this panel is a flag worth noting that encourages adding a calcium source (not necessarily reducing phosphorus), not an emergency alert like an off-target omega ratio or exceeding a sodium ceiling.",satfat:"🥓 Saturated Fat & Cholesterol — why is this only in this version?\n\nNeither of these existed in the original WFPB (whole food plant-based) version — meaningful sources of saturated fat and cholesterol are almost absent from a fully plant-based diet. Once dairy and eggs were added, tracking this became essential.\n\nSaturated fat — the app targets up to 10% of daily calories (American Heart Association / WHO guidance), as part of protecting cardiovascular health. Excess saturated fat over time is linked to higher LDL (\"bad cholesterol\") and increased cardiovascular risk. Butter, hard cheeses and animal meat are the most concentrated sources.\n\nCholesterol — previously explicitly recommended to limit to 300mg/day; current dietary guidelines (including in the US) removed an official numeric ceiling, since research shows dietary cholesterol affects blood cholesterol less than previously thought for most people — saturated fat tends to have the larger effect, not dietary cholesterol itself. Still, 300mg is shown here as a general, conservative reference point, not an absolute medical ceiling.\n\n⚠️ Caveat: as with the rest of the app, these are general guidelines for a healthy population, not personal clinical advice — if you have a family history of heart disease, high cholesterol, or other risk factors, consult a physician/dietitian about the target that fits you."}
 };
 
 const INFO_COLORS={calories:"#c1440e",fiber:"#8e5fa8",protein:"#3a7bc8",omega:"#2277a8",micro:"#2e7d32",wfpb:"#5c8a63",nds:"#b8860b",bmi:"#2b8a80",disclaimer:"#c1440e",swapExplain:"#65792f",spices:"#b8722e",goalLose:"#c62828",goalGain:"#2e7d32",userGuide:"#2277a8",weeklyMicro:"#2e7d32",weeklyOmega:"#2277a8",kna:"#65792f",weeklyKna:"#65792f",foodLog:"#5c8a63",activityLevels:"#8C6D53",cap:"#2b8a80",satfat:"#c1440e"};
@@ -15114,7 +15318,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
                 </span>
               )}
             </div>
-            {(plan[mk]||[]).map((it,i)=>{
+            {withCourses(mk, plan[mk]||[], (it,i)=>{
               const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return null;
               const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
               const kcal=Math.round(ingNut(it.fk,it.g).kcal);
@@ -15133,7 +15337,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
                   <bdi style={{color:"#3A4A42",fontWeight:600,whiteSpace:"nowrap"}}>{qty?`${qty} · `:""}{Math.round(it.g)}{tx.grams} · {kcal} {lang==="he"?"קק\"ל":"kcal"}</bdi>
                 </div>
               );
-            })}
+            }, lang)}
           </div>
           );
         })}
@@ -15498,7 +15702,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
                       </span>
                     )}
                   </div>
-                  {dayMealItems.map((it,idx)=>{
+                  {withCourses(mk, dayMealItems, (it,idx)=>{
                     const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return null;
                     const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
                     const kcal=Math.round(ingNut(it.fk,it.g).kcal);
@@ -15517,7 +15721,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
                         <bdi style={{color:"#3A4A42",fontWeight:600,whiteSpace:"nowrap"}}>{qty?`${qty} · `:""}{Math.round(it.g)}{tx.grams} · {kcal} {lang==="he"?"קק\"ל":"kcal"}</bdi>
                       </div>
                     );
-                  })}
+                  }, lang)}
                 </div>
               );
             })}
@@ -15610,7 +15814,56 @@ Above 0.6 — High — recommended to consult a physician/dietitian
 // לבקשת המשתמש: חלון "דיווחים עצמיים" — לוח תאריכים חודשי לתיעוד משקל גוף והיקף מותניים (מומלץ אחת לחודש,
 // ב-1 לחודש), עם חישוב BMI ויחס היקף-מותניים/גובה מיידי, והסברים מלאים על שני המדדים. נתונים נשמרים ב-
 // localStorage תחת מפתח נפרד (wfpb_self_reports), עצמאי לגמרי מהתפריטים/יומן האכילה
-function SelfReportModal({profile,lang,onClose,onWeight}){
+// בדיקות מעבדה (ביקורת דיאטנית): מה שדיאטן/ית מסתכל/ת עליו קודם בתזונה צמחית. נשמר במכשיר ונכנס לדוח למטפל.
+// האפליקציה לא מפרשת את הערכים — טווחי הייחוס שונים בין מעבדות
+const LAB_ITEMS=[
+  {k:"ferritin",he:"פריטין",en:"Ferritin",u:"ng/mL"},
+  {k:"hb",he:"המוגלובין",en:"Hemoglobin",u:"g/dL"},
+  {k:"b12",he:"ויטמין B12",en:"Vitamin B12",u:"pg/mL"},
+  {k:"vitD",he:"ויטמין D (25(OH)D)",en:"Vitamin D (25(OH)D)",u:"ng/mL"},
+  {k:"ldl",he:"כולסטרול LDL",en:"LDL cholesterol",u:"mg/dL"},
+  {k:"hba1c",he:"HbA1c",en:"HbA1c",u:"%"},
+];
+function LabsSection({lang}){
+  const he=lang==="he"; const [labs,setLabs]=useState(()=>load("wfpb_labs",[])||[]);
+  const [open,setOpen]=useState(false); const [date,setDate]=useState(todayKey()); const [vals,setVals]=useState({});
+  const persist=n=>{ setLabs(n); save("wfpb_labs",n); };
+  const add=()=>{ const v={}; LAB_ITEMS.forEach(x=>{ const n=parseFloat(String(vals[x.k]||"").replace(",",".")); if(n>0) v[x.k]=n; }); if(!Object.keys(v).length||!date) return;
+    persist([...labs.filter(r=>r.date!==date),{date,v}].sort((a,b)=>a.date<b.date?1:-1)); setVals({}); setOpen(false); };
+  const inp={width:"100%",padding:"6px 8px",borderRadius:8,border:"1px solid #D9D3C5",fontSize:13};
+  return (<div style={{background:"#FFFFFF",borderRadius:12,padding:12,marginBottom:10,border:"1px solid #E2DED4"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+      <span style={{fontSize:12,fontWeight:700,color:"#1E3A2B"}}>🧪 {he?"בדיקות מעבדה":"Lab results"}</span>
+      <button onClick={()=>setOpen(o=>!o)} style={{padding:"4px 10px",borderRadius:8,border:"1px solid #2e7d32",background:"#E8EFE9",color:"#1E3A2B",fontSize:12,fontWeight:700,cursor:"pointer"}}>{open?(he?"סגור":"Close"):(he?"+ הוספת בדיקה":"+ Add results")}</button>
+    </div>
+    <div style={{fontSize:11,color:"#6B7C72",lineHeight:1.5,marginBottom:6}}>{he?"לא חובה. הערכים נכנסים לדוח השבועי למטפל, כדי שהדיאטן/ית או הרופא/ה יראו אותם לצד התזונה. האפליקציה לא מפרשת אותם — טווחי הייחוס משתנים בין מעבדות.":"Optional. Values go into the weekly practitioner report so your dietitian or doctor sees them alongside your diet. The app doesn't interpret them — reference ranges vary between labs."}</div>
+    {open&&<div style={{background:"#F5F2EB",borderRadius:10,padding:9,marginBottom:8}}>
+      <div style={{fontSize:11,color:"#3A4A42",marginBottom:3}}>{he?"תאריך הבדיקה":"Test date"}</div>
+      <input type="date" value={date} max={todayKey()} onChange={e=>setDate(e.target.value)} style={{...inp,marginBottom:6}}/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>{LAB_ITEMS.map(x=>(<label key={x.k} style={{fontSize:11,color:"#3A4A42"}}>{he?x.he:x.en} <span style={{color:"#8a9690"}}>({x.u})</span>
+        <input type="text" inputMode="decimal" value={vals[x.k]||""} onChange={e=>setVals(p=>({...p,[x.k]:e.target.value.replace(/[^0-9.,]/g,"")}))} style={inp}/></label>))}</div>
+      <button onClick={add} style={{marginTop:8,width:"100%",padding:"8px 0",borderRadius:8,border:"none",background:"#2e7d32",color:"white",fontSize:12,fontWeight:700,cursor:"pointer"}}>{he?"שמור":"Save"}</button>
+    </div>}
+    {labs.slice(0,4).map(r=>(<div key={r.date} style={{fontSize:12,color:"#1E3A2B",padding:"4px 0",borderTop:"1px solid #EFEBE3",display:"flex",gap:6,alignItems:"flex-start"}}>
+      <b style={{whiteSpace:"nowrap"}}>{shortDate(r.date)}{r.date.slice(0,4)!==todayKey().slice(0,4)?"."+r.date.slice(0,4):""}</b>
+      <span style={{flex:1}}>{LAB_ITEMS.filter(x=>r.v[x.k]!=null).map(x=>`${he?x.he:x.en} ${r.v[x.k]}`).join(" · ")}</span>
+      <button onClick={()=>persist(labs.filter(q=>q.date!==r.date))} style={{border:"none",background:"transparent",color:"#a6440f",cursor:"pointer",padding:0}}>✕</button>
+    </div>))}
+  </div>);
+}
+// סידן בגיל מבוגר (ביקורת דיאטנית): נשים מגיל 51 וגברים מגיל 71 — יעד 1,200 מ"ג. בתפריט צמחי בתקציב קלורי נמוך
+// הוא יוצא לעיתים 90%–97% גם אחרי ההשלמה השבועית, ולכן מוצגת הנחיה מעשית כשהשבוע מתחת ל-98%
+function CalciumNotice({lang,profile,pct}){
+  const he=lang==="he"; const dri=getDRI(profile.age||35,profile.sex||"male",profile.pregnant);
+  if (!(dri.calcium?.dri>=1200) || pct==null || pct>=98) return null;
+  const vegan=(profile.sensitivities||[]).includes("vegan");
+  return (<div style={{fontSize:12.5,color:"#1E3A2B",background:"#FFF6E5",border:"1px solid #ecc98a",borderRadius:10,padding:"7px 10px",marginBottom:8,lineHeight:1.5}}>
+    {he?`🦴 סידן: בגילך היעד הוא 1,200 מ"ג ביום, והשבוע מגיע ל-${pct}%. בתפריט צמחי בתקציב קלורי נמוך קשה להגיע ליעד הזה. אפשרויות: `:`🦴 Calcium: at your age the target is 1,200 mg a day, and this week reaches ${pct}%. On a plant-based menu with a low calorie budget this target is hard to reach. Options: `}
+    {vegan?(he?"להקפיד על משקה סויה ויוגורט סויה מועשרים בסידן, טופו מוקרש בסידן וטחינה; ":"prefer calcium-fortified soy drink and soy yogurt, calcium-set tofu and tahini; "):(he?"להפעיל בתכנון את ״שלב מוצרים מן החי״ (חלב ויוגורט), או להקפיד על משקה סויה מועשר בסידן; ":"use 'Combine Animal Products' in planning (milk and yogurt), or prefer a calcium-fortified soy drink; ")}
+    {he?"או לשקול תוסף סידן בהתייעצות (עדיף עד 500 מ\"ג במנה, לא עם הארוחה העשירה בברזל). ודאו גם שויטמין D נלקח.":"or consider a calcium supplement with professional advice (preferably up to 500 mg per dose, not with the iron-rich meal). Also make sure vitamin D is taken."}
+  </div>);
+}
+function SelfReportModal({profile,lang,onClose,onWeight,simple}){
   const isDesktop=useIsDesktop();
   const tx=T[lang];
   const [reports,setReports]=useState(()=>load("wfpb_self_reports",{}));
@@ -15750,6 +16003,7 @@ function SelfReportModal({profile,lang,onClose,onWeight}){
           </div>
         )}
 
+        {simple?<div style={{background:"#FFFFFF",borderRadius:12,padding:"9px 12px",marginBottom:10,border:"1px solid #E2DED4",fontSize:12.5,color:"#3A4A42"}}>{lang==="he"?"🩸 תיעוד בדיקות דם — בתצוגה המלאה (כפתור \"🔍 פירוט מלא\" בראש המסך).":"🩸 Blood test log — in the full view (the \"🔍 Full details\" button at the top)."}</div>:<LabsSection lang={lang}/>}
         <div style={{background:"#FFFFFF",borderRadius:12,padding:12,marginBottom:10,border:"1px solid #E2DED4"}}>
           <div style={{fontSize:12,fontWeight:700,color:"#1E3A2B",marginBottom:6}}>⚖️ {lang==="he"?"BMI — מה זה כן ומה זה לא אומר":"BMI — what it does and doesn't tell you"}</div>
           <div style={{fontSize:11,color:"#3A4A42",lineHeight:1.6,whiteSpace:"pre-line"}}>{lang==="he"?bmiExplainHe(age):bmiExplainEn(age)}</div>
@@ -15926,18 +16180,21 @@ function WelcomeModal({lang,onClose,onStartTour}){
 // אלמנט-אמיתי-וקיים באפליקציה (לא רק תיאור-טקסטואלי), עם טולטיפ ממוקם-לידו + ניווט הבא/הקודם/דלג. משתמש
 // בטכניקת ה-box-shadow-ענק כדי ליצור אפקט-חושך-מסביב-לחור-שקוף, בלי צורך בספריית-חיצונית
 const ONBOARD_STEPS = [
-  {id:"onboard-profile", altId:"onboard-profile-mobile", tab:"meals", he:{title:"1. הפרופיל שלך", desc:"מלאו גובה, משקל, גיל, מין ורמת-פעילות. זה מחשב את היעד הקלורי שלכם."}, en:{title:"1. Your profile", desc:"Enter height, weight, age, sex, activity level. This calculates your calorie target."}},
+  {id:"onboard-profile", altId:"onboard-profile-mobile", tab:"meals", he:{title:"1. הפרופיל שלך", desc:"גובה, משקל, גיל, מין ופעילות — מהם מחושב היעד הקלורי. כאן גם מסמנים רגישויות ואלרגיות (סויה, גלוטן, אגוזים, בוטנים, שומשום), טבעוני, מצב פסח, ומצב רפואי או תרופות קבועות."}, en:{title:"1. Your profile", desc:"Height, weight, age, sex and activity set your calorie target. Here you also mark sensitivities and allergies (soy, gluten, nuts, peanuts, sesame), Vegan, Passover mode, and any medical condition or regular medication."}},
   {id:"onboard-dayselector", altId:"onboard-dayselector-mobile", tab:"meals", he:{title:"2. בורר-היום", desc:"בחרו יום — כל שינוי חל רק על היום הזה."}, en:{title:"2. Day selector", desc:"Pick a day — changes apply only to this day."}},
   {id:"onboard-autoplan", altId:"onboard-autoplan-mobile", tab:"meals", he:{title:"3. תכנון אוטומטי", desc:"לחצו כאן ליום או שבוע שלם. יש גם אופטימיזציה."}, en:{title:"3. Auto-planning", desc:"Tap here for a full day or week. Optimization tool included."}},
   {id:"onboard-dayplanpreview", showsModal:"dayplan", he:{title:"4. תצוגה-מקדימה", desc:"כאן מוצגות 4 הארוחות המוצעות. אשרו, הציעו שוב, או בטלו."}, en:{title:"4. Preview screen", desc:"Here are the 4 suggested meals. Approve, suggest again, or cancel."}},
-  {id:"onboard-build-btn", altId:"onboard-mealcard", tab:"meals", he:{title:"5. בנייה ידנית", desc:"לחצו 'בנה וערוך' בכרטיס הארוחה כדי לחפש ולהוסיף מזונות מתוך 200+ פריטים במאגר. ליד כל מזון ברשימה אפשר לסמן 🚫 — והוא לא יוצע לכם לעולם: בגלל אלרגיה או רגישות, או פשוט כי אתם לא אוהבים אותו."}, en:{title:"5. Build manually", desc:"Tap 'Build & edit' on a meal card to search and add from 200+ foods. Next to each food you can tap 🚫 so it is never suggested — for an allergy or sensitivity, or simply because you don't like it."}},
+  {id:"onboard-build-btn", altId:"onboard-mealcard", tab:"meals", he:{title:"5. כרטיס הארוחה", desc:"'בנה וערוך' — חיפוש והוספה של מזונות; ליד כל מזון אפשר לסמן 🚫 כדי שלא יוצע לעולם. בצהריים ובערב הפריטים מסודרים לפי פתיחה, עיקרית וקינוח."}, en:{title:"5. Meal card", desc:"'Build & edit' — search and add foods; tap 🚫 next to a food so it is never suggested. At lunch and dinner items are shown as starter, main and dessert."}},
   {id:"onboard-saveday", altId:"onboard-saveday-desktop", tab:"meals", he:{title:"6. שמירה", desc:"שמרו יום שאהבתם וטענו אותו מתישהו."}, en:{title:"6. Save a day", desc:"Save a day you love and load it anytime."}},
   {id:"onboard-tab-recipes", tab:"recipes", he:{title:"7. מתכונים", desc:"בנו מתכונים משלכם. הערכים מחושבים אוטומטית."}, en:{title:"7. Recipes", desc:"Build your own recipes. Nutrition calculated automatically."}},
-  {id:"onboard-tab-macros", tab:"macros", he:{title:"8. אבות מזון", desc:"ארבעה מסכים: מאקרו (פחמימות, חלבון, שומן, סיבים), יחס אומגות והמרת ALA, חומצות אמינו חיוניות, ושומן רווי וכולסטרול — יומי ושבועי."}, en:{title:"8. Macronutrients", desc:"Four screens: macros (carbs, protein, fat, fiber), omega ratio & ALA conversion, essential amino acids, and saturated fat & cholesterol — daily and weekly."}},
+  {id:"onboard-tab-macros", tab:"macros", he:{title:"8. אבות מזון", desc:"ארבעה מסכים: מאקרו (פחמימות, חלבון, שומן, סיבים), אומגה 3 ו-6, חומצות אמינו חיוניות, ושומן רווי וכולסטרול — יומי ושבועי."}, en:{title:"8. Macronutrients", desc:"Four screens: macros (carbs, protein, fat, fiber), omega ratio & ALA conversion, essential amino acids, and saturated fat & cholesterol — daily and weekly."}},
   {id:"onboard-tab-micro", tab:"micro", he:{title:"9. מיקרו", desc:"ויטמינים ומינרלים — עמידה יומית ושבועית ביעדים, ויחסי אשלגן:נתרן וסידן:זרחן. לחיצה על קטגוריה פותחת פירוט מלא."}, en:{title:"9. Micronutrients", desc:"Vitamins & minerals — daily and weekly target adherence, plus potassium:sodium and calcium:phosphorus ratios. Tap a category for full detail."}},
-  {id:"onboard-tab-log", tab:"log", he:{title:"10. יומן אכילה", desc:"תיעדו מה באמת אכלתם — בנפרד מהתכנון."}, en:{title:"10. Food log", desc:"Log what you actually ate — separate from planning."}},
-  {id:"onboard-budget", altId:"onboard-budget-mobile", tab:"meals", he:{title:"11. תקציב", desc:"מעקב עלות יומית ושבועית מול יעד שתקבעו."}, en:{title:"11. Budget", desc:"Track daily/weekly costs against your target."}},
-  {id:"onboard-disclaimer", altId:"onboard-disclaimer-mobile", tab:"meals", he:{title:"12. אזהרה", desc:"זו אפליקציית-מידע בלבד, למבוגרים (18+). לא להריון ולהנקה ללא ליווי. אם יש בעיה בריאותית, שאלו רופא."}, en:{title:"12. Warning", desc:"Information app only, for adults (18+). Not for pregnancy or breastfeeding without guidance. For health issues, consult a doctor."}},
+  {id:"onboard-tab-log", tab:"log", he:{title:"10. יומן", desc:"תיעוד מה נאכל בפועל. ב'📊 מעקב שבועי' — מתוכנן מול בפועל ודוח שבועי למטפל; ב'⚖️ משקל ותוספים' — שקילה שבועית, כיול היעד הקלורי ויומן B12 ו-D."}, en:{title:"10. Log", desc:"Record what you actually ate. '📊 Weekly tracking' — planned vs actual and a weekly report for your practitioner; '⚖️ Weight & supplements' — weekly weigh-ins, calorie calibration and a B12/D log."}},
+  {id:"onboard-selfreport", altId:"onboard-selfreport-mobile", tab:"meals", he:{title:"11. דיווחים עצמיים", desc:"משקל והיקף מותניים פעם בחודש, עם BMI ויחס מותניים/גובה. המשקל נכנס גם ליומן השקילות."}, en:{title:"11. Self reports", desc:"Weight and waist once a month, with BMI and waist-to-height. The weight also goes into the weigh-in log."}},
+  {id:"onboard-budget", altId:"onboard-budget-mobile", fallbackId:"onboard-info-menu", tab:"meals", he:{title:"12. תקציב", desc:"מעקב עלות יומית ושבועית מול יעד שתקבעו. בטלפון, בתצוגה הפשוטה — בתפריט ״ℹ️ מידע״."}, en:{title:"12. Budget", desc:"Track daily/weekly costs against your target. On a phone in the simple view — under the 'ℹ️ Info' menu."}},
+  {id:"onboard-datasources", altId:"onboard-datasources-mobile", fallbackId:"onboard-info-menu", tab:"meals", he:{title:"13. מקורות הנתונים", desc:"כל מזון באפליקציה הוצלב מול מאגר משרד הבריאות — כאן הפירוט המלא: קוד המצרך, מה עודכן ומה חסר. בתצוגה הפשוטה — בתפריט ״ℹ️ מידע״."}, en:{title:"13. Data sources", desc:"Every food was checked against the Israeli Ministry of Health database — full detail here: item code, what was updated and what is missing. In the simple view — under the 'ℹ️ Info' menu."}},
+  {id:"detail-toggle", altId:"detail-toggle", tab:"meals", he:{title:"14. תצוגה פשוטה או מלאה", desc:"כברירת מחדל המסכים מציגים רק את העיקר: מה לאכול ומה חסר. הכפתור הזה פותח את כל המספרים והניתוחים, ובכל כרטיס יש גם ״פירוט ›״."}, en:{title:"14. Simple or full view", desc:"By default screens show just the essentials: what to eat and what's missing. This button opens all the numbers and analyses, and every card also has 'Details ›'."}},
+  {id:"onboard-disclaimer", altId:"onboard-disclaimer-mobile", tab:"meals", he:{title:"15. אזהרה", desc:"זו אפליקציית-מידע בלבד, למבוגרים (18+). לא להריון ולהנקה ללא ליווי. אם יש בעיה בריאותית, שאלו רופא."}, en:{title:"15. Warning", desc:"Information app only, for adults (18+). Not for pregnancy or breastfeeding without guidance. For health issues, consult a doctor."}},
 ];
 function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen}){
   const [step,setStep]=useState(0);
@@ -15965,7 +16222,7 @@ function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen}){
     else if (setDayPlanOpen) setDayPlanOpen(false);
     if (s.noSpotlight) return;
     const findAndMeasure = (attemptsLeft) => {
-      const el = document.getElementById(s.id) || (s.altId && document.getElementById(s.altId));
+      const el = document.getElementById(s.id) || (s.altId && document.getElementById(s.altId)) || (s.fallbackId && document.getElementById(s.fallbackId));
       if (el) {
         // תיקון (לבקשת המשתמש: "מה שמואר בשלב השמירה זה לא כפתור שמור יום") — הגלילה החלקה עדיין רצה כשנמדד המיקום,
         // ולכן המסגרת "נתקעה" במקום שגוי. עכשיו: גלילה מיידית, מדידה אחרי שהמסך התייצב, ומדידה חוזרת בכל גלילה/שינוי גודל
@@ -16599,7 +16856,30 @@ function MealBuilder({mealKey,currentIngs,onClose,onSave,lang,recipes=[],exclude
   );
 }
 
-function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides}){
+// ── סדר מנות בארוחות צהריים וערב (לבקשת המשתמש): פתיחה (סלט/מרק/ירק), עיקרית, קינוח (פרי/יוגורט) ──
+// תצוגה בלבד — לא משנה את התכנון. בוקר וביניים מוצגים כרגיל
+const COURSE_YOG=new Set(["soyYogurtPlain","soyYogurtOrgPlain","leben","yogurtPlain3","yogurtGreek"]);
+function courseOf(fk){ const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return "main";
+  if (fd._isRecipe) { const c=recipeCatOfFk(fk); if (c==="סלטי ירקות"||c==="מרקים") return "starter"; if (c==="סלטי פירות") return "dessert"; return "main"; }
+  if (fd.cat==="פרי") return fk==="lemon"?"main":"dessert";
+  if (COURSE_YOG.has(fk)) return "dessert";
+  if ((fd.cat==="ירק"||fd.cat==="עלים") && !STARCHY_VEG_FKS.has(fk) && fk!=="garlic") return "starter";
+  return "main"; }
+const COURSE_LABELS={starter:{he:"🥗 פתיחה",en:"🥗 Starter"},main:{he:"🍲 עיקרית",en:"🍲 Main"},dessert:{he:"🍎 קינוח",en:"🍎 Dessert"}};
+// מחזיר את רשימת הפריטים מקובצת לפי מנות (אם יש לפחות שתי קבוצות) — render(it, idx המקורי, האחרון-בקבוצה)
+function withCourses(mk, items, render, lang, inline){
+  const list=(items||[]).map((it,idx)=>({it,idx}));
+  const flat=()=>list.map(({it,idx})=>render(it,idx,idx===list.length-1));
+  if (!(mk==="lunch"||mk==="dinner")) return flat();
+  const groups=["starter","main","dessert"].map(c=>({c,rows:list.filter(x=>courseOf(x.it.fk)===c)})).filter(g=>g.rows.length);
+  if (groups.length<2) return flat();
+  return groups.map(g=>(<div key={g.c} style={inline?{display:"flex",flexWrap:"wrap",gap:"2px 0",width:"100%",alignItems:"center"}:{}}>
+    <div style={{width:"100%",fontSize:10,fontWeight:800,color:"#5c8060",letterSpacing:.2,marginTop:3}}>{COURSE_LABELS[g.c][lang==="he"?"he":"en"]}</div>
+    {g.rows.map((x,i)=>render(x.it,x.idx,i===g.rows.length-1))}</div>));
+}
+// מסגרת "מפת שולחן" משובצת לכרטיסי ארוחה (לבקשת המשתמש — אפשרות ב): המשבצות במסגרת, התוכן על משטח בהיר
+const GINGHAM_BG={backgroundColor:"#FFFFFF",backgroundImage:"linear-gradient(90deg,rgba(46,125,50,.26) 50%,transparent 50%),linear-gradient(rgba(46,125,50,.26) 50%,transparent 50%)",backgroundSize:"20px 20px"};
+function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple}){
   const tx=T[lang];
   const icons={breakfast:"🌅",snack:"🍎",lunch:"☀️",dinner:"🌙"};
   const t=totalNut(ings);
@@ -16623,7 +16903,8 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
           if(data&&data.mealKey&&data.idx!=null) onMoveItem(data.mealKey,data.idx,mealKey);
         }catch{}
       }):undefined}
-      style={{background:"#FFFFFF",borderRadius:16,padding:"11px 14px",marginBottom:8,border:`1px solid ${isDragOver?"#8C6D53":"#E2DED4"}`,boxShadow:isDragOver?"0 0 0 2px #8C6D5355":"0 4px 12px rgba(30, 58, 43, 0.05)",direction:tx.dir,transition:"box-shadow .12s ease"}}>
+      style={{...GINGHAM_BG,display:"flex",flexDirection:"column",borderRadius:16,padding:7,marginBottom:8,border:`1px solid ${isDragOver?"#8C6D53":"#cfe0d0"}`,boxShadow:isDragOver?"0 0 0 2px #8C6D5355":"0 4px 12px rgba(30, 58, 43, 0.05)",direction:tx.dir,transition:"box-shadow .12s ease"}}>
+      <div style={{background:"#FFFDF8",borderRadius:11,padding:"9px 11px",flex:1}}>
       {/* שורה 1: שם + שעה + kcal */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -16632,7 +16913,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
             style={{background:"#F5F2EB",border:"1px solid #E2DED4",borderRadius:7,color:"#1E3A2B",fontSize:11,padding:"2px 5px",outline:"none",width:82}}/>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:13,fontWeight:700,color:"#8C6D53"}}>{Math.round(calcKcalActual(t))} kcal</span>
+          {!simple&&<span style={{fontSize:13,fontWeight:700,color:"#8C6D53"}}>{Math.round(calcKcalActual(t))} kcal</span>}
           {ings&&ings.length>0 && <span style={{fontSize:11,fontWeight:700,color:"#8a6608"}}>· ₪{fmtN(mealCostValue,1)}</span>}
         </div>
       </div>
@@ -16649,7 +16930,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
           {/* רשימת רכיבים כ"צ'יפים" נפרדים (במקום שורת טקסט מאוחדת אחת) — נחוץ כדי לאפשר מתג "מושרה" בודד
               לכל קטנית/דגן בנפרד, בלי לפגוע בקומפקטיות עבור שאר הרכיבים שמוצגים בדיוק כמו קודם */}
           <div style={{display:"flex",flexWrap:"wrap",gap:"2px 0",fontSize:11,color:"#1E3A2B",lineHeight:1.9,fontWeight:500}}>
-            {ings.map(({fk,g,soaked},idx)=>{
+            {withCourses(mealKey, ings, ({fk,g,soaked},idx,lastInGroup)=>{
               const fd=FDB[fk]||TEMP_FDB[fk];if(!fd)return null;
               // חשוב: למתכון יש גודל-מנה משלו (fd._servingG) שמחושב מתוך המרכיבים בפועל — לא ברירת המחדל הגנרית של הקטגוריה
               // (שרק במקרה תואמת לפעמים). בלי זה, "1 מנה שלמה" מוצגת בטעות כ"¾ מנה" או "0.96 מנה" למרות שהכמות נכונה ושלמה.
@@ -16660,7 +16941,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
               } else {
                 qty=`${g}${lang==="he"?"גר׳":"g"}`;
               }
-              const isLast = idx===ings.length-1;
+              const isLast = lastInGroup;
               const soakable = isSoakableFk(fk);
               const isAnimal=fd.cat==="מן החי";
               return (
@@ -16676,7 +16957,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                         מתצוגות אחרות באפליקציה (חלון-הצעת-שבוע/יום, תצוגת-מתכון) שכן מציגות "kcal · gr'" לכל שורה.
                         נבדק חישובית (סימולציה, 140 ארוחות): סכום-קלוריות-לפי-פריט תמיד תואם בדיוק לסך-הארוחה
                         המוצג (0 אי-התאמות) — אין באג בחישוב עצמו, רק חוסר-תצוגה. נוסף כאן */}
-                    {qty} {foodName(fk,lang)} · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></span>
+                    {qty} {foodName(fk,lang)}{!simple&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
                   {fd._isRecipe && (
                     <button onClick={()=>setViewRecipeId(fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                       style={{marginInlineStart:3,marginInlineEnd:isLast?0:3,background:"#F7EFE3",border:"1px solid #d9c2a3",borderRadius:6,color:"#8C6D53",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
@@ -16693,10 +16974,11 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                   {!soakable && !fd._isRecipe && !isLast && <span>{"  ·  "}</span>}
                 </span>
               );
-            })}
+            }, lang, true)}
           </div>
         </>
       }
+      </div>
       {viewedRecipe && <RecipeViewModal recipe={viewedRecipe} lang={lang} onClose={()=>setViewRecipeId(null)}/>}
     </div>
   );
@@ -16795,13 +17077,14 @@ function LeftoverControl({value,onChange,lang}){
   );
 }
 
-function FoodLogMealRow({mealKey,status,items,plannedItems,onMarkPlanned,onAdd,onRemove,onClear,onSetLeftover,lang,expanded,onToggle}){
+function FoodLogMealRow({mealKey,status,items,plannedItems,onMarkPlanned,onFree,onAdd,onRemove,onClear,onSetLeftover,lang,expanded,onToggle,simple}){
   const icons={breakfast:"🌅",snack:"🍎",lunch:"☀️",dinner:"🌙"};
   const names={breakfast:{he:"בוקר",en:"Breakfast"},snack:{he:"ביניים",en:"Snack"},lunch:{he:"צהריים",en:"Lunch"},dinner:{he:"ערב",en:"Dinner"}};
   const[addOpen,setAddOpen]=useState(false);
   const hasPlanned=plannedItems.length>0;
   let statusChip;
   if(status==="asPlanned") statusChip=<span style={{color:"#2e7d32",fontWeight:700}}>✓ {lang==="he"?"כמתוכנן":"as planned"}</span>;
+  else if(status==="free") statusChip=<span style={{color:"#8C6D53",fontWeight:700}}>🍽️ {lang==="he"?"חופשית":"free meal"}</span>;
   else if(items.length>0) statusChip=<span style={{color:"#b8722e"}}>{items.length} {lang==="he"?"פריטים":"items"}</span>;
   else statusChip=<span style={{color:"#6B7C72"}}>{lang==="he"?"לא תועד":"not logged"}</span>;
 
@@ -16811,6 +17094,15 @@ function FoodLogMealRow({mealKey,status,items,plannedItems,onMarkPlanned,onAdd,o
         <span style={{fontSize:13,color:"#1E3A2B",fontWeight:700}}>{icons[mealKey]} {lang==="he"?names[mealKey].he:names[mealKey].en}</span>
         <span style={{fontSize:11,display:"flex",alignItems:"center",gap:6}}>{statusChip}<span style={{color:"#8C6D53"}}>{expanded?"▲":"▼"}</span></span>
       </button>
+      {/* תצוגה פשוטה שלב ב': לחיצה אחת "אכלתי כמתוכנן"; "שיניתי משהו" פותח את העריכה המלאה (הוספה/הסרה/שאריות/ארוחה חופשית) */}
+      {simple&&!expanded&&(
+        <div style={{display:"flex",gap:6,padding:"0 14px 12px"}}>
+          <button onClick={onMarkPlanned} disabled={!hasPlanned}
+            style={{flex:2,background:status==="asPlanned"?"#2e7d32":(hasPlanned?"#E8EFE9":"#F5F2EB"),border:"1px solid "+(status==="asPlanned"?"#2e7d32":"#bcd4bf"),borderRadius:10,color:status==="asPlanned"?"white":(hasPlanned?"#1E3A2B":"#B8B0A2"),padding:"11px 0",fontSize:14,fontWeight:800,cursor:hasPlanned?"pointer":"default"}}>
+            {status==="asPlanned"?(lang==="he"?"✓ נאכל כמתוכנן":"✓ Eaten as planned"):(hasPlanned?(lang==="he"?"✓ אכלתי כמתוכנן":"✓ Ate as planned"):(lang==="he"?"אין ארוחה מתוכננת":"Nothing planned"))}
+          </button>
+          <button onClick={onToggle} style={{flex:1,background:"#FFFFFF",border:"1px solid #D9D3C5",borderRadius:10,color:"#1E3A2B",padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"✎ שיניתי משהו":"✎ I changed something"}</button>
+        </div>)}
       {expanded&&(
         <div style={{padding:"0 14px 14px"}}>
           <button onClick={onMarkPlanned} disabled={!hasPlanned}
@@ -16818,6 +17110,11 @@ function FoodLogMealRow({mealKey,status,items,plannedItems,onMarkPlanned,onAdd,o
             ✓ {lang==="he"?"אכלתי בדיוק את המתוכנן":"Ate exactly as planned"}
             {!hasPlanned&&<span style={{fontSize:10,fontWeight:400,display:"block",marginTop:2}}>{lang==="he"?"(אין ארוחה מתוכננת ליום הזה)":"(nothing planned for this day)"}</span>}
           </button>
+          {onFree&&mealKey!=="snack"&&<button onClick={()=>status==="free"?onClear():onFree()}
+            style={{width:"100%",background:status==="free"?"#8C6D53":"#F5F2EB",border:"1px solid "+(status==="free"?"#8C6D53":"#E2DED4"),borderRadius:9,color:status==="free"?"white":"#1E3A2B",padding:"8px 0",fontSize:12,fontWeight:700,cursor:"pointer",marginBottom:8}}>
+            🍽️ {status==="free"?(lang==="he"?"ארוחה חופשית — לחצו לביטול":"Free meal — tap to undo"):(lang==="he"?"ארוחה חופשית (בחוץ / משפחתית / שבת)":"Free meal (eating out / family / Shabbat)")}
+          </button>}
+          {status==="free"&&<div style={{fontSize:11.5,color:"#3A4A42",lineHeight:1.5,background:"#F5F2EB",borderRadius:9,padding:"6px 9px",marginBottom:8}}>{lang==="he"?"ארוחה שלא נשקלת ולא נמדדת — חלק טבעי מתזונה לאורך זמן (עיקרון 80/20). היא לא נספרת במעקב השבועי: לא כחוסר ולא כעודף, והיעד השבועי מותאם בהתאם.":"A meal you don't weigh or measure — a natural part of eating long-term (the 80/20 principle). It isn't counted in weekly tracking, neither as a shortfall nor as excess, and the weekly target adjusts accordingly."}</div>}
           {items.length>0&&(
             <div style={{marginBottom:8}}>
               {items.map((it,i)=>{
@@ -16895,6 +17192,7 @@ function consolidateMealSalads(plan){
 // המתוכנן של יום שעבר "מוקפא" (שינוי תפריט מאוחר לא משנה את ההיסטוריה); הבפועל מתעדכן רק כשהיומן של אותו יום משתנה.
 // ההיסטוריה נשמרת ללא הגבלה, במכשיר בלבד
 const TRACK_HISTORY_STORAGE="wfpb_track_history";
+const FREE_MEAL_SHARE={breakfast:0.3,snack:0.07,lunch:0.35,dinner:0.28}; // החלק היחסי המשוער של כל ארוחה ביום
 const TRACK_MACRO_KEYS=["kcal","protein","carbs","fat","fiber","satFat","leucine","lysine"];
 const TRACK_KEYS=[...TRACK_MACRO_KEYS,"omega3","omega6",...MICRO_KEYS];
 const TRACK_MACRO_LABELS={kcal:{he:"קלוריות",en:"Calories",u:"kcal"},protein:{he:"חלבון",en:"Protein",u:"g"},carbs:{he:"פחמימות",en:"Carbs",u:"g"},fat:{he:"שומן",en:"Fat",u:"g"},fiber:{he:"סיבים",en:"Fiber",u:"g"},satFat:{he:"שומן רווי",en:"Saturated fat",u:"g"},leucine:{he:"לאוצין",en:"Leucine",u:"g"},lysine:{he:"ליזין",en:"Lysine",u:"g"}};
@@ -16913,6 +17211,8 @@ function isDayDocumented(actualIntake, dk){ const day=actualIntake&&actualIntake
 // ── פרופילי רגישות/אלרגיה (לבקשת המשתמש) — כל קבוצה מוסיפה את המזונות שלה לרשימת "לעולם לא להציע"; מתכונים שמכילים
 // אותם מוחרגים אוטומטית (אותו מנגנון של החרגת מזון בודד)
 const SENS_GROUPS={
+  // טבעוני (ביקורת משתמשים): מסתיר את כל המזונות מן החי מההצעות, ואת מצב "שלב מוצרים מן החי"
+  vegan:{he:"טבעוני",en:"Vegan",get fks(){ return Object.keys(FDB).filter(k=>FDB[k]?.cat==="מן החי"); }},
   soy:{he:"סויה",en:"Soy",fks:["tofu","tempeh","edamame","natto","soymilkFortified","soymilkOrgPlain","soyYogurtPlain","soyYogurtOrgPlain"]},
   gluten:{he:"גלוטן",en:"Gluten",fks:["wholeWheatBread","wholePita","bulgurCooked","bulgurDry","couscous","couscousCooked","wholeWPasta","freekeh","spelledFlour","pearlBarleyCooked","pearlBarleyDry","wheatGerm"]},
   nuts:{he:"אגוזים",en:"Tree nuts",fks:["almonds","walnuts","hazelnuts","cashews","pistachio","brazilNuts","almondbutter"]},
@@ -16923,6 +17223,28 @@ const SENS_GROUPS={
   passover:{he:"פסח — ללא חמץ",en:"Passover — no chametz",fks:["wholeWheatBread","wholePita","bulgurCooked","bulgurDry","couscous","couscousCooked","wholeWPasta","freekeh","spelledFlour","pearlBarleyCooked","pearlBarleyDry","oatsCooked","oatsThinRaw","oatsMedRaw","oatsThickRaw","oatFlour","oatMilk","wheatGerm"]},
   kitniyot:{he:"פסח — ללא קטניות",en:"Passover — no kitniyot",get fks(){ return [...Object.keys(FDB).filter(k=>FDB[k]?.cat==="קטנית"),"tofu","tempeh","edamame","natto","soymilkFortified","soymilkOrgPlain","soyYogurtPlain","soyYogurtOrgPlain","greenBeans","lentilSprouts","brownRiceCooked","corn","buckwheatCooked","buckwheatGreenDry","peanuts","peanutButter","sesame","tahiniFullRaw","tahiniRaw","chickpeaFlour","lentilFlour"]; }},
 };
+// ── שאלת סינון רפואית (ביקורת דיאטנית): התפריט האוטומטי בנוי לאנשים בריאים. במצבים שבהם הוא עלול להזיק (אשלגן/זרחן
+// בכליות, ויטמין K עם וורפרין, פחמימות בסוכרת, סיבים וקטניות במחלות מעי, סויה ואצות בבלוטת התריס) לא ממדלים את
+// המחלה — מציגים אזהרה ממוקדת והפניה לאיש מקצוע, ומציינים את המצב בדוח למטפל. "none" = המשתמש/ת אישר/ה שאין.
+const MEDICAL_FLAGS={
+  ckd:{he:"מחלת כליות",en:"Kidney disease",sev:2,note:{he:"התפריט עשיר באשלגן, בזרחן ובחלבון. במחלת כליות אין להשתמש בתכנון האוטומטי בלי ליווי של דיאטן/ית.",en:"The menu is rich in potassium, phosphorus and protein. With kidney disease, don't use auto-planning without a dietitian."}},
+  anticoag:{he:"וורפרין (קומדין)",en:"Warfarin (Coumadin)",sev:2,note:{he:"עלים ירוקים (תרד, קייל, רוקט, חסה) עשירים בוויטמין K ומשפיעים על איזון הקרישה. הכמות צריכה להיות יציבה מיום ליום. לפני מעבר לתפריט חדש — לעדכן את מרפאת הקרישה.",en:"Leafy greens (spinach, kale, rocket, lettuce) are rich in vitamin K and affect INR. Intake should be steady day to day. Tell your anticoagulation clinic before switching to a new menu."}},
+  kmeds:{he:"תרופות שמעלות אשלגן (ACE / ARB / ספירונולקטון)",en:"Potassium-raising drugs (ACE / ARB / spironolactone)",sev:2,note:{he:"התפריט עשיר באשלגן. עם התרופות האלה יש לוודא עם הרופא/ה בדיקת אשלגן בדם.",en:"The menu is rich in potassium. With these drugs, check blood potassium with your doctor."}},
+  htn:{he:"יתר לחץ דם",en:"High blood pressure",sev:1,note:{he:"תקרת הנתרן בתכנון יורדת ל-2,000 מ\"ג ביום (המלצת ארגון הבריאות העולמי). אם את/ה נוטל/ת תרופות מסוג ACE, ARB או משתנים חוסכי אשלגן — סמנו גם אותן, כי התפריט עשיר באשלגן.",en:"The planning sodium ceiling drops to 2,000 mg a day (WHO recommendation). If you take ACE inhibitors, ARBs or potassium-sparing diuretics, mark those too, since the menu is rich in potassium."}},
+  diabetes:{he:"סוכרת",en:"Diabetes",sev:1,note:{he:"כמות הפחמימות והפירות בתפריט מכוונת לאנשים בריאים. בסוכרת יש לתאם חלוקת פחמימות ומעקב סוכר עם הצוות המטפל, במיוחד עם אינסולין או תרופות שגורמות להיפוגליקמיה.",en:"Carbs and fruit are set for healthy adults. With diabetes, coordinate carb distribution and glucose monitoring with your care team, especially on insulin or drugs that can cause hypoglycemia."}},
+  bowel:{he:"מחלת מעי (IBD / IBS)",en:"Bowel disease (IBD / IBS)",sev:1,note:{he:"התפריט עשיר בסיבים ובקטניות. ב-IBS או IBD ייתכן שתידרש התאמה (עלייה הדרגתית, FODMAP), בליווי דיאטן/ית.",en:"The menu is high in fiber and legumes. IBS or IBD may need adjustment (gradual increase, FODMAP) with a dietitian."}},
+  thyroid:{he:"בלוטת התריס",en:"Thyroid disease",sev:1,note:{he:"סויה, אצות וסידן משפיעים על ספיגת תרופת התירואיד ועל היוד. כדאי לתאם עם הרופא/ה את העיתוי (לרוב — הפרדה של כמה שעות מהתרופה).",en:"Soy, seaweed and calcium affect thyroid-drug absorption and iodine. Coordinate timing with your doctor (usually a few hours apart from the medication)."}},
+  other:{he:"מצב רפואי אחר / תרופות קבועות",en:"Other condition / regular medication",sev:1,note:{he:"כדאי לבדוק עם הרופא/ה או דיאטן/ית שהתפריט מתאים למצב ולתרופות.",en:"Check with your doctor or dietitian that the menu suits your condition and medications."}},
+};
+const medicalFlagsOf=p=>(p?.medical||[]).filter(k=>MEDICAL_FLAGS[k]);
+function MedicalNotice({profile,lang}){
+  const he=lang==="he"; const fl=medicalFlagsOf(profile); if(!fl.length) return null;
+  const strong=fl.some(k=>MEDICAL_FLAGS[k].sev>=2);
+  return (<div style={{background:strong?"#FDECEA":"#FFF6E5",border:`1px solid ${strong?"#e6a39c":"#ecc98a"}`,borderRadius:12,padding:"8px 11px",marginBottom:8,fontSize:12,lineHeight:1.5,color:"#1E3A2B"}}>
+    <b>🩺 {he?"התפריט בנוי לאנשים בריאים":"This menu is designed for healthy adults"}</b> — {he?`סימנת: ${fl.map(k=>MEDICAL_FLAGS[k].he).join(", ")}. `:`You marked: ${fl.map(k=>MEDICAL_FLAGS[k].en).join(", ")}. `}
+    {strong?(he?"מומלץ להשתמש בתכנון רק בליווי דיאטן/ית או רופא/ה.":"Use planning only with a dietitian or doctor."):(he?"כדאי לתאם את התפריט עם הצוות המטפל.":"Coordinate the menu with your care team.")} {he?"הפירוט — בפרופיל.":"Details are in the profile."}
+  </div>);
+}
 function weightTrend(log){
   const today=todayKey(); const from=shiftDateKey(today,-42);
   const pts=Object.entries(log||{}).filter(([d,v])=>d>=from&&+v>0).sort((a,b)=>a[0]<b[0]?-1:1).map(([d,v])=>({t:(new Date(d+"T00:00:00")-new Date(from+"T00:00:00"))/864e5,v:+v,d}));
@@ -16934,7 +17256,7 @@ function weightTrend(log){
 function WeightPanel({lang,profile,setProfile,tdee,target,log,setLog}){
   const he=lang==="he"; const [val,setVal]=useState("");
   const today=todayKey(); const tr=weightTrend(log);
-  const goalPct=GOALS[profile.goal||"maintain"]?.pct||0; const adj=+profile.kcalAdj||0;
+  const goalPct=GOALS[effectiveGoal(profile)]?.pct||0; const adj=+profile.kcalAdj||0;
   const card={background:"#FFFFFF",borderRadius:16,padding:14,marginBottom:10,border:"1px solid #E2DED4"};
   const entries=Object.entries(log||{}).sort((a,b)=>a[0]<b[0]?1:-1).slice(0,8);
   const latest=entries[0]?+entries[0][1]:null;
@@ -16963,6 +17285,7 @@ function WeightPanel({lang,profile,setProfile,tdee,target,log,setLog}){
     {entries.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>{entries.map(([d,v])=>(
       <span key={d} style={{background:"#F5F2EB",border:"1px solid #E2DED4",borderRadius:20,padding:"3px 9px",fontSize:12}}>{shortDate(d)}: <b>{v}</b> <button onClick={()=>del(d)} style={{border:"none",background:"transparent",color:"#a6440f",cursor:"pointer",padding:0}}>✕</button></span>))}</div>}
     {latest&&Math.abs(latest-(+profile.weight||0))>=0.5&&<button onClick={()=>setProfile(p=>({...p,weight:String(latest)}))} style={{marginBottom:8,padding:"6px 10px",borderRadius:10,border:"1px solid #2e7d32",background:"#E8EFE9",color:"#1E3A2B",fontSize:12,cursor:"pointer"}}>{he?`עדכן את המשקל בפרופיל ל-${latest} ק"ג`:`Update profile weight to ${latest} kg`}</button>}
+    {tr.ready&&(+profile.age>=65)&&(profile.goal||"maintain")!=="lose"&&tr.slopeWeek<=-0.2&&<div style={{fontSize:12.5,color:"#b3261e",background:"#FDECEA",border:"1px solid #e6a39c",borderRadius:10,padding:"6px 9px",marginBottom:8,lineHeight:1.5}}>{he?`⚠️ ירידה לא מתוכננת במשקל (כ-${fmtN(Math.abs(tr.slopeWeek),1)} ק"ג בשבוע). מגיל 65 זה סימן שכדאי לבדוק עם רופא/ה או דיאטן/ית, כי ירידה לא רצויה פוגעת במסת השריר. בינתיים כדאי לקבל את התיקון הקלורי שלמטה.`:`⚠️ Unplanned weight loss (about ${fmtN(Math.abs(tr.slopeWeek),1)} kg a week). From age 65 this is worth checking with a doctor or dietitian, since unwanted loss costs muscle mass. Meanwhile, accept the calorie correction below.`}</div>}
     {!tr.ready&&<div style={{fontSize:12.5,color:"#6B7C72"}}>{he?`יש ${tr.pts.length} שקילות ב-6 השבועות האחרונים — נדרשות לפחות 3, על פני 3 שבועות לפחות.`:`${tr.pts.length} weigh-ins in the last 6 weeks — at least 3, spanning 3+ weeks, are needed.`}</div>}
     {tr.ready&&suggestion&&<div style={{fontSize:13,color:"#1E3A2B",lineHeight:1.55}}>
       <div>{he?`מגמה: ${tr.slopeWeek>=0?"+":""}${fmtN(tr.slopeWeek,2)} ק"ג לשבוע · צפוי לפי המטרה: ${suggestion.expectedWeek>=0?"+":""}${fmtN(suggestion.expectedWeek,2)} ק"ג לשבוע`:`Trend: ${tr.slopeWeek>=0?"+":""}${fmtN(tr.slopeWeek,2)} kg/week · expected for your goal: ${suggestion.expectedWeek>=0?"+":""}${fmtN(suggestion.expectedWeek,2)} kg/week`}</div>
@@ -16979,25 +17302,33 @@ function WeightPanel({lang,profile,setProfile,tdee,target,log,setLog}){
 }
 // ── יומן תוספים (לבקשת המשתמש) — B12 וויטמין D חובה; DHA/EPA מאצות וברזל — לבחירה, לפי המלצת רופא/דיאטן/ית ──
 const SUPP_ITEMS=[{k:"b12",he:"ויטמין B12",en:"Vitamin B12",req:true},{k:"vitD",he:"ויטמין D",en:"Vitamin D",req:true},{k:"dha",he:"אומגה 3 מאצות (DHA/EPA)",en:"Algae omega-3 (DHA/EPA)"},{k:"iron",he:"ברזל (לפי המלצת רופא)",en:"Iron (per physician advice)"}];
-function SupplementPanel({lang,log,setLog}){
+// תוסף פעיל במעקב: חובה (B12, D), או ברירת מחדל מומלצת (DHA מאצות — ההמרה מ-ALA נמוכה ולא אחידה) שלא הוסרה, או שנוסף ידנית
+const suppOn=(L,x)=>x.req||(x.def?L?.enabled?.[x.k]!==false:!!L?.enabled?.[x.k]);
+function SupplementPanel({lang,log,setLog,vegan,simple}){
   const he=lang==="he"; const today=todayKey(); const L=log||{days:{},enabled:{}};
-  const active=SUPP_ITEMS.filter(x=>x.req||L.enabled?.[x.k]);
+  const active=SUPP_ITEMS.filter(x=>suppOn(L,x));
+  const setDose=(k,v)=>upd(n=>{ n.doses=n.doses||{}; n.doses[k]=v.slice(0,40); return n; });
   const upd=f=>setLog(prev=>{ const base=prev||{days:{},enabled:{}}; const n=f(JSON.parse(JSON.stringify(base))); save("wfpb_supp_log",n); return n; });
   const toggleDay=k=>upd(n=>{ n.days=n.days||{}; n.days[today]=n.days[today]||{}; n.days[today][k]=!n.days[today][k]; return n; });
-  const toggleEn=k=>upd(n=>{ n.enabled=n.enabled||{}; n.enabled[k]=!n.enabled[k]; return n; });
+  const toggleEn=k=>upd(n=>{ n.enabled=n.enabled||{}; const x=SUPP_ITEMS.find(s=>s.k===k); n.enabled[k]=!suppOn(n,x); return n; });
   const last7=[...Array(7)].map((_,i)=>shiftDateKey(today,-i));
   const card={background:"#FFFFFF",borderRadius:16,padding:14,marginBottom:10,border:"1px solid #E2DED4"};
   return (<div style={card}>
     <div style={{fontSize:15,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{he?"💊 יומן תוספים":"💊 Supplement log"}</div>
-    <div style={{fontSize:12.5,color:"#3A4A42",lineHeight:1.5,marginBottom:8}}>{he?"B12 וויטמין D: חובה לתסף בתזונה צמחית. מינון על פי הנחיה קלינית. סמנו כל יום מה נלקח.":"B12 and vitamin D: supplementation is required on a plant-based diet. Dose per clinical guidance. Tick what you took each day."}</div>
+    {simple&&<div style={{fontSize:13,color:"#1E3A2B",lineHeight:1.5,marginBottom:8,background:"#E8EFE9",borderRadius:10,padding:"7px 10px"}}>{he?(vegan?"B12 — חובה בתזונה טבעונית. ויטמין D — מומלץ לרוב המבוגרים. סמנו כל יום מה נלקח; מינונים והסבר — בתצוגה המלאה.":"B12 — מומלץ בתזונה צמחונית. ויטמין D — מומלץ לרוב המבוגרים. סמנו כל יום מה נלקח; מינונים והסבר — בתצוגה המלאה."):(vegan?"B12 — essential on a vegan diet. Vitamin D — recommended for most adults. Tick what you took each day; doses and explanation — in the full view.":"B12 — recommended on a vegetarian diet. Vitamin D — recommended for most adults. Tick what you took each day; doses and explanation — in the full view.")}</div>}
+    {!simple&&<div style={{fontSize:12.5,color:"#1E3A2B",lineHeight:1.5,marginBottom:8,background:"#E8EFE9",borderRadius:10,padding:"7px 10px"}}>{vegan
+      ?(he?"💊 B12 בתזונה טבעונית — חובה. מינון מקובל (למשל לפי האגודה הטבעונית הבריטית): 10 מק\"ג ביום, או 2,000 מק\"ג פעם בשבוע. מגיל 65 הספיגה יורדת ולעיתים נדרש יותר. מומלץ לבדוק B12 בדם ולהתייעץ לגבי המינון.":"💊 B12 on a vegan diet — essential. A common dose (e.g. per the Vegan Society): 10 µg a day, or 2,000 µg once a week. From age 65 absorption drops and more may be needed. Check blood B12 and ask about the dose.")
+      :(he?"💊 B12 בתזונה צמחונית — מומלץ. עם צריכה קבועה של חלב וביצים ייתכן שהצורך בתוסף קטן יותר, ולכן כדאי לבדוק B12 בדם. מינון מקובל לתוסף: 10 מק\"ג ביום, או 2,000 מק\"ג פעם בשבוע; מגיל 65 לעיתים נדרש יותר.":"💊 B12 on a vegetarian diet — recommended. With regular dairy and eggs the need for a supplement may be smaller, so check blood B12. A common supplement dose: 10 µg a day, or 2,000 µg once a week; from age 65 more may be needed.")}</div>}
+    {!simple&&<div style={{fontSize:12.5,color:"#3A4A42",lineHeight:1.5,marginBottom:8}}>{he?"ויטמין D: מומלץ תוסף לרוב המבוגרים, בעיקר בחורף ומגיל 65. אומגה 3 מאצות (DHA/EPA): לא הכרחי לרוב המבוגרים הבריאים כשצריכת ה-ALA מספיקה; אפשר להוסיף למעקב אם הוחלט עליו בהתייעצות. מינון על פי הנחיה קלינית — אפשר לרשום אותו ליד כל תוסף, והוא ייכנס לדוח למטפל. סמנו כל יום מה נלקח.":"Vitamin D: a supplement is recommended for most adults, especially in winter and from age 65. Algae omega-3 (DHA/EPA): not necessary for most healthy adults when ALA intake is adequate; add it to tracking if you decided on it with professional advice. Dose per clinical guidance — you can note it next to each supplement and it will appear in the practitioner report. Tick what you took each day."}</div>}
     {active.map(x=>{ const done=!!L.days?.[today]?.[x.k]; const cnt=last7.filter(d=>L.days?.[d]?.[x.k]).length;
       return (<div key={x.k} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #EFEBE3"}}>
         <button onClick={()=>toggleDay(x.k)} style={{width:28,height:28,borderRadius:8,border:done?"none":"2px solid #B8B0A0",background:done?"#2e7d32":"#FFFFFF",color:"white",fontWeight:800,cursor:"pointer"}}>{done?"✓":""}</button>
-        <span style={{flex:1,fontSize:13.5,color:"#1E3A2B",fontWeight:600}}>{he?x.he:x.en}</span>
+        <span style={{flex:1,fontSize:13.5,color:"#1E3A2B",fontWeight:600}}>{he?x.he:x.en}{x.def&&<span style={{fontSize:11,color:"#2e7d32",fontWeight:700}}> {he?"· מומלץ":"· recommended"}</span>}
+          {!simple&&<input value={L.doses?.[x.k]||""} onChange={e=>setDose(x.k,e.target.value)} placeholder={he?"מינון (למשל 1000 יח'ב)":"Dose (e.g. 1000 IU)"} style={{display:"block",marginTop:3,width:"100%",maxWidth:220,padding:"3px 7px",borderRadius:7,border:"1px solid #E2DED4",fontSize:12,fontWeight:400,background:"#FBF8F3"}}/>}</span>
         <span style={{fontSize:12,fontWeight:700,color:cnt>=6?"#2e7d32":cnt>=4?"#b8722e":"#c62828"}}>{he?`${cnt}/7 ימים`:`${cnt}/7 days`}</span>
       </div>); })}
-    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:8}}>{SUPP_ITEMS.filter(x=>!x.req).map(x=>(
-      <button key={x.k} onClick={()=>toggleEn(x.k)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid #D9D3C5",background:L.enabled?.[x.k]?"#E8EFE9":"#FFFFFF",color:"#1E3A2B",fontSize:12,cursor:"pointer"}}>{L.enabled?.[x.k]?(he?"− הסר ":"− Remove "):(he?"+ הוסף למעקב: ":"+ Track: ")}{he?x.he:x.en}</button>))}</div>
+    {!simple&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:8}}>{SUPP_ITEMS.filter(x=>!x.req).map(x=>(
+      <button key={x.k} onClick={()=>toggleEn(x.k)} style={{padding:"4px 10px",borderRadius:20,border:"1px solid #D9D3C5",background:suppOn(L,x)?"#E8EFE9":"#FFFFFF",color:"#1E3A2B",fontSize:12,cursor:"pointer"}}>{suppOn(L,x)?(he?"− הסר ":"− Remove "):(he?"+ הוסף למעקב: ":"+ Track: ")}{he?x.he:x.en}</button>))}</div>}
   </div>);
 }
 
@@ -17008,7 +17339,10 @@ function trackWeekSummary(hist, startKey, today){
   const P=trackSum(docs.map(dk=>hist[dk].p)), A=trackSum(docs.map(dk=>hist[dk].a));
   const cp=docs.reduce((s,dk)=>s+(hist[dk].cp||0),0), ca=docs.reduce((s,dk)=>s+(hist[dk].ca||0),0);
   const elapsed=dates.filter(dk=>dk<=today).length;
-  return {startKey,dates,docs,P,A,cp,ca,elapsed};
+  // ימים "אפקטיביים": ארוחה חופשית מפחיתה את חלקה היחסי מהיום (לא נספרת כחוסר)
+  const eff=Math.max(0.5,docs.reduce((s,dk)=>s+1-(hist[dk].fs||0),0))*(docs.length?1:0);
+  const free=docs.reduce((s,dk)=>s+(hist[dk].fs?1:0),0);
+  return {startKey,dates,docs,P,A,cp,ca,elapsed,eff,free};
 }
 // חוסר מצטבר של 10% ומעלה מול המתוכנן (בימים שתועדו בלבד) — לתג השקט על לשונית היומן
 function trackAlerts(sum, dri){
@@ -17022,13 +17356,14 @@ function trackAlerts(sum, dri){
 function buildPractitionerReportHTML({lang,profile,dri,hp,target,hist,weekStart,today,weightLog,suppLog,itemsOf}){
   const he=lang==="he"; const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const sum=trackWeekSummary(hist||{},weekStart,today); const n=sum.docs.length; const isCur=weekStart===weekStartKey(today);
-  const f1=v=>fmtN(v,Math.abs(v)<10?1:0); const avg=k=>n?(sum.A[k]||0)/n:0; const pavg=k=>n?(sum.P[k]||0)/n:0;
+  const f1=v=>fmtN(v,Math.abs(v)<10?1:0); const avg=k=>n?(sum.A[k]||0)/(sum.eff||n):0; const pavg=k=>n?(sum.P[k]||0)/(sum.eff||n):0;
   const dayName=dk=>(he?WEEK_DAYS_HE:WEEK_DAYS_EN)[weekdayOfDateKey(dk)];
   const dispDate=dk=>{ const p=(dk||"").split("-"); return p.length===3?`${+p[2]}.${+p[1]}.${p[0]}`:dk; };
   const h=+profile.height||0, w=+profile.weight||0, age=+profile.age||0;
   const bmi=h&&w?fmtN(w/((h/100)**2),1):null;
   const sexTxt=profile.sex==="female"?(he?"אישה":"Female"):(he?"גבר":"Male");
   const sens=(profile.sensitivities||[]).map(k=>SENS_GROUPS[k]?.[lang]||k).join(", ");
+  const medFl=medicalFlagsOf(profile); const medTxt=medFl.length?medFl.map(k=>MEDICAL_FLAGS[k][lang]).join(", "):((profile.medical||[]).includes("none")?(he?"דווח: אין":"Reported: none"):(he?"לא נענה":"Not answered"));
   // אנרגיה ומאקרו — ממוצע יומי בפועל
   const kcalA=avg("kcal"), kcalP=pavg("kcal");
   const pctK=(g,m)=>kcalA>0?Math.round(g*m/kcalA*100):0;
@@ -17036,7 +17371,7 @@ function buildPractitionerReportHTML({lang,profile,dri,hp,target,hist,weekStart,
   const netCarb=carbA; // שדה הפחמימות במאגר כבר ללא סיבים (הגדרת משרד הבריאות) — לא מפחיתים שוב
   const o6=avg("omega6"), o3=avg("omega3"); const ratio=o3>0?o6/o3:null;
   const protKg=w?protA/w:null;
-  const fatMax=hp?.fatMax||30, carbMax=hp?.carbMax||55, protMinKg=hp?.protPerKg||1.2, fibMin=hp?.fiberMin||50;
+  const fatMax=hp?.fatMax||30, carbMax=hp?.carbMax||55, protMinKg=hp?.protPerKg||1.2, fibT=fiberTargetsOf(target,profile?.age), fibMin=fibT.min;
   const ok=(c)=>c?`<span class="ok">✓</span>`:`<span class="bad">⚠</span>`;
   const macroRows=[
     [he?"קלוריות (קק\"ל)":"Calories (kcal)", f1(kcalP), f1(kcalA), target?`${target} (${Math.round(kcalA/target*100)}%)`:"—", target?ok(kcalA>=target*0.9&&kcalA<=target*1.05):""],
@@ -17044,10 +17379,12 @@ function buildPractitionerReportHTML({lang,profile,dri,hp,target,hist,weekStart,
     [he?"פחמימות (גר')":"Carbs (g)", f1(pavg("carbs")), `${f1(carbA)} · ${pctK(netCarb,4)}%`, `≤ ${carbMax}%`, ok(pctK(netCarb,4)<=carbMax)],
     [he?"שומן (גר')":"Fat (g)", f1(pavg("fat")), `${f1(fatA)} · ${pctK(fatA,9)}%`, `≤ ${fatMax}%`, ok(pctK(fatA,9)<=fatMax+1)],
     [he?"שומן רווי (גר')":"Saturated fat (g)", f1(pavg("satFat")), `${f1(sfA)} · ${pctK(sfA,9)}%`, "< 10%", ok(pctK(sfA,9)<10)],
-    [he?"סיבים (גר')":"Fiber (g)", f1(pavg("fiber")), f1(fibA), `≥ ${fibMin}`, ok(fibA>=fibMin*0.9)],
+    [he?"סיבים (גר')":"Fiber (g)", f1(pavg("fiber")), f1(fibA), `≥ ${fibMin} (${he?"שאיפה":"aim"} ${fibT.goal})`, ok(fibA>=fibMin)],
     [he?"לאוצין (גר')":"Leucine (g)", f1(pavg("leucine")), f1(avg("leucine")), "—", ""],
     [he?"ליזין (גר')":"Lysine (g)", f1(pavg("lysine")), f1(avg("lysine")), "—", ""],
-    [he?"יחס אומגה 6:3":"Omega-6:3 ratio", "", ratio!=null?`${fmtN(ratio,1)}:1`:"—", "≤ 5:1", ratio!=null?ok(ratio<=5):""],
+    [he?"אומגה 3 — ALA (גר')":"Omega-3 — ALA (g)", f1(pavg("omega3")), f1(o3), `≥ ${profile.sex==="male"?1.6:1.1}`, ok(o3>=(profile.sex==="male"?1.6:1.1))],
+    [he?"אומגה 6 — LA (גר')":"Omega-6 — LA (g)", f1(pavg("omega6")), f1(o6), he?"מידע":"info", ""],
+    [he?"יחס אומגה 6:3":"Omega-6:3 ratio", "", ratio!=null?`${fmtN(ratio,1)}:1`:"—", he?"מידע":"info", ""],
   ];
   // מיקרו — ממוצע יומי בפועל מול היעד היומי המוצג (ברזל ואבץ: יעד מותאם לתזונה צמחית)
   const microRows=MICRO_KEYS.filter(k=>dri&&dri[k]).map(k=>{ const d=dri[k]; const a=avg(k); const pct=d.dri?Math.round(a/d.dri*100):0;
@@ -17056,7 +17393,9 @@ function buildPractitionerReportHTML({lang,profile,dri,hp,target,hist,weekStart,
     else if (k==="iron"&&d.baseDri) note=he?`יעד צמחוני ×1.8 · ${Math.round(a/d.baseDri*100)}% מהיעד הבסיסי (${d.baseDri} מ"ג)`:`Vegetarian target ×1.8 · ${Math.round(a/d.baseDri*100)}% of base target (${d.baseDri} mg)`;
     else if (k==="zinc"&&d.baseDri) note=he?`יעד צמחוני ×1.5 · ${Math.round(a/d.baseDri*100)}% מהיעד הבסיסי (${d.baseDri} מ"ג)`:`Vegetarian target ×1.5 · ${Math.round(a/d.baseDri*100)}% of base target (${d.baseDri} mg)`;
     if (overUL) note=(note?note+" · ":"")+(he?`מעל הגבול העליון (UL ${d.ul})`:`Above upper limit (UL ${d.ul})`);
-    const cls=suppDep?"muted":overUL?"bad":pct>=98?"ok":pct>=70?"warn":"bad";
+    const naCapR=k==="sodium"?(hp?.sodiumMax||2300):null; const overNa=naCapR!=null&&a>naCapR;
+    if (naCapR!=null) note=he?`טווח ${d.dri}–${naCapR} מ"ג${overNa?" · מעל התקרה":""}`:`Range ${d.dri}–${naCapR} mg${overNa?" · above the ceiling":""}`;
+    const cls=suppDep?"muted":(overUL||overNa)?"bad":pct>=98?"ok":pct>=70?"warn":"bad";
     return {k,label:DRI_LABELS[k]?.[lang]||k,unit:d.unit,a,t:d.dri,pct,note,cls,suppDep}; });
   const lows=microRows.filter(r=>!r.suppDep&&r.k!=="sodium"&&r.pct<98).sort((a,b)=>a.pct-b.pct);
   const highs=microRows.filter(r=>r.cls==="bad"&&r.note.includes("UL"));
@@ -17064,7 +17403,10 @@ function buildPractitionerReportHTML({lang,profile,dri,hp,target,hist,weekStart,
   const dayRows=sum.docs.map(dk=>{ const p=hist[dk].p||{}, a=hist[dk].a||{}; return `<tr><td>${esc(dayName(dk))} ${esc(shortDate(dk))}</td><td>${f1(p.kcal||0)}</td><td>${f1(a.kcal||0)}</td><td>${target?Math.round((a.kcal||0)/target*100)+"%":"—"}</td><td>${f1(a.protein||0)}</td><td>${f1(a.fiber||0)}</td><td>${(a.kcal||0)>0?Math.round((a.fat||0)*9/a.kcal*100)+"%":"—"}</td></tr>`; }).join("");
   // תוספים
   const L=suppLog||{days:{},enabled:{}}; const elapsedDates=sum.dates.filter(dk=>dk<=today);
-  const supp=SUPP_ITEMS.filter(x=>x.req||L.enabled?.[x.k]).map(x=>{ const c=elapsedDates.filter(dk=>L.days?.[dk]?.[x.k]).length; return `<tr><td>${esc(he?x.he:x.en)}</td><td>${c} / ${elapsedDates.length}</td><td>${elapsedDates.map(dk=>`${esc(dayName(dk))}${L.days?.[dk]?.[x.k]?"✓":"✗"}`).join(" · ")}</td></tr>`; }).join("");
+  const supp=SUPP_ITEMS.filter(x=>suppOn(L,x)).map(x=>{ const c=elapsedDates.filter(dk=>L.days?.[dk]?.[x.k]).length; return `<tr><td>${esc(he?x.he:x.en)}</td><td>${esc(L.doses?.[x.k]||"—")}</td><td>${c} / ${elapsedDates.length}</td><td>${elapsedDates.map(dk=>`${esc(dayName(dk))}${L.days?.[dk]?.[x.k]?"✓":"✗"}`).join(" · ")}</td></tr>`; }).join("");
+  // בדיקות מעבדה — 3 האחרונות שעד סוף השבוע המדווח (מתוך הדיווחים העצמיים)
+  const labs=(load("wfpb_labs",[])||[]).filter(r=>r&&r.date&&r.date<=sum.dates[6]).slice(0,3);
+  const labsHtml=labs.length?`<table><thead><tr><th>${he?"בדיקה":"Test"}</th>${labs.map(r=>`<th class="num">${esc(dispDate(r.date))}</th>`).join("")}</tr></thead><tbody>${LAB_ITEMS.filter(x=>labs.some(r=>r.v[x.k]!=null)).map(x=>`<tr><td>${esc(he?x.he:x.en)} <span class="muted">(${esc(x.u)})</span></td>${labs.map(r=>`<td class="num">${r.v[x.k]!=null?esc(r.v[x.k]):"—"}</td>`).join("")}</tr>`).join("")}</tbody></table>`:`<p class="muted">${he?"לא הוזנו בדיקות (אפשר להוסיף ב\"דיווחים עצמיים\"). מומלץ לבדוק: פריטין, המוגלובין, B12, ויטמין D, פרופיל שומנים ו-HbA1c.":"No lab results entered (add them under \"Self reports\"). Suggested: ferritin, hemoglobin, B12, vitamin D, lipid profile and HbA1c."}</p>`;
   // משקל — 8 השבועות שעד סוף השבוע המדווח
   const wEnd=sum.dates[6], wFrom=shiftDateKey(weekStart,-49);
   const wPts=Object.entries(weightLog||{}).filter(([d,v])=>d>=wFrom&&d<=wEnd&&+v>0).sort((a,b)=>a[0]<b[0]?-1:1);
@@ -17080,6 +17422,7 @@ function buildPractitionerReportHTML({lang,profile,dri,hp,target,hist,weekStart,
     if (target) summaryLines.push(he?`צריכה אנרגטית ממוצעת ${f1(kcalA)} קק"ל ביום — ${Math.round(kcalA/target*100)}% מהיעד (${target}).`:`Average energy intake ${f1(kcalA)} kcal/day — ${Math.round(kcalA/target*100)}% of target (${target}).`);
     if (protKg!=null) summaryLines.push(he?`חלבון ${fmtN(protKg,2)} גר'/ק"ג ביום (יעד ${protMinKg} לפחות).`:`Protein ${fmtN(protKg,2)} g/kg/day (target at least ${protMinKg}).`);
     summaryLines.push(lows.length?(he?`רכיבים מתחת ל-98% מהיעד: ${lows.map(r=>`${r.label} ${r.pct}%`).join(", ")}.`:`Below 98% of target: ${lows.map(r=>`${r.label} ${r.pct}%`).join(", ")}.`):(he?"כל רכיבי המיקרו (למעט B12 ו-D, התלויים בתוסף) הגיעו ל-98% מהיעד לפחות.":"All micronutrients (except supplement-dependent B12 and D) reached at least 98% of target."));
+    if (sum.free) summaryLines.push(he?`ארוחות חופשיות (80/20, לא נמדדו): ב-${sum.free} ימים. הממוצעים מחושבים על החלק שתועד בלבד.`:`Free meals (80/20, not measured): on ${sum.free} days. Averages are calculated on the logged portion only.`);
     if (highs.length) summaryLines.push(he?`מעל הגבול העליון: ${highs.map(r=>r.label).join(", ")}.`:`Above the upper limit: ${highs.map(r=>r.label).join(", ")}.`);
     const b12=SUPP_ITEMS.find(x=>x.k==="b12"); if (b12&&elapsedDates.length){ const c=elapsedDates.filter(dk=>L.days?.[dk]?.b12).length; summaryLines.push(he?`B12: סומן ${c} מתוך ${elapsedDates.length} ימים ביומן התוספים.`:`B12: ticked on ${c} of ${elapsedDates.length} days in the supplement log.`); }
   }
@@ -17091,7 +17434,7 @@ function buildPractitionerReportHTML({lang,profile,dri,hp,target,hist,weekStart,
 <h1>🌿 PlantVitalis — ${esc(title)}</h1>
 <div class="sub">${he?"שבוע":"Week"} ${esc(range)} · ${he?"הופק":"Generated"} ${esc(dispDate(todayKey()))} · ${he?`תועדו ${n} מתוך ${isCur?sum.elapsed:7} ימים`:`${n} of ${isCur?sum.elapsed:7} days logged`}</div>
 <h2>${he?"פרטי המטופל/ת":"Client details"}</h2>
-<div class="grid"><div>${he?"מין":"Sex"}: <b>${esc(sexTxt)}</b>${profile.pregnant&&profile.sex==="female"?` <span class="warn">(${he?"הריון/הנקה":"pregnancy/lactation"})</span>`:""}</div><div>${he?"גיל":"Age"}: <b>${age||"—"}</b></div><div>${he?"גובה":"Height"}: <b>${h||"—"}</b> ${he?"ס\"מ":"cm"}</div><div>${he?"משקל בפרופיל":"Profile weight"}: <b>${w||"—"}</b> ${he?"ק\"ג":"kg"}${bmi?` · BMI <b>${bmi}</b>`:""}</div><div>${he?"רמת פעילות":"Activity"}: <b>${esc(ACTIVITY[profile.activity||"medium"]?.[lang]||"—")}</b></div><div>${he?"מטרה":"Goal"}: <b>${esc(GOALS[profile.goal||"maintain"]?.[lang]||"—")}</b></div><div>${he?"יעד קלורי יומי":"Daily calorie target"}: <b>${target||"—"}</b></div><div>${he?"תזונה":"Diet"}: <b>${he?"צמחונית (כולל חלב וביצים)":"Vegetarian (incl. dairy & eggs)"}</b></div>${sens?`<div>${he?"רגישויות":"Sensitivities"}: <b>${esc(sens)}</b></div>`:""}</div>
+<div class="grid"><div>${he?"מין":"Sex"}: <b>${esc(sexTxt)}</b>${profile.pregnant&&profile.sex==="female"?` <span class="warn">(${he?"הריון/הנקה":"pregnancy/lactation"})</span>`:""}</div><div>${he?"גיל":"Age"}: <b>${age||"—"}</b></div><div>${he?"גובה":"Height"}: <b>${h||"—"}</b> ${he?"ס\"מ":"cm"}</div><div>${he?"משקל בפרופיל":"Profile weight"}: <b>${w||"—"}</b> ${he?"ק\"ג":"kg"}${bmi?` · BMI <b>${bmi}</b>`:""}</div><div>${he?"רמת פעילות":"Activity"}: <b>${esc(ACTIVITY[profile.activity||"medium"]?.[lang]||"—")}</b></div><div>${he?"מטרה":"Goal"}: <b>${esc(GOALS[profile.goal||"maintain"]?.[lang]||"—")}</b></div><div>${he?"יעד קלורי יומי":"Daily calorie target"}: <b>${target||"—"}</b></div><div>${he?"תזונה":"Diet"}: <b>${he?"צמחונית (כולל חלב וביצים)":"Vegetarian (incl. dairy & eggs)"}</b></div>${sens?`<div>${he?"רגישויות":"Sensitivities"}: <b>${esc(sens)}</b></div>`:""}<div>${he?"מצב רפואי / תרופות":"Medical conditions / medications"}: <b${medFl.length?' class="warn"':""}>${esc(medTxt)}</b></div></div>
 ${!n?`<p class="box">${he?"לא תועדו ימים בשבוע הזה — אין נתוני צריכה בפועל לדיווח.":"No days were logged this week — no actual-intake data to report."}</p>`:`
 <h2>${he?"עיקרי הדברים":"Key points"}</h2><div class="box">${summaryLines.map(s=>`<p>• ${esc(s)}</p>`).join("")}</div>
 <h2>${he?"אנרגיה ומאקרו — ממוצע יומי":"Energy & macros — daily average"}</h2>
@@ -17101,8 +17444,10 @@ ${!n?`<p class="box">${he?"לא תועדו ימים בשבוע הזה — אין
 <table><thead><tr><th>${he?"רכיב":"Nutrient"}</th><th class="num">${he?"בפועל":"Actual"}</th><th class="num">${he?"יעד":"Target"}</th><th class="num">%</th><th>${he?"הערה":"Note"}</th></tr></thead><tbody>${microTable}</tbody></table>
 <h2>${he?"פירוט יומי":"Daily breakdown"}</h2>
 <table><thead><tr><th>${he?"יום":"Day"}</th><th class="num">${he?"קק\"ל מתוכנן":"kcal planned"}</th><th class="num">${he?"קק\"ל בפועל":"kcal actual"}</th><th class="num">${he?"מהיעד":"of target"}</th><th class="num">${he?"חלבון (גר')":"Protein (g)"}</th><th class="num">${he?"סיבים (גר')":"Fiber (g)"}</th><th class="num">${he?"שומן %":"Fat %"}</th></tr></thead><tbody>${dayRows}</tbody></table>`}
+<h2>${he?"בדיקות מעבדה":"Lab results"}</h2>
+${labsHtml}
 <h2>${he?"תוספים":"Supplements"}</h2>
-${supp?`<table><thead><tr><th>${he?"תוסף":"Supplement"}</th><th class="num">${he?"ימים":"Days"}</th><th>${he?"לפי יום":"By day"}</th></tr></thead><tbody>${supp}</tbody></table>`:`<p class="muted">—</p>`}
+${supp?`<table><thead><tr><th>${he?"תוסף":"Supplement"}</th><th>${he?"מינון":"Dose"}</th><th class="num">${he?"ימים":"Days"}</th><th>${he?"לפי יום":"By day"}</th></tr></thead><tbody>${supp}</tbody></table>`:`<p class="muted">—</p>`}
 <h2>${he?"משקל":"Weight"}</h2>${weightHtml}
 ${n?(isCur?(foodsHtml?`<h2>${he?"מה נאכל בפועל":"What was actually eaten"}</h2>${foodsHtml}`:""):`<h2>${he?"מה נאכל בפועל":"What was actually eaten"}</h2><p class="muted">${he?"פירוט המזונות זמין בדוח של השבוע הנוכחי בלבד.":"The food list is available in the current week's report only."}</p>`):""}
 <div class="foot">${he?"הערכים מחושבים מתוך מאגר המזון של האפליקציה (בעיקר מאגר משרד הבריאות ו-USDA) לפי מה שהמשתמש/ת תיעד/ה ביומן, ולכן הם הערכה. יעדי הברזל והאבץ מותאמים לתזונה צמחית (IOM: ברזל ×1.8, אבץ ×1.5). הספיגה בפועל לא נמדדת. B12 וויטמין D תלויים בתוסף. הדוח אינו מסמך רפואי ואינו מחליף הערכה קלינית.":"Values are computed from the app's food database (mainly the Israeli Ministry of Health database and USDA) based on what the user logged, so they are estimates. Iron and zinc targets are adjusted for vegetarian diets (IOM: iron ×1.8, zinc ×1.5). Actual absorption is not measured. B12 and vitamin D depend on supplements. This report is not a medical document and does not replace clinical assessment."}</div>
@@ -17137,11 +17482,11 @@ function PractitionerReportModal({lang,html,weekLabel,onClose}){
     </div>);
 }
 function trackDevColor(dev){ return dev<=-10?"#b3261e":dev<-2?"#9a5b00":"#256428"; }
-function WeeklyTrackingPanel({hist,today,lang,dri,profile,alerts,restInfo,onUpdateRest,mealGapOf,onReport}){
+function WeeklyTrackingPanel({hist,today,lang,dri,profile,alerts,restInfo,onUpdateRest,mealGapOf,onReport,simple,embedWk}){
   const he=lang==="he";
   const curStart=weekStartKey(today);
   const weeks=useMemo(()=>{ const s=new Set(Object.keys(hist||{}).map(weekStartKey)); s.add(curStart); return [...s].sort().reverse(); },[hist,curStart]);
-  const [wk,setWk]=useState(curStart);
+  const [wk,setWk]=useState(embedWk||curStart);
   const [openK,setOpenK]=useState(null);
   const idx=Math.max(0,weeks.indexOf(wk));
   const sum=useMemo(()=>trackWeekSummary(hist||{},wk,today),[hist,wk,today]);
@@ -17151,8 +17496,8 @@ function WeeklyTrackingPanel({hist,today,lang,dri,profile,alerts,restInfo,onUpda
   const td={fontSize:12.5,color:"#1E3A2B",padding:"6px 3px",textAlign:"center",borderTop:"1px solid #EFEBE3"};
   const fmt=v=>fmtN(v,Math.abs(v)<10?1:0);
   const devOf=k=>(sum.P[k]||0)>0?Math.round(((sum.A[k]||0)/sum.P[k]-1)*100):0;
-  const microRows=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&dri&&dri[k]).map(k=>({k,dev:devOf(k),tgtPct:n?Math.round((sum.A[k]||0)/(dri[k].dri*n)*100):0})).sort((a,b)=>a.dev-b.dev);
-  const scoreOf=s=>{ const m=s.docs.length; if(!m) return null; const sc={}; MICRO_KEYS.forEach(k=>{ sc[k]=(s.A[k]||0)*7/m; }); return calcWeeklyMicroScore(sc,profile||{}); };
+  const microRows=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&dri&&dri[k]).map(k=>({k,dev:devOf(k),tgtPct:n?Math.round((sum.A[k]||0)/(dri[k].dri*sum.eff)*100):0})).sort((a,b)=>a.dev-b.dev);
+  const scoreOf=s=>{ const m=s.docs.length; if(!m) return null; const sc={}; MICRO_KEYS.forEach(k=>{ sc[k]=(s.A[k]||0)*7/(s.eff||m); }); return calcWeeklyMicroScore(sc,profile||{}); };
   const drill=k=>(
     <tr><td colSpan={5} style={{padding:"4px 2px 8px",background:"#FAF7F1"}}>
       {sum.docs.map(dk=>{ const p=hist[dk].p[k]||0, a=hist[dk].a[k]||0, d=p>0?Math.round((a/p-1)*100):0; const gap=isCur&&mealGapOf?mealGapOf(dk,k):null;
@@ -17161,21 +17506,34 @@ function WeeklyTrackingPanel({hist,today,lang,dri,profile,alerts,restInfo,onUpda
           <span>{fmt(p)} → {fmt(a)} <b style={{color:trackDevColor(d)}}>({d>0?"+":""}{d}%)</b>{gap&&gap.diff<0?<span style={{color:"#6B4A30"}}> · {he?"עיקר הפער:":"main gap:"} {T[lang][gap.mk]}</span>:null}</span>
         </div>); })}
     </td></tr>);
+  // תצוגה פשוטה שלב ב': סיכום השבוע במילים + הצעה אחת; הטבלאות המלאות (מאקרו/מיקרו/היסטוריה) — ב"פירוט ›"
+  const simpleNode=(()=>{ if(!simple||!n) return null;
+    const lowK=microRows.filter(r=>r.k!=="sodium"&&r.tgtPct<98).sort((a,b)=>a.tgtPct-b.tgtPct).map(r=>r.k);
+    const naCap=(resolveHealthProfile(profile||{}).sodiumMax||2300)*(sum.eff||n);
+    const lines=[];
+    if ((sum.A.sodium||0)>naCap*1.02) lines.push(simpleLine("⛔",he?"נתרן מעל התקרה בימים שתועדו — פחות מלח ומזון מעובד.":"Sodium above the ceiling on logged days — less salt and processed food.","#b3261e"));
+    lines.push(...simpleWeekVerdict(lowK,lang));
+    lines.push(<div key="n" style={{fontSize:12.5,color:"#6B7C72",marginTop:4}}>{he?`לפי מה שנאכל בפועל ב-${n} הימים שתועדו.`:`Based on what you actually ate on the ${n} logged days.`}</div>);
+    const canRest=isCur&&restInfo&&restInfo.deficits.length>0&&restInfo.n>0;
+    return (<SimpleShell lang={lang} title={he?"📊 השבוע שלי":"📊 My week"} full={<WeeklyTrackingPanel hist={hist} today={today} lang={lang} dri={dri} profile={profile} alerts={alerts} restInfo={restInfo} onUpdateRest={onUpdateRest} mealGapOf={mealGapOf} embedWk={wk}/>}>
+      {lines.map((l,i)=><Fragment key={i}>{l}</Fragment>)}
+      {canRest&&<button onClick={onUpdateRest} style={{width:"100%",marginTop:6,padding:"10px 0",borderRadius:10,border:"1px solid #d9c2a3",background:"#F7EFE3",color:"#6b4a30",fontSize:13.5,fontWeight:800,cursor:"pointer"}}>{he?`📋 עדכן את שאר השבוע (${restInfo.n} ימים)`:`📋 Update the rest of the week (${restInfo.n} days)`}</button>}
+    </SimpleShell>); })();
   return (
     <div style={{direction:T[lang].dir}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,...card}}>
+      {!embedWk&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,...card}}>
         <button disabled={idx>=weeks.length-1} onClick={()=>{setWk(weeks[idx+1]);setOpenK(null);}} style={{background:"transparent",border:"none",color:idx>=weeks.length-1?"#C9C2B5":"#8C6D53",fontSize:16,cursor:"pointer",padding:"4px 10px"}}>{he?"▶":"◀"}</button>
         <div style={{textAlign:"center"}}>
           <div style={{fontSize:14,fontWeight:800,color:"#1E3A2B"}}>{he?`שבוע ${shortDate(sum.dates[0])} עד ${shortDate(sum.dates[6])}`:`Week ${shortDate(sum.dates[0])}–${shortDate(sum.dates[6])}`}{isCur?(he?" (נוכחי)":" (current)"):""}</div>
           <div style={{fontSize:12,color:"#2F3B34",marginTop:2}}>{he?`תועדו ${n} מתוך ${isCur?sum.elapsed:7} ימים`:`${n} of ${isCur?sum.elapsed:7} days logged`}</div>
         </div>
         <button disabled={idx<=0} onClick={()=>{setWk(weeks[idx-1]);setOpenK(null);}} style={{background:"transparent",border:"none",color:idx<=0?"#C9C2B5":"#8C6D53",fontSize:16,cursor:"pointer",padding:"4px 10px"}}>{he?"◀":"▶"}</button>
-      </div>
-      {n>0 && onReport && (
+      </div>}
+      {n>0 && onReport && !embedWk && (
         <button onClick={()=>onReport(wk)} style={{width:"100%",marginBottom:10,padding:"10px 0",borderRadius:10,border:"1px solid #bcd4bf",background:"#E8EFE9",color:"#1E3A2B",fontSize:13.5,fontWeight:800,cursor:"pointer"}}>{he?"🖨️ דוח שבועי למטפל (הדפסה / PDF)":"🖨️ Weekly report for your practitioner (print / PDF)"}</button>)}
       {!n ? (
         <div style={{...card,textAlign:"center",fontSize:13,color:"#2F3B34",lineHeight:1.5}}>{he?"עוד לא תועדו ימים בשבוע הזה. תעדו ביומן מה נאכל (או סמנו \"אכלתי כמתוכנן\") — ימים שלא תועדו לא נספרים.":"No days logged this week yet. Log what you ate (or mark \"ate as planned\") — unlogged days are not counted."}</div>
-      ) : (<>
+      ) : simpleNode ? simpleNode : (<>
         {isCur && alerts && alerts.length>0 && (
           <div style={{...card,background:"#FDF3E7",border:"1px solid #E8C9A0"}}>
             <div style={{fontSize:13,fontWeight:800,color:"#8a4b08",marginBottom:4}}>{he?"⚠️ חוסר מצטבר מול המתוכנן (עד כה)":"⚠️ Cumulative shortfall vs plan (so far)"}</div>
@@ -17220,7 +17578,7 @@ function WeeklyTrackingPanel({hist,today,lang,dri,profile,alerts,restInfo,onUpda
             </Fragment>))}</tbody></table>
         </div>
       </>)}
-      {weeks.length>1 && (
+      {weeks.length>1 && !simpleNode && !embedWk && (
         <div style={card}>
           <div style={{fontSize:13,fontWeight:800,color:"#1E3A2B",marginBottom:4}}>{he?"📈 היסטוריה":"📈 History"}</div>
           <div style={{fontSize:11.5,color:"#2F3B34",marginBottom:4}}>{he?"ציון עמידה במיקרו לפי מה שנאכל בפועל (מנורמל למספר הימים שתועדו). לחיצה על שבוע פותחת אותו.":"Micro adherence score from actual intake (normalized to logged days). Tap a week to open it."}</div>
@@ -17242,12 +17600,12 @@ function* restOfWeekGen(daysArr, consumed, target, dri, dri2, keys, excl){
   const dayT=d=>sumNuts(Object.values(d).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
   let tots=daysArr.map(dayT);
   const proj=()=>{ const o={}; K.forEach(k=>{ o[k]=(consumed[k]||0)+tots.reduce((a,t)=>a+(t[k]||0),0); }); return o; };
-  const shortOf=P=>K.reduce((a,k)=>a+Math.max(0,dri[k].dri*7*0.98-(P[k]||0))/(dri[k].dri*7),0);
+  const shortOf=P=>K.reduce((a,k)=>a+Math.max(0,wkDri(dri[k])*7*0.98-(P[k]||0))/(wkDri(dri[k])*7),0);
   let n=0;
   for (let pass=0; pass<3; pass++){
     let improved=false;
     for (const k of keys){
-      if ((proj()[k]||0)>=dri[k].dri*7*0.98) continue;
+      if ((proj()[k]||0)>=wkDri(dri[k])*7*0.98) continue;
       const order=daysArr.map((_,i)=>i).sort((a,b)=>(tots[a][k]||0)-(tots[b][k]||0));
       for (const i of order){
         const s0=shortOf(proj());
@@ -17256,7 +17614,7 @@ function* restOfWeekGen(daysArr, consumed, target, dri, dri2, keys, excl){
         enforceDailyCalorieBand(trial, target, boosted, excl); yield {phase:"weekly",n:++n};
         const t0=tots[i]; tots[i]=dayT(trial);
         if (shortOf(proj())<s0-1e-6) { daysArr[i]=trial; improved=true; } else tots[i]=t0;
-        if ((proj()[k]||0)>=dri[k].dri*7*0.98) break;
+        if ((proj()[k]||0)>=wkDri(dri[k])*7*0.98) break;
       }
     }
     if (!improved) break;
@@ -17299,7 +17657,7 @@ function RestOfWeekModal({lang,data,onApply,onClose}){
     </div>
   );
 }
-function FoodLogPanel({logDate,onDateChange,meals,actualIntake,onMarkPlanned,onAdd,onRemove,onClear,onSetLeftover,onResetDay,lang,onInfo}){
+function FoodLogPanel({logDate,onDateChange,meals,actualIntake,onMarkPlanned,onFree,onAdd,onRemove,onClear,onSetLeftover,onResetDay,lang,onInfo,simple}){
   const[expanded,setExpanded]=useState(null);
   const[confirmReset,setConfirmReset]=useState(false);
   const isToday=logDate===todayKey();
@@ -17307,6 +17665,7 @@ function FoodLogPanel({logDate,onDateChange,meals,actualIntake,onMarkPlanned,onA
   const plannedDay=meals[`d${weekday}`]||{};
   const actualDay=actualIntake[logDate]||{};
   const hasLoggedToday=Object.keys(actualDay).length>0;
+  const loggedCnt=MEAL_KEYS.filter(mk=>{ const a=actualDay[mk]; return !!(a&&(a.status||(a.items||[]).length)); }).length;
   const tx=T[lang];
   return(
     <div style={{direction:T[lang].dir}}>
@@ -17314,7 +17673,8 @@ function FoodLogPanel({logDate,onDateChange,meals,actualIntake,onMarkPlanned,onA
         <span style={{fontSize:12,color:"#1E3A2B",fontWeight:700}}>{lang==="he"?"📝 יומן אכילה":"📝 Food Log"}</span>
         {onInfo&&<InfoTag infoKey="foodLog" lang={lang} onClick={()=>onInfo("foodLog")}/>}
       </div>
-      {onResetDay&&(confirmReset?(
+      {simple&&<div style={{fontSize:14,fontWeight:700,color:loggedCnt===MEAL_KEYS.length?"#2e7d32":"#1E3A2B",background:"#FFFFFF",border:"1px solid #E2DED4",borderRadius:12,padding:"8px 12px",marginBottom:10,textAlign:"center"}}>{lang==="he"?`תיעדת ${loggedCnt} מתוך ${MEAL_KEYS.length} ארוחות ${isToday?"היום":"ביום הזה"}`:`You logged ${loggedCnt} of ${MEAL_KEYS.length} meals ${isToday?"today":"on this day"}`}{loggedCnt===MEAL_KEYS.length?" ✓":""}</div>}
+      {onResetDay&&!simple&&(confirmReset?(
         <div style={{background:"#fdecea",border:"1px solid #f0b8ac",borderRadius:10,padding:"8px 10px",marginBottom:10,display:"flex",flexDirection:"column",gap:6}}>
           <span style={{fontSize:11,color:"#a6440f"}}>{tx.resetDayLogConfirm}</span>
           <div style={{display:"flex",gap:8}}>
@@ -17337,13 +17697,14 @@ function FoodLogPanel({logDate,onDateChange,meals,actualIntake,onMarkPlanned,onA
         <button onClick={()=>onDateChange(shiftDateKey(logDate,lang==="he"?-1:1))} style={{background:"transparent",border:"none",color:"#8C6D53",fontSize:16,cursor:"pointer",padding:"4px 10px"}}>{lang==="he"?"◀":"▶"}</button>
       </div>
       {MEAL_KEYS.map(mk=>(
-        <FoodLogMealRow key={mk} mealKey={mk} lang={lang}
+        <FoodLogMealRow key={mk} mealKey={mk} lang={lang} simple={simple}
           status={actualDay[mk]?.status||"unset"}
           items={actualDay[mk]?.status && actualDay[mk].status!=="asPlanned" ? (actualDay[mk]?.items||[]) : (plannedDay[mk]||[])}
           plannedItems={plannedDay[mk]||[]}
           expanded={expanded===mk}
           onToggle={()=>setExpanded(expanded===mk?null:mk)}
           onMarkPlanned={()=>onMarkPlanned(logDate,mk)}
+          onFree={onFree?()=>onFree(logDate,mk):null}
           onAdd={(fk,g)=>onAdd(logDate,mk,fk,g)}
           onRemove={i=>onRemove(logDate,mk,i)}
           onSetLeftover={(i,pct)=>onSetLeftover(logDate,mk,i,pct)}
@@ -17358,7 +17719,7 @@ function FoodLogPanel({logDate,onDateChange,meals,actualIntake,onMarkPlanned,onA
 
 function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,setRememberProfile,compact}){
   // ageErr: גיל מתחת ל-18 — לא נשמר (האפליקציה למבוגרים בלבד)
-  const[open,setOpen]=useState(false); const[ageErr,setAgeErr]=useState(false); const tx=T[lang];const goal=profile.goal||"maintain";
+  const[open,setOpen]=useState(false); const[ageErr,setAgeErr]=useState(false); const tx=T[lang];const goal=effectiveGoal(profile);
   const h=+profile.height,w=+profile.weight;
   const bmi=h&&w?fmtN(w/((h/100)*(h/100)),1):null;
   const bmiColor=!bmi?"#6B7C72":bmi<18.5?"#3a7bc8":bmi<25?"#2e7d32":bmi<30?"#b8860b":bmi<35?"#b8722e":"#c62828";
@@ -17440,32 +17801,131 @@ function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,set
           <div style={{display:"flex",gap:6}}>
             {Object.entries(GOALS).map(([k,{emoji}])=>(
               <div key={k} style={{flex:1,position:"relative"}}>
-                <button onClick={()=>setProfile(p=>({...p,goal:k}))} style={{width:"100%",padding:"7px 4px",borderRadius:8,border:"none",background:goal===k?(k==="lose"?"#c62828":k==="gain"?"#2e7d32":"#8C6D53"):"#E8EFE9",color:goal===k?"white":"#6B7C72",fontSize:10,cursor:"pointer",fontWeight:goal===k?700:400,lineHeight:1.3}}>
+                <button disabled={k==="lose"&&bmi!=null&&bmi<18.5} onClick={()=>setProfile(p=>({...p,goal:k}))} style={{opacity:(k==="lose"&&bmi!=null&&bmi<18.5)?0.45:1,width:"100%",padding:"7px 4px",borderRadius:8,border:"none",background:goal===k?(k==="lose"?"#c62828":k==="gain"?"#2e7d32":"#8C6D53"):"#E8EFE9",color:goal===k?"white":"#6B7C72",fontSize:10,cursor:"pointer",fontWeight:goal===k?700:400,lineHeight:1.3}}>
                   {emoji}<br/>{GOALS[k][lang]}
                 </button>
                 {(k==="lose"||k==="gain")&&<button onClick={()=>onInfo(k==="lose"?"goalLose":"goalGain")} style={{position:"absolute",top:-6,insetInlineEnd:-6,width:18,height:18,borderRadius:"50%",border:"none",background:"#FFFFFF",color:"#6B7C72",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,boxShadow:"0 1px 4px rgba(30,58,43,0.15)"}}>ℹ️</button>}
               </div>
             ))}
           </div>
+          {bmi!=null&&bmi<18.5&&<div style={{marginTop:7,fontSize:11,color:"#b3261e",background:"#FDECEA",border:"1px solid #e6a39c",borderRadius:8,padding:"5px 8px",lineHeight:1.45}}>{lang==="he"?"📉 ירידה במשקל לא זמינה כשה-BMI מתחת ל-18.5. תת-משקל מעלה סיכון לאובדן שריר ועצם ולחוסרים תזונתיים. אם יש רצון לרדת במשקל — מומלץ לדבר על כך עם רופא/ה או דיאטן/ית.":"📉 Weight loss isn't available when BMI is below 18.5. Underweight raises the risk of muscle and bone loss and nutrient deficiencies. If you want to lose weight, please talk it over with a doctor or dietitian."}</div>}
+          {bmi!=null&&bmi>=18.5&&bmi<20&&goal==="lose"&&<div style={{marginTop:7,fontSize:11,color:"#a6440f",background:"#FFF6E5",border:"1px solid #ecc98a",borderRadius:8,padding:"5px 8px",lineHeight:1.45}}>{lang==="he"?"⚠️ ה-BMI שלך קרוב לגבול התחתון של הטווח התקין. ירידה נוספת כדאית רק בליווי רופא/ה או דיאטן/ית.":"⚠️ Your BMI is close to the lower end of the healthy range. Further loss is best done with a doctor or dietitian."}</div>}
           {(+profile.age>=65)&&<div style={{marginTop:7,fontSize:10.5,color:"#1E3A2B",background:"#E8EFE9",borderRadius:8,padding:"5px 8px",lineHeight:1.4}}>{lang==="he"?"💪 מגיל 65: החלבון והלאוצין שבתפריט עובדים הרבה יותר טוב יחד עם אימוני כוח — 2–3 פעמים בשבוע (משקולות קלות, גומיות, קימה מכיסא), באישור רופא.":"💪 From age 65: the protein and leucine in the menu work much better together with strength training — 2–3 times a week (light weights, bands, chair stands), with your doctor's approval."}</div>}
           {tdee&&<div style={{marginTop:7,fontSize:10,color:"#6B7C72",textAlign:"center"}}>{lang==="he"?"יעד":"Target"}: <span style={{color:"#8C6D53",fontWeight:700}}>{target}</span> kcal{(+profile.kcalAdj||0)!==0?(lang==="he"?` (כולל תיקון לפי מעקב המשקל: ${profile.kcalAdj>0?"+":""}${profile.kcalAdj})`:` (incl. weight-tracking correction: ${profile.kcalAdj>0?"+":""}${profile.kcalAdj})`):""}</div>}
         </div>
         <div style={{background:"#F5F2EB",borderRadius:10,padding:"9px 10px",border:"1px solid #E2DED4",marginTop:9}}>
-          <div style={{fontSize:10,color:"#6B7C72",marginBottom:6}}>{lang==="he"?"רגישויות, אלרגיות ופסח — מזונות ומתכונים עם הרכיבים שנבחרו לא יוצעו":"Sensitivities, allergies & Passover — foods and recipes containing the selected items won't be suggested"}</div>
+          <div style={{fontSize:10,color:"#6B7C72",marginBottom:6}}>{lang==="he"?"תזונה טבעונית, רגישויות, אלרגיות ופסח — מזונות ומתכונים עם הרכיבים שנבחרו לא יוצעו":"Vegan diet, sensitivities, allergies & Passover — foods and recipes containing the selected items won't be suggested"}</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
             {Object.entries(SENS_GROUPS).map(([k,g])=>{ const on=(profile.sensitivities||[]).includes(k); return (
-              <button key={k} onClick={()=>setProfile(p=>{ const cur=p.sensitivities||[]; return {...p,sensitivities:cur.includes(k)?cur.filter(x=>x!==k):[...cur,k]}; })} style={{padding:"5px 11px",borderRadius:20,border:on?"none":"1px solid #D9D3C5",background:on?"#c62828":"#FFFFFF",color:on?"white":"#1E3A2B",fontSize:12,fontWeight:700,cursor:"pointer"}}>{on?"🚫 ":""}{lang==="he"?g.he:g.en}</button>); })}
+              <button key={k} onClick={()=>setProfile(p=>{ const cur=p.sensitivities||[]; return {...p,sensitivities:cur.includes(k)?cur.filter(x=>x!==k):[...cur,k]}; })} style={{padding:"5px 11px",borderRadius:20,border:on?"none":"1px solid #D9D3C5",background:on?(k==="vegan"?"#2e7d32":"#c62828"):"#FFFFFF",color:on?"white":"#1E3A2B",fontSize:12,fontWeight:700,cursor:"pointer"}}>{on?(k==="vegan"?"🌱 ":"🚫 "):""}{lang==="he"?g.he:g.en}</button>); })}
           </div>
           {(profile.sensitivities||[]).includes("soy")&&<div style={{fontSize:10.5,color:"#a6440f",marginTop:5}}>{lang==="he"?"ללא סויה קשה יותר להגיע ליעד הסידן — מומלץ משקה צמחי מועשר בסידן (שיבולת שועל / שקדים).":"Without soy, calcium is harder to reach — a calcium-fortified plant milk (oat / almond) is recommended."}</div>}
           {(profile.sensitivities||[]).includes("kitniyot")&&<div style={{fontSize:10.5,color:"#a6440f",marginTop:5}}>{lang==="he"?"ללא קטניות, סויה ודגנים כמעט אין מקורות חלבון צמחיים — מומלץ לבחור בתכנון \"שלב מוצרים מן החי\" (ביצים ומוצרי חלב) לימי החג.":"Without legumes, soy and grains there are almost no plant protein sources — for the holiday, choose planning with animal products (eggs and dairy)."}</div>}
           {(profile.sensitivities||[]).some(k=>k==="passover"||k==="kitniyot")&&<div style={{fontSize:10.5,color:"#6B7C72",marginTop:5}}>{lang==="he"?"זכרו לבטל את מצב פסח אחרי החג. קינואה נשארת בתפריט — יש לבדוק הכשר לפסח.":"Remember to turn Passover mode off after the holiday. Quinoa stays on the menu — check for Passover certification."}</div>}
           {(profile.sensitivities||[]).includes("gluten")&&<div style={{fontSize:10.5,color:"#6B7C72",marginTop:5}}>{lang==="he"?"שיבולת שועל נשארת בתפריט — יש לבחור מוצר המסומן \"ללא גלוטן\".":"Oats stay on the menu — choose a product labeled gluten-free."}</div>}
         </div>
+        <div style={{background:"#F5F2EB",borderRadius:10,padding:"9px 10px",border:"1px solid #E2DED4",marginTop:9}}>
+          <div style={{fontSize:11,color:"#1E3A2B",fontWeight:700,marginBottom:3}}>{lang==="he"?"🩺 האם יש לך מצב רפואי או תרופה קבועה מאלה?":"🩺 Do you have any of these conditions or medications?"}</div>
+          <div style={{fontSize:10,color:"#6B7C72",marginBottom:6}}>{lang==="he"?"התפריט האוטומטי בנוי לאנשים בריאים. הסימון לא משנה את התפריט — הוא מציג הנחיה והפניה, ונכנס לדוח למטפל.":"Auto-planning is designed for healthy adults. Marking doesn't change the menu — it shows guidance and a referral, and appears in the practitioner report."}</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {Object.entries(MEDICAL_FLAGS).map(([k,g])=>{ const on=(profile.medical||[]).includes(k); return (
+              <button key={k} onClick={()=>setProfile(p=>{ const cur=(p.medical||[]).filter(x=>x!=="none"); return {...p,medical:cur.includes(k)?cur.filter(x=>x!==k):[...cur,k]}; })} style={{padding:"5px 11px",borderRadius:20,border:on?"none":"1px solid #D9D3C5",background:on?(g.sev>=2?"#c62828":"#b26a00"):"#FFFFFF",color:on?"white":"#1E3A2B",fontSize:12,fontWeight:700,cursor:"pointer"}}>{on?"✓ ":""}{lang==="he"?g.he:g.en}</button>); })}
+            {(()=>{ const on=(profile.medical||[]).includes("none"); return <button onClick={()=>setProfile(p=>({...p,medical:on?[]:["none"]}))} style={{padding:"5px 11px",borderRadius:20,border:on?"none":"1px solid #D9D3C5",background:on?"#2e7d32":"#FFFFFF",color:on?"white":"#1E3A2B",fontSize:12,fontWeight:700,cursor:"pointer"}}>{on?"✓ ":""}{lang==="he"?"אין":"None"}</button>; })()}
+          </div>
+          {medicalFlagsOf(profile).map(k=><div key={k} style={{fontSize:10.5,color:MEDICAL_FLAGS[k].sev>=2?"#b3261e":"#a6440f",marginTop:5,lineHeight:1.45}}><b>{lang==="he"?MEDICAL_FLAGS[k].he:MEDICAL_FLAGS[k].en}:</b> {MEDICAL_FLAGS[k].note[lang==="he"?"he":"en"]}</div>)}
+        </div>
       </div>)}
     </div>
   );
 }
 
+// ── תצוגה פשוטה (ביקורת משתמשים — "חשיפה הדרגתית"): מסכים דלי מידע, והפירוט המלא במרחק לחיצה. אזהרות בטיחות
+// (תקרות UL, נתרן, חוסר מתחת ל-EAR) מוצגות תמיד. בקלוריות — "✓ בטווח" במקום מספרים
+const SIMPLE_TIPS={
+  calcium:{he:"משקה סויה מועשר, טחינה, טופו, כרוב וברוקולי",en:"fortified soy drink, tahini, tofu, cabbage and broccoli"},
+  iron:{he:"עדשים, חומוס או טופו — יחד עם פלפל או הדרים",en:"lentils, chickpeas or tofu — with pepper or citrus"},
+  zinc:{he:"זרעי דלעת, קטניות ושיבולת שועל",en:"pumpkin seeds, legumes and oats"},
+  vitE:{he:"שקדים, זרעי חמנייה או טחינה",en:"almonds, sunflower seeds or tahini"},
+  choline:{he:"סויה, קטניות, נבט חיטה וברוקולי",en:"soy, legumes, wheat germ and broccoli"},
+  iodine:{he:"מלח מיודד (בכמות מוגבלת)",en:"iodized salt (in a limited amount)"},
+  magnesium:{he:"קטניות, דגנים מלאים וזרעים",en:"legumes, whole grains and seeds"},
+  potassium:{he:"ירקות, פירות וקטניות",en:"vegetables, fruit and legumes"},
+  vitA:{he:"גזר, בטטה וירקות עלים",en:"carrot, sweet potato and leafy greens"},
+  vitC:{he:"פלפל, הדרים או קיווי",en:"pepper, citrus or kiwi"},
+  vitK:{he:"ירקות עלים",en:"leafy greens"},
+  vitB9:{he:"קטניות וירקות עלים",en:"legumes and leafy greens"},
+  selenium:{he:"אגוז ברזיל אחד",en:"one Brazil nut"},
+  copper:{he:"אגוזים וקטניות",en:"nuts and legumes"},
+};
+const simpleTipOf=(k,lang)=>(SIMPLE_TIPS[k]||{he:"דגנים מלאים, קטניות ואגוזים",en:"whole grains, legumes and nuts"})[lang==="he"?"he":"en"];
+function SimpleShell({title,children,full,lang}){
+  const [open,setOpen]=useState(false); const he=lang==="he";
+  return (<div style={{background:"#FFFFFF",borderRadius:16,padding:14,marginBottom:10,border:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)",direction:he?"rtl":"ltr"}}>
+    <div style={{fontSize:15,fontWeight:800,color:"#1E3A2B",marginBottom:8}}>{title}</div>
+    {children}
+    {full&&<button onClick={()=>setOpen(o=>!o)} style={{marginTop:8,background:"transparent",border:"none",color:"#2277a8",fontSize:13,fontWeight:700,cursor:"pointer",padding:0}}>{open?(he?"הסתר פירוט ‹":"Hide details ‹"):(he?"פירוט ›":"Details ›")}</button>}
+    {full&&open&&<div style={{marginTop:10}}>{full}</div>}
+  </div>);
+}
+const simpleLine=(icon,text,color)=>(<div style={{display:"flex",gap:7,alignItems:"flex-start",fontSize:14,color:color||"#1E3A2B",lineHeight:1.5,marginBottom:5}}><span>{icon}</span><span>{text}</span></div>);
+// תצוגה פשוטה שלב ב' — סיכום שבועי במילים (בלי ציון מספרי) + הצעה מעשית אחת בלבד. low = מפתחות החסרים, מהחסר ביותר
+function simpleWeekVerdict(low,lang){
+  const he=lang==="he"; const nm=k=>(DRI_LABELS[k]&&DRI_LABELS[k][he?"he":"en"])||k; const out=[];
+  if (!low.length) { out.push(simpleLine("✓",he?"שבוע מצוין — כל הוויטמינים והמינרלים בטווח.":"An excellent week — all vitamins and minerals on target.","#2e7d32")); return out; }
+  const names=low.slice(0,3).map(nm).join(he?", ":", ")+(low.length>3?(he?` ועוד ${low.length-3}`:` and ${low.length-3} more`):"");
+  out.push(simpleLine(low.length<=3?"🙂":"•",(low.length<=3?(he?"שבוע טוב. כדאי לחזק: ":"A good week. Worth boosting: "):(he?"יש מה לחזק השבוע: ":"Some things to boost this week: "))+names+".",low.length<=3?"#1E3A2B":"#a6440f"));
+  out.push(simpleLine("💡",he?`הצעה אחת: להוסיף ${simpleTipOf(low[0],lang)} (ל${nm(low[0])}).`:`One tip: add ${simpleTipOf(low[0],lang)} (for ${nm(low[0])}).`));
+  return out;
+}
+function SimpleDaySummary({totals,target,profile,lang,full}){
+  const he=lang==="he"; const dri=getDRI(profile.age||35,profile.sex||"male",profile.pregnant); const hp=resolveHealthProfile(profile);
+  const kc=calcKcalActual(totals); const tgt=target||2000; const pct=kc/tgt*100; const w=+profile.weight||0;
+  const lines=[];
+  if (!(kc>0)) lines.push(simpleLine("🍽️",he?"עוד לא נבנה תפריט ליום הזה — אפשר להתחיל מ״תכנון אוטומטי״.":"No menu for this day yet — try 'Auto-plan'."));
+  else {
+    // בטיחות — תמיד
+    ["selenium","iodine","manganese"].forEach(k=>{ const d=dri[k]; if(d?.ul!=null&&(totals[k]||0)>d.ul) lines.push(simpleLine("⛔",he?`${DRI_LABELS[k].he} מעל התקרה הבטוחה — כדאי לצמצם את המקור העיקרי.`:`${DRI_LABELS[k].en} above the safe ceiling — reduce its main source.`,"#b3261e")); });
+    if ((totals.sodium||0)>(hp.sodiumMax||2300)) lines.push(simpleLine("⛔",he?"נתרן מעל התקרה היומית — פחות מלח ומזון מעובד.":"Sodium above the daily ceiling — less salt and processed food.","#b3261e"));
+    lines.push(simpleLine(pct>=95&&pct<=105?"✓":"•", pct>=95&&pct<=105?(he?"הקלוריות בטווח":"Calories in range"):pct<95?(he?"הקלוריות מתחת ליעד":"Calories below target"):(he?"הקלוריות מעל היעד":"Calories above target"), pct>=95&&pct<=105?"#2e7d32":"#a6440f"));
+    if (w && (totals.protein||0) < w*hp.protPerKg*0.9) lines.push(simpleLine("•",he?"חלבון נמוך — כדאי להוסיף קטנית, טופו או תורמוס.":"Protein is low — add legumes, tofu or lupins.","#a6440f"));
+    const low=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&k!=="sodium"&&dri[k]&&(totals[k]||0)<dri[k].warn).sort((a,b)=>(totals[a]||0)/dri[a].dri-(totals[b]||0)/dri[b].dri).slice(0,3);
+    low.forEach(k=>lines.push(simpleLine("•",he?`חסר ${DRI_LABELS[k].he} — למשל ${simpleTipOf(k,lang)}.`:`Low in ${DRI_LABELS[k].en} — e.g. ${simpleTipOf(k,lang)}.`,"#a6440f")));
+    if (!low.length && pct>=95 && pct<=105) lines.push(simpleLine("✓",he?"היום מאוזן":"A balanced day","#2e7d32"));
+    lines.push(<div key="n" style={{fontSize:12.5,color:"#6B7C72",marginTop:4}}>{he?"יום בודד הוא תמונת מצב — העמידה ביעדים נמדדת לאורך השבוע (לשונית מיקרו). 💊 B12 וויטמין D — לפי יומן התוספים.":"A single day is a snapshot — targets are measured over the week (Micro tab). 💊 B12 and vitamin D — see the supplement log."}</div>);
+  }
+  return <SimpleShell lang={lang} title={he?"📊 איך היום שלי":"📊 How's my day"} full={full}>{lines.map((l,i)=><Fragment key={i}>{l}</Fragment>)}</SimpleShell>;
+}
+function SimpleMicroPanel({weekTotals,days,profile,lang,full,sourceLabel}){
+  const he=lang==="he"; const dri=planDRI(getDRI(profile.age||35,profile.sex||"male",profile.pregnant)); const hp=resolveHealthProfile(profile);
+  const lines=[];
+  if (!days) lines.push(simpleLine("🍽️",he?"עוד אין תפריט לשבוע הזה.":"No menu for this week yet."));
+  else {
+    const wk=k=>wkDri(dri[k])*days;
+    ["selenium","iodine","manganese"].forEach(k=>{ const d=dri[k]; if(d?.ul!=null&&(weekTotals[k]||0)>d.ul*days) lines.push(simpleLine("⛔",he?`${DRI_LABELS[k].he} מעל התקרה הבטוחה השבועית.`:`${DRI_LABELS[k].en} above the weekly safe ceiling.`,"#b3261e")); });
+    if ((weekTotals.sodium||0)>(hp.sodiumMax||2300)*days*1.02) lines.push(simpleLine("⛔",he?"נתרן מעל התקרה השבועית — פחות מלח ומזון מעובד.":"Sodium above the weekly ceiling — less salt and processed food.","#b3261e"));
+    const low=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&k!=="sodium"&&dri[k]&&(weekTotals[k]||0)<wk(k)*0.98).sort((a,b)=>(weekTotals[a]||0)/wk(a)-(weekTotals[b]||0)/wk(b));
+    lines.push(...simpleWeekVerdict(low,lang));
+    lines.push(simpleLine("💊",he?"B12 וויטמין D — לפי יומן התוספים.":"B12 and vitamin D — see the supplement log."));
+    lines.push(<div key="n" style={{fontSize:12.5,color:"#6B7C72",marginTop:4}}>{he?`מבוסס על ${days} ימים עם תפריט השבוע (${sourceLabel}).`:`Based on ${days} days with a menu this week (${sourceLabel}).`}</div>);
+  }
+  return <SimpleShell lang={lang} title={he?"💊 ויטמינים ומינרלים השבוע":"💊 Vitamins & minerals this week"} full={full}>
+    <CalciumNotice lang={lang} profile={profile} pct={days===7?Math.round((weekTotals.calcium||0)/(getDRI(profile.age||35,profile.sex||"male",profile.pregnant).calcium.dri*7)*100):null}/>
+    {lines.map((l,i)=><Fragment key={i}>{l}</Fragment>)}</SimpleShell>;
+}
+// תצוגה פשוטה שלב ב' — אבות המזון: רק חלבון, כ-✓ או ⚠ בלי מספרים. כל השאר (מאקרו, אומגות, אמינו, שומן רווי) בפירוט
+function SimpleMacroPanel({totals,profile,lang,full}){
+  const he=lang==="he"; const hp=resolveHealthProfile(profile); const kc=calcKcalActual(totals); const w=+profile.weight||0;
+  const lines=[];
+  if (!(kc>0)) lines.push(simpleLine("🍽️",he?"עוד לא נבנה תפריט ליום הזה.":"No menu for this day yet."));
+  else {
+    const prot=totals.protein||0;
+    const ok=w?prot>=w*hp.protPerKg*0.9:prot*4/kc*100>=(hp.protMin||18)*0.9;
+    lines.push(ok?simpleLine("✓",he?"החלבון מספיק היום":"Protein is sufficient today","#2e7d32")
+      :simpleLine("⚠",he?"החלבון נמוך היום — כדאי להוסיף קטנית, טופו או תורמוס.":"Protein is low today — add legumes, tofu or lupins.","#a6440f"));
+    lines.push(<div key="n" style={{fontSize:12.5,color:"#6B7C72",marginTop:4}}>{he?"פחמימות, שומן, סיבים, אומגות וחומצות אמינו — בפירוט.":"Carbs, fat, fiber, omegas and amino acids — in the details."}</div>);
+  }
+  return <SimpleShell lang={lang} title={he?"🍽 אבות המזון היום":"🍽 Macronutrients today"} full={full}>{lines.map((l,i)=><Fragment key={i}>{l}</Fragment>)}</SimpleShell>;
+}
 function NDSBadge({score,lang,onInfo}){
   const tx=T[lang];
   const color=score>=80?"#2e7d32":score>=50?"#b8860b":"#c1440e";
@@ -17522,7 +17982,11 @@ function calcWeeklyMicroScore(weeklyTotals,profile){
   MICRO_KEYS.forEach(k=>{
     if(skip.has(k))return;
     const d=dri[k];if(!d)return;
-    const pct=(weeklyTotals[k]||0)/(d.dri*7);
+    // ברזל לנשים בגיל הפוריות (ביקורת דיאטנית): הציון נמדד מול יעד התכנון (18 מ"ג) — היעד המוצג (32.4) כמעט לא בר-השגה
+    // ממזון, ומדידה מולו הייתה מורידה 5 נקודות בכל שבוע בלי קשר למה שנאכל
+    if (k==="sodium") { const cap=resolveHealthProfile(profile).sodiumMax||2300; if ((weeklyTotals[k]||0)>cap*7*1.02) score-=5; return; } // נתרן: יורד רק מעל התקרה
+    const tgtD=(k==="iron"&&d.planDri!=null)?d.planDri:d.dri;
+    const pct=(weeklyTotals[k]||0)/(tgtD*7);
     if(pct<0.98) score-=5; // אותו סף כמו כלל היעד השבועי (98%) ורשימת הפירוט — לא 100%
   });
   return Math.max(0,score);
@@ -17633,7 +18097,7 @@ function calcWeeklyOmegaRatio(weeklyTotals){
 function WeeklyOmegaBar({plannedTotals,actualTotals,lang,onClick,onInfo}){
   const plannedRatio=calcWeeklyOmegaRatio(plannedTotals);
   const actualRatio=calcWeeklyOmegaRatio(actualTotals);
-  const colorFor=r=>r===null?"#8C6D5399":r<=5?"#2e7d32":"#c62828";
+  const colorFor=r=>r===null?"#8C6D5399":"#1E3A2B"; // היחס — מידע בלבד
   const fmt=r=>r===null?"—":`${r.toFixed(1)}:1`;
   // עוצב מחדש כדי להתאים בדיוק לסגנון/גודל הקוביות של OmegaPanel (היומי) — ובלי איור הדג, בדיוק כמו הטיפול
   // שניתן לקוביות נתרן/אשלגן, כך שקוביית "שבועי" תיראה כתאום מלא לקובייה "יומי"
@@ -17671,49 +18135,39 @@ function WeeklyOmegaBar({plannedTotals,actualTotals,lang,onClick,onInfo}){
 // כבסיס), DHA נמוך משמעותית, כ-0.5-4% (משתמשים ב-2% כבסיס). מכיוון ששני חומצות השומן מתחרות על אותם אנזימים
 // (דלתא-6-דסטורז ואלונגז), יחס אומגה6:3 גבוה מפחית את יעילות ההמרה בפועל — מודלים את זה ע"י הפחתה יחסית כשהיחס
 // עולה מעל 5:1 (ללא בונוס מעבר לבסיס גם כשהיחס נמוך מ-5:1, כדי לא להטעות כלפי מעלה)
-function calcEpaDhaEstimate(weeklyTotals){
-  const ala = weeklyTotals.omega3||0;
-  const o6 = weeklyTotals.omega6||0;
-  const ratio = ala>0 ? o6/ala : null;
-  const ratioAdj = ratio!=null ? Math.min(1, Math.max(0.3, 5/ratio)) : 1;
-  return { epa: ala*0.08*ratioAdj, dha: ala*0.02*ratioAdj, ratio };
+// עדכון (ביקורת דיאטנית): ההמרה מוצגת כטווח ולא כמספר אחד, ונמוכה יותר לגברים (מחקרי סימון איזוטופי: DHA אצל גברים
+// לרוב פחות מ-1%, אצל נשים בגיל הפוריות גבוהה יותר בזכות אסטרוגן). ההמרה ל-DHA לא עולה ביחס ישר לכמות ה-ALA, ולכן
+// מעל כ-2 גר' ALA ביום נספר רק חלק מהעודף. הטווח לא מושווה ליעד EPA+DHA — היעד הזה מתייחס לחומצות מוכנות (דגים/תוסף)
+function calcEpaDhaEstimate(weeklyTotals, sex){
+  const ala = weeklyTotals.omega3||0; const perDay=ala/7;
+  const eff = 7*(Math.min(perDay,2) + Math.max(0,perDay-2)*0.5); // תשואה פוחתת מעל 2 גר' ביום
+  const f = sex==="female";
+  return { epaLo: eff*(f?0.05:0.03), epaHi: eff*(f?0.10:0.08), dhaLo: eff*(f?0.005:0.0), dhaHi: eff*(f?0.03:0.01) };
 }
 
-function WeeklyEpaDhaBar({plannedTotals,actualTotals,lang}){
-  const planned = calcEpaDhaEstimate(plannedTotals);
-  const actual = calcEpaDhaEstimate(actualTotals);
-  // יעד שבועי מומלץ ל-EPA+DHA משולב: 250-500 מ"ג/יום הוא טווח נפוץ בהנחיות בריאות כלליות (WHO/EFSA/ISSFAL) —
-  // לא DRI רשמי (ל-EPA/DHA בנפרד אין AI/RDA רשמי בטבלאות ה-DRI האמריקאיות, רק ל-ALA/אומגה3 הכולל). שבועי: 1.75-3.5 גר' משולב
-  const weeklyTargetLowG = 1.75, weeklyTargetHighG = 3.5;
-  const colorForCombined = g => g>=weeklyTargetLowG ? "#2e7d32" : g>=weeklyTargetLowG*0.5 ? "#b8722e" : "#c62828";
-  const dir = lang==="he" ? "rtl" : "ltr";
-  // הוגדל משמעותית ובוצע ניגוד-צבע חזק יותר בכל מקום (לבקשת המשתמש) — הגרסה הקודמת השתמשה בגדלי טקסט זעירים
-  // (8-12px) ובצבע אפור בהיר (#6B7C72) לרוב הכיתובים, מה שהפך את הפאנל לקשה מאוד לקריאה. כאן כל הכיתובים
-  // המשניים עברו לצבע כהה וקריא (#1E3A2B/#4a5a52 עם משקל 600-700), והמספרים המרכזיים גדלו משמעותית
+function WeeklyEpaDhaBar({plannedTotals,actualTotals,lang,sex}){
+  const planned = calcEpaDhaEstimate(plannedTotals,sex);
+  const actual = calcEpaDhaEstimate(actualTotals,sex);
+  const mg=v=>Math.round(v*1000/7/5)*5; // גר' לשבוע → מ"ג ליום, מעוגל ל-5
+  const rng=(lo,hi)=>`${mg(lo)}–${mg(hi)}`;
+  const dir = lang==="he" ? "rtl" : "ltr"; const he=lang==="he";
+  const box=(title,t)=>(<div style={{flex:1,background:"#F5F2EB",borderRadius:10,padding:"12px 14px"}}>
+    <div style={{fontSize:15,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{title}</div>
+    <div style={{fontSize:17,fontWeight:800,color:"#4a5a52",marginBottom:3}}><bdi>EPA {rng(t.epaLo,t.epaHi)} {he?"מ\"ג":"mg"}</bdi></div>
+    <div style={{fontSize:17,fontWeight:800,color:"#4a5a52"}}><bdi>DHA {rng(t.dhaLo,t.dhaHi)} {he?"מ\"ג":"mg"}</bdi></div>
+    <div style={{fontSize:12.5,color:"#6B7C72",marginTop:4}}>{he?"ליום, בערך":"per day, roughly"}</div>
+  </div>);
   return(
     <div style={{width:"100%",background:"#FFFFFF",borderRadius:14,padding:"18px 20px",border:"1px solid #E2DED4",marginBottom:14,direction:dir,textAlign:dir==="rtl"?"right":"left",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.08)"}}>
-      <div style={{fontSize:18,fontWeight:800,color:"#3a7bc8",marginBottom:10}}>{lang==="he"?"🧬 המרת ALA ל-EPA/DHA (אומדן)":"🧬 ALA→EPA/DHA Conversion (estimate)"}</div>
-      <div style={{fontSize:15,fontWeight:700,color:"#1E3A2B",marginBottom:14}}>
-        {lang==="he"?"יעד שבועי: ":"Weekly target: "}<bdi style={{fontWeight:800,color:"#1E3A2B"}}>{fmtN(weeklyTargetLowG,2)}–{fmtN(weeklyTargetHighG,2)}g</bdi> EPA+DHA
-      </div>
-      <div style={{display:"flex",gap:24,marginBottom:10}}>
-        <div style={{flex:1,background:"#F5F2EB",borderRadius:10,padding:"12px 14px"}}>
-          <div style={{fontSize:15,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{lang==="he"?"מתוכנן":"Planned"}</div>
-          <div style={{fontSize:19,fontWeight:800,color:"#2e7d32",marginBottom:3}}><bdi>EPA {fmtN(planned.epa,2)}g</bdi></div>
-          <div style={{fontSize:19,fontWeight:800,color:"#3a7bc8",marginBottom:3}}><bdi>DHA {fmtN(planned.dha,2)}g</bdi></div>
-          <div style={{fontSize:16,fontWeight:800,color:colorForCombined(planned.epa+planned.dha),marginTop:6}}>{lang==="he"?"סה״כ ":"Total "}<bdi>{fmtN(planned.epa+planned.dha,2)}g</bdi></div>
-        </div>
-        <div style={{flex:1,background:"#F5F2EB",borderRadius:10,padding:"12px 14px"}}>
-          <div style={{fontSize:15,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{lang==="he"?"בפועל":"Actual"}</div>
-          <div style={{fontSize:19,fontWeight:800,color:"#2e7d32",marginBottom:3}}><bdi>EPA {fmtN(actual.epa,2)}g</bdi></div>
-          <div style={{fontSize:19,fontWeight:800,color:"#3a7bc8",marginBottom:3}}><bdi>DHA {fmtN(actual.dha,2)}g</bdi></div>
-          <div style={{fontSize:16,fontWeight:800,color:colorForCombined(actual.epa+actual.dha),marginTop:6}}>{lang==="he"?"סה״כ ":"Total "}<bdi>{fmtN(actual.epa+actual.dha,2)}g</bdi></div>
-        </div>
+      <div style={{fontSize:18,fontWeight:800,color:"#3a7bc8",marginBottom:10}}>{he?"🧬 המרת ALA ל-EPA/DHA (הערכה בלבד)":"🧬 ALA→EPA/DHA conversion (estimate only)"}</div>
+      <div style={{display:"flex",gap:16,marginBottom:10}}>
+        {box(he?"מתוכנן":"Planned",planned)}
+        {box(he?"בפועל":"Actual",actual)}
       </div>
       <div style={{fontSize:15,fontWeight:600,color:"#8C6D53",lineHeight:1.6,marginTop:10,background:"#FBF3E0",border:"1px solid #e8d9a3",borderRadius:10,padding:"10px 12px"}}>
-        {lang==="he"
-          ?"⚠️ אומדן גס — קצב ההמרה משתנה מאוד בין אנשים ואינו ניתן למדידה מהתזונה בלבד. מבוסס על טווחי ספרות (EPA כ-8%, DHA כ-2% מה-ALA), פוחת כשיחס אומגה6:3 עולה מעל 5:1. לא תחליף לבדיקת דם או תוסף שמן אצות ישיר."
-          :"⚠️ Rough estimate — conversion varies widely between people and can't be measured from diet alone. Based on literature ranges (EPA ~8%, DHA ~2% of ALA), reduced when the omega-6:3 ratio exceeds 5:1. Not a substitute for bloodwork or a direct algae-oil supplement."}
+        {he
+          ?`⚠️ טווח משוער בלבד: ההמרה בגוף משתנה מאוד בין אנשים, נמוכה יותר אצל גברים, וההמרה ל-DHA כמעט לא עולה כשאוכלים יותר ALA. לכן הטווח לא מושווה ליעד EPA+DHA (250–500 מ"ג ביום) — היעד הזה מתייחס לחומצות שמגיעות מוכנות, מדגים או מתוסף. הדבר החשוב בתזונה צמחית הוא ALA מספיק בכל יום. תוסף DHA/EPA מאצות אינו הכרחי לרוב המבוגרים הבריאים, ואפשר לשקול אותו בהתייעצות.`
+          :`⚠️ A rough range only: conversion varies widely between people, is lower in men, and conversion to DHA barely rises with more ALA. So the range isn't compared with the EPA+DHA target (250–500 mg a day) — that target refers to ready-made fatty acids from fish or a supplement. What matters on a plant-based diet is enough ALA every day. An algae DHA/EPA supplement isn't necessary for most healthy adults and can be considered with professional advice.`}
       </div>
     </div>
   );
@@ -17958,7 +18412,7 @@ function WeeklyOmegaModal({plannedTotals,actualTotals,lang,onClose}){
   ].map(r=>{
     const o3=r.totals.omega3||0, o6=r.totals.omega6||0, o9=r.totals.omega9||0;
     const ratio=calcWeeklyOmegaRatio(r.totals);
-    const ok=ratio!==null && ratio<=5;
+    const ok=true; // היחס — מידע בלבד (ביקורת דיאטנית)
     return {...r,o3,o6,o9,ratio,ok};
   });
   return(
@@ -17970,8 +18424,8 @@ function WeeklyOmegaModal({plannedTotals,actualTotals,lang,onClose}){
         </div>
         <div style={{fontSize:10,color:"#6B7C72",marginBottom:12}}>
           {lang==="he"
-            ?"סך אומגה3/6/9 לכל השבוע (לא ממוצע יחסים יומיים — סכום כל הכמויות, ורק אז יחס אחד) — יעד: Ω6:Ω3 ≤5:1"
-            :"Total omega3/6/9 across the whole week (not an average of daily ratios — all amounts summed first, then one ratio) — target: Ω6:Ω3 ≤5:1"}
+            ?"סך אומגה3/6/9 לכל השבוע (לא ממוצע יחסים יומיים — סכום כל הכמויות, ורק אז יחס אחד) — היחס מוצג כמידע (עד כ-5:1 נחשב טוב); מה שקובע הוא כמות ה-ALA"
+            :"Total omega3/6/9 across the whole week (not an average of daily ratios — all amounts summed first, then one ratio) — the ratio is shown for information (up to ~5:1 is considered good); what matters is the amount of ALA"}
         </div>
         {rows.map(r=>(
           <div key={r.key} style={{background:"#FFFFFF",borderRadius:10,padding:"10px 12px",marginBottom:8,border:`1px solid ${r.ratio===null?"#E2DED4":r.ok?"#65792f55":"#c6282855"}`}}>
@@ -17987,7 +18441,7 @@ function WeeklyOmegaModal({plannedTotals,actualTotals,lang,onClose}){
             <div style={{background:"#F5F2EB",borderRadius:8,padding:"6px 10px",display:"flex",justifyContent:"space-between"}}>
               <span style={{fontSize:10,color:"#1E3A2B"}}>{lang==="he"?"יחס Ω6:Ω3":"Ω6:Ω3 ratio"}</span>
               <span dir="ltr" style={{display:"inline-block",fontWeight:700,fontSize:11,color:r.ratio===null?"#1E3A2B":r.ok?"#65792f":"#c62828"}}>
-                {r.ratio===null?"—":`${r.ratio.toFixed(1)}:1`} {r.ratio!==null&&(r.ok?"✅":"⚠️")}
+                {r.ratio===null?"—":`${r.ratio.toFixed(1)}:1`} 
               </span>
             </div>
           </div>
@@ -18310,9 +18764,9 @@ function Summary({totals,target,goal,wKg,profile,lang,onInfo,nds,estimatedCost,d
             <span style={{fontSize:11,color:"#1E3A2B",fontWeight:700}}>{tx.fiber}</span>
             <InfoTag infoKey="fiber" lang={lang} onClick={()=>onInfo("fiber")}/>
           </div>
-          <span style={{fontSize:11,color:"#6a3d8e",fontWeight:800}}>{fmtN(totals.fiber,0)}/{hp.fiberMin}g</span>
+          {(()=>{ const ft=fiberTargetsOf(target,profile?.age); const low=(totals.fiber||0)<ft.min; return <span style={{fontSize:11,color:low?"#b8722e":"#6a3d8e",fontWeight:800}}>{fmtN(totals.fiber,0)}g <span style={{fontWeight:600,color:"#6B7C72"}}>· {lang==="he"?`מינימום ${ft.min} · שאיפה ${ft.goal}`:`min ${ft.min} · aim ${ft.goal}`}</span></span>; })()}
         </div>
-        <Bar value={totals.fiber} goal={hp.fiberMin} color="#8e5fa8" h={4} trackColor="#E2DED4"/>
+        <Bar value={totals.fiber} goal={fiberTargetsOf(target,profile?.age).goal} color="#8e5fa8" h={4} trackColor="#E2DED4"/>
       </div>
       <div style={{marginTop:8,background:"#fdecea",borderRadius:9,padding:"7px 10px",border:"1px solid #f0b8ac",fontSize:11,color:"#7a2d05",fontWeight:700}}>
         ⚠ {lang==="he"?"B12 וויטמין D: יש כאן מקור טבעי נוסף (ביצים/חלב), אך זה עדיין עשוי שלא להספיק לבד עבור רוב האנשים — יש לוודא עם רופא/דיאטן/ית אם נדרש תיסוף, ובאיזה מינון.":"B12 & Vitamin D: there's an additional natural source here (eggs/dairy), but it may still not be enough alone for most people — check with a physician/dietitian whether supplementation is needed, and at what dose."}
@@ -18325,7 +18779,7 @@ function Summary({totals,target,goal,wKg,profile,lang,onInfo,nds,estimatedCost,d
 }
 
 function OmegaPanel({totals,lang,onInfo}){
-  const tx=T[lang];const r=totals.omega3>0?(totals.omega6/totals.omega3).toFixed(1):"—";const ok=totals.omega3>0&&totals.omega6/totals.omega3<=5;
+  const tx=T[lang];const r=totals.omega3>0?(totals.omega6/totals.omega3).toFixed(1):"—";const ok=true; // היחס — מידע בלבד (ביקורת דיאטנית)
   return(<div style={{background:"#FFFFFF",borderRadius:16,padding:14,marginBottom:10,border:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)",direction:tx.dir}}>
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
       <span style={{fontSize:12,color:"#3a7bc8",fontWeight:700}}>{lang==="he"?"אומגה 3 — יומי":"Omega-3 — Daily"}</span>
@@ -18339,7 +18793,7 @@ function OmegaPanel({totals,lang,onInfo}){
       ))}
     </div>
     <div style={{background:"#F5F2EB",borderRadius:8,padding:"6px 10px",display:"flex",justifyContent:"space-between",border:`1px solid ${ok?"#65792f55":"#c6282855"}`}}>
-      <span style={{fontSize:11,color:"#1E3A2B"}}>{tx.ratio}</span><span dir="ltr" style={{display:"inline-block",fontWeight:700,fontSize:12,color:ok?"#65792f":"#c62828"}}>{r}:1 {ok?"✅":"⚠️"}</span>
+      <span style={{fontSize:11,color:"#1E3A2B"}}>{tx.ratio}</span><span dir="ltr" style={{display:"inline-block",fontWeight:700,fontSize:12,color:"#1E3A2B"}}>{r}:1 <span style={{fontWeight:400,color:"#6B7C72"}}>{lang==="he"?"(מידע)":"(info)"}</span></span>
     </div>
   </div>);
 }
@@ -18348,7 +18802,7 @@ function KNaPanel({totals,lang,hp,onInfo}){
   const tx=T[lang];
   const k=totals.potassium||0;const na=totals.sodium||0;
   const ratio=na>0?(k/na).toFixed(1):"—";
-  const sodiumTarget = hp?.sodiumMax || 3000;
+  const sodiumTarget = hp?.sodiumMax || 2300;
   // אשלגן תחת CKD עם תקרה מוגדרת: כל ההיגיון מתהפך — "טוב" הוא נמוך, לא "לפחות פי 2 מנתרן" (זה בדיוק ההפך
   // ממה שבטוח לחולה כליות עם הגבלת אשלגן — יעד כזה היה מעודד בפועל להעלות אשלגן, לא להגביל אותו)
   const potCeil = hp?.potassiumMax;
@@ -18416,6 +18870,9 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals}){
       const otherPctC = otherValRaw!=null ? Math.round(otherValRaw/ceilKey*100) : null;
       return {k,val,pct:pctC,ok:val<=ceilKey,deficient:false,isSkip:false,unit:d.unit,dri:ceilKey,warn:ceilKey,warnPct:100,isCeiling:true,otherVal:otherValRaw,otherPct:otherPctC};
     }
+    // נתרן (ביקורת דיאטנית): טווח — מינימום AI (1,500) ותקרה (2,300; מגיל 65 / יתר לחץ דם 2,000). מעל התקרה — לא "ירוק"
+    if (k==="sodium") { const cap=hp.sodiumMax||2300; const pctN=Math.min(999,Math.round(val/d.dri*100));
+      return {k,val,pct:pctN,ok:val>=d.dri&&val<=cap,deficient:val<d.warn,isSkip:false,unit:d.unit,dri:d.dri,warn:d.warn,warnPct:Math.round((d.warn/d.dri)*100),naCap:cap,overCap:val>cap,otherVal:otherValRaw,otherPct:otherValRaw!=null?Math.min(999,Math.round(otherValRaw/d.dri*100)):null}; }
     // המרת RAE לוויטמין A: ביתא-קרוטן ממזון צמחי מומר ב-1:12 (לא 1:1)
     // FDB מאחסן ויטמין A כ-RAE מלא — אין צורך בתיקון נוסף כאן
     // חישוב אחוז לפני עיגול — מונע 97% כש-1.3/1.3
@@ -18449,15 +18906,16 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals}){
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
         <span style={{fontSize:14,color:"#1E3A2B",fontWeight:700}}>{tx.vitamins}</span>
         <InfoTag infoKey="micro" lang={lang} onClick={()=>onInfo("micro")}/>
-        <span style={{marginInlineStart:"auto",fontSize:13,fontWeight:700,color:okCount===scored.length?"#2e7d32":"#b8722e"}}>{okCount}/{scored.length} {lang==="he"?"בטווח":"in range"}</span>
+        <span style={{marginInlineStart:"auto",fontSize:13,fontWeight:700,color:deficient.length?"#c62828":okCount===scored.length?"#2e7d32":"#b8722e"}}>{scored.length-deficient.length}/{scored.length} {lang==="he"?"מעל EAR":"above EAR"} · {okCount} {lang==="he"?"ביעד":"at target"}</span>
       </div>
       <div style={{display:"flex",flexWrap:"wrap",gap:8,fontSize:13,color:"#1E3A2B",fontWeight:600,marginBottom:5}}>
         <span><span style={{color:"#2e7d32"}}>●</span> {lang==="he"?"100%+ מהיעד":"100%+ of target"}</span>
         <span><span style={{color:"#b8722e"}}>●</span> {lang==="he"?"מעל EAR אך מתחת ל-100%":"Above EAR but below 100%"}</span>
         <span><span style={{color:"#c62828"}}>●</span> {lang==="he"?"מתחת ל-EAR":"Below EAR"}</span>
       </div>
+      <div style={{fontSize:13,color:"#1E3A2B",background:"#E8EFE9",borderRadius:9,padding:"6px 9px",marginBottom:8,lineHeight:1.5}}>{lang==="he"?"📅 יום בודד הוא תמונת מצב. היעדים (RDA) נקבעו כממוצע לאורך זמן, ולכן כתום ביום אחד תקין כשהממוצע השבועי משלים. העמידה נמדדת ברמת השבוע (מסך \"ויטמינים ומינרלים — שבועי\"). אדום (מתחת ל-EAR) הוא סימן שכדאי לשים לב אליו.":"📅 A single day is a snapshot. Targets (RDA) are long-term averages, so orange on one day is fine when the weekly average makes up for it. Compliance is measured weekly (the \"Vitamins & minerals — weekly\" screen). Red (below EAR) is the signal worth attention."}</div>
       <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:6,lineHeight:1.5}}>{lang==="he"?"ℹ️ מהו EAR? \"הצריכה הממוצעת הנדרשת\" (Estimated Average Requirement) — הרמה היומית שמספיקה לכ-50% מהאוכלוסייה הבריאה בקבוצת הגיל/מין. צריכה מתחת ל-EAR מצביעה על סיכון ממשי לחוסר קליני. ה-RDA (100% מהיעד כאן) גבוה יותר בכוונה — נקבע כדי לכסות כמעט את כל האוכלוסייה (כ-97-98%), לא רק את החציון.":"ℹ️ What's EAR? \"Estimated Average Requirement\" — the daily level sufficient for about 50% of healthy people in that age/sex group. Intake below EAR signals a real risk of clinical deficiency. The RDA (100% of target here) is set deliberately higher — to cover nearly the whole population (about 97-98%), not just the median."}</div>
-      <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"?"⚠️ יוד: חשיבות ייחודית לבלוטת התריס בתזונה צמחית — יש לוודא צריכה עקבית ממלח מיודד/אצות ים, ולשקול תוסף אם לא מתמלא באופן קבוע.":"⚠️ Iodine: uniquely important for thyroid health on a plant-based diet — ensure consistent intake from iodized salt/seaweed, and consider a supplement if it isn't reliably met."}</div>
+      <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"?"🧂 יוד — כמה צריך? היעד למבוגרים הוא 150 מק\"ג ביום (RDA). הצורך הממוצע (EAR) הוא 95 מק\"ג, והתקרה הבטוחה (UL) 1,100 מק\"ג. כמו בשאר הרכיבים, העמידה נמדדת בממוצע השבועי, כך שיום עם פחות יוד תקין כשהשבוע משלים. מקורות בתפריט: מלח מיודד (כ-30 מק\"ג בגרם, כ-45 מק\"ג ברבע כפית), וואקמה בכמויות קטנות מאוד (חצי גרם, כ-120 מק\"ג; עד גרם ביום — תכולת היוד משתנה מאוד בין מוצרים), ובמצב 'שלב מוצרים מן החי' גם חלב וביצים. בהריון ובהנקה הצורך גבוה יותר (220–290 מק\"ג). עם מחלת בלוטת התריס — להתייעץ.":"🧂 Iodine — how much is needed? The adult target is 150 µg a day (RDA). The average requirement (EAR) is 95 µg, and the safe upper limit (UL) is 1,100 µg. As with other nutrients, compliance is measured as a weekly average, so a lower-iodine day is fine when the week makes up for it. Sources in the menu: iodized salt (about 30 µg per gram, about 45 µg in a quarter teaspoon), wakame in very small amounts (half a gram, about 120 µg; up to a gram a day — iodine content varies widely between products), and in 'Combine animal products' mode also milk and eggs. Needs are higher in pregnancy and breastfeeding (220–290 µg). With thyroid disease, ask your doctor."}</div>
       <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"
         ?"ℹ️ ספיגה משוערת (ליד סידן): הערכה בלבד של הסידן שנספג בפועל — הספיגה שונה בין מקורות (תרד ~5%, ברוקולי/כרוב ~55-60%). כ-250-350 מ\"ג נספג ליום הוא טווח תקין."
         :"ℹ️ Est. absorbed (next to calcium): an estimate only of the calcium actually absorbed — absorption varies by source (spinach ~5%, broccoli/cabbage ~55-60%). About 250-350mg absorbed per day is a normal range."}</div>
@@ -18497,18 +18955,19 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals}){
         {sortedRows.map(r=>{
           // מצב-תקרה (CKD, אשלגן/זרחן): "טוב" הוא ok=true (מתחת לתקרה) — אבל חציית תקרה קלינית חמורה יותר
           // מ"מתחת ל-95%" הרגיל, ולכן מקבלת אדום (לא כתום) כדי לשקף את חומרת החריגה בבירור
-          const color=r.overUL?"#c62828":r.isSkip?"#8a9690":r.isCeiling?(r.ok?"#2e7d32":"#c62828"):r.deficient?"#c62828":r.ok?"#2e7d32":"#b8722e";
+          const color=r.overUL||r.overCap?"#c62828":r.isSkip?"#8a9690":r.isCeiling?(r.ok?"#2e7d32":"#c62828"):r.deficient?"#c62828":r.ok?"#2e7d32":"#b8722e";
           // לבקשת המשתמש: לשלושת נוטריאנטי ה-UL (סלניום/יוד/מנגן), התקרה מוצגת תמיד לצד היעד — לא רק כשבפועל
           // חוצים אותה. קודם ה-UL הופיע רק בענף overUL, כך שבטווח הבטוח (למשל יוד ב-159%, מתחת ל-UL) המשתמש
           // לא ראה בכלל מה התקרה — רק EAR. עכשיו שתי הספרות (EAR% ו-UL) מוצגות יחד תמיד כשיש ul מוגדר
           const bottomLine = r.isSkip ? "supplement"
             : r.isCeiling ? `${fmtN(r.val,0)}/${r.dri}${r.unit} (${lang==="he"?"תקרה":"ceiling"})`
+            : r.naCap!=null ? `${fmtN(r.val,0)}${r.unit} (${lang==="he"?"טווח":"range"} ${r.dri}–${r.naCap})`
             : r.ul!=null ? `${fmtN(r.val,1)}/${r.dri}${r.unit} (EAR ${r.warnPct}% · UL ${r.ul}${r.unit})`
             : `${fmtN(r.val,1)}/${r.dri}${r.unit} (EAR ${r.warnPct}%)`;
           return(
             <div key={r.k} style={{background:r.isSkip?"#F5F2EB":"#FBFAF7",borderRadius:9,padding:"6px 8px",border:`1px solid ${color}${r.isSkip?"55":"33"}`}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
-                <span style={{fontSize:13,color,fontWeight:600}}>{DRI_LABELS[r.k][lang]}{(r.overUL||r.deficient||( r.isCeiling&&!r.ok))?" ⚠":""}</span>
+                <span style={{fontSize:13,color,fontWeight:600}}>{DRI_LABELS[r.k][lang]}{(r.overUL||r.overCap||r.deficient||( r.isCeiling&&!r.ok))?" ⚠":""}</span>
                 <span style={{fontSize:13,color,fontWeight:700}}>{r.isSkip?"—":r.pct+"%"}</span>
               </div>
               {!r.isSkip&&<Bar value={r.val} goal={r.overUL?r.ul:r.dri} color={color} h={3} trackColor="#E2DED4"/>}
@@ -19570,6 +20029,8 @@ function AppInner(){
     if(!plannedItems.length)return;
     setActualMealData(dateKey,mk,"asPlanned",plannedItems);
   }
+  // ארוחה חופשית (ביקורת דיאטנית — גמישות, 80/20): לא נשקלת ולא נמדדת, ולא נספרת במעקב השבועי
+  function markMealFree(dateKey,mk){ setActualMealData(dateKey,mk,"free",[]); }
   function addActualItem(dateKey,mk,fk,g){
     setActualMealData(dateKey,mk,"logged",[...getActualMeal(dateKey,mk),{fk,g}]);
   }
@@ -19688,11 +20149,19 @@ function AppInner(){
   const h=+profile.height,w=+profile.weight,age=+profile.age||35;
   const wKg=w||0;
   const tdee=calcTDEE(h,w,age,profile.sex,profile.activity);
-  const goalPct=GOALS[profile.goal||"maintain"]?.pct||0;
+  const goalPct=GOALS[effectiveGoal(profile)]?.pct||0;
   // kcalAdj: תיקון היעד לפי מגמת המשקל (מודול "משקל ותוספים")
   const target=tdee?Math.round(tdee*(1+goalPct))+(+profile.kcalAdj||0):null;
   const hp=resolveHealthProfile(profile);
-  const dri=useMemo(()=>getDRI(profile.age||35,profile.sex||"male",profile.pregnant),[profile.age,profile.sex,profile.pregnant]);
+  const medKey=(profile.medical||[]).join(",");
+  const isVegan=(profile.sensitivities||[]).includes("vegan");
+  const [detailView,setDetailView]=useState(()=>!!load("wfpb_detail_view",false)); // תצוגה פשוטה כברירת מחדל
+  const [microPicked,setMicroPicked]=useState(false);
+  const [macroPicked,setMacroPicked]=useState(false); // כמו microPicked — ללשונית אבות המזון
+  const [infoMenuOpen,setInfoMenuOpen]=useState(false); // תצוגה פשוטה: כפתור "ℹ️ מידע" אחד במקום כפתורי המידע בכותרת // Desktop בתצוגה פשוטה: לחיצה על קטגוריה בסרגל פותחת את הפירוט שלה
+  useEffect(()=>{ if(tab!=="micro") setMicroPicked(false); },[tab]);
+  const toggleDetail=()=>setDetailView(v=>{ const n=!v; save("wfpb_detail_view",n); return n; });
+  const dri=useMemo(()=>{ const d=getDRI(profile.age||35,profile.sex||"male",profile.pregnant); d._naCap=resolveHealthProfile(profile).sodiumMax; return d; },[profile.age,profile.sex,profile.pregnant,medKey]);
   // "לעולם לא להציע" ברמת מרכיב בודד: recipeIds (למחולל הכללי/השבועי הכללי, שמקבלים רק id-ים ולא אובייקטי
   // מתכון מלאים) מסונן כאן כדי להוציא גם מתכון שמשתמש במרכיב נמנע כרכיב פנימי, לא רק את המרכיב הגולמי עצמו
   const recipeIds=useMemo(()=>recipes.filter(r=>!(r.ings||[]).some(ing=>excludedFks.has(ing.fk))).map(r=>{TEMP_FDB[r.id]=recipeToFdbEntry(r);return r.id;}),[recipes,excludedFks]);
@@ -19803,12 +20272,15 @@ function AppInner(){
       cand.forEach(dk=>{
         if (!isDayDocumented(actualIntake,dk)) { if (next[dk]) { delete next[dk]; changed=true; } return; }
         const rec=next[dk]; const sig=JSON.stringify(actualIntake[dk]); const past=dk<trackToday;
-        const keepP=!!(rec&&rec.p&&past), keepA=!!(rec&&rec.a&&rec.sig===sig&&past);
+        const keepP=!!(rec&&rec.p&&past&&rec.sig===sig), keepA=!!(rec&&rec.a&&rec.sig===sig&&past);
         if (keepP&&keepA) return;
-        const planDay=meals[`d${weekdayOfDateKey(dk)}`]||{};
+        const freeMks=MEAL_KEYS.filter(mk=>actualIntake[dk]?.[mk]?.status==="free");
+        const planDay0=meals[`d${weekdayOfDateKey(dk)}`]||{};
+        const planDay=freeMks.length?Object.fromEntries(Object.entries(planDay0).filter(([mk])=>!freeMks.includes(mk))):planDay0;
         const actDay=Object.fromEntries(MEAL_KEYS.map(mk=>[mk,getActualMealEffective(dk,mk)]));
+        const fs=Math.round(freeMks.reduce((a,mk)=>a+(FREE_MEAL_SHARE[mk]||0),0)*100)/100;
         const nr={p:keepP?rec.p:trackTotalsOf(MEAL_KEYS.flatMap(mk=>planDay[mk]||[])), cp:keepP?(rec.cp||0):Math.round(dayCost(planDay,priceOverrides)*100)/100,
-          a:keepA?rec.a:trackTotalsOf(MEAL_KEYS.flatMap(mk=>actDay[mk])), ca:keepA?(rec.ca||0):Math.round(dayCost(actDay,priceOverrides)*100)/100, sig};
+          a:keepA?rec.a:trackTotalsOf(MEAL_KEYS.flatMap(mk=>actDay[mk])), ca:keepA?(rec.ca||0):Math.round(dayCost(actDay,priceOverrides)*100)/100, sig, ...(fs?{fs}:{})};
         if (JSON.stringify(nr)!==JSON.stringify(rec)) { next[dk]=nr; changed=true; }
       });
       if (!changed) return prev;
@@ -19831,11 +20303,14 @@ function AppInner(){
     const pastUndoc=trackCur.dates.filter(dk=>dk<trackToday&&!trackHist[dk]);
     const pt=dk=>trackTotalsOf(MEAL_KEYS.flatMap(mk=>planOf(dk)[mk]||[]));
     const consumed=trackSum([...trackCur.docs.map(dk=>trackHist[dk].a),...pastUndoc.map(pt)]);
+    // ארוחות חופשיות לא נספרות כחוסר: מניחים שהן נותנות את חלקן היחסי מהיעד
+    const freeShare=trackCur.docs.reduce((s,dk)=>s+(trackHist[dk].fs||0),0);
+    if (freeShare>0) { const dF=planDRI(dri); MICRO_KEYS.forEach(k=>{ if(dF[k]) consumed[k]=(consumed[k]||0)+freeShare*wkDri(dF[k]); }); }
     const proj=trackSum([consumed,...remaining.map(pt)]);
     // חוסרים שאפשר לתקן בעדכון שאר השבוע — מול יעד התכנון (ברזל לנשים בגיל הפוריות: 18 מ"ג; 32.4 לא בר-השגה מהמזון)
     const dP=planDRI(dri);
-    const deficits=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&dP[k]&&(proj[k]||0)<dP[k].dri*7*0.98)
-      .map(k=>({k,pct:Math.round((proj[k]||0)/(dP[k].dri*7)*100)})).sort((a,b)=>a.pct-b.pct);
+    const deficits=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&dP[k]&&(proj[k]||0)<wkDri(dP[k])*7*0.98)
+      .map(k=>({k,pct:Math.round((proj[k]||0)/(wkDri(dP[k])*7)*100)})).sort((a,b)=>a.pct-b.pct);
     return {remaining,n:remaining.length,consumed,deficits};
   },[trackCur,trackHist,actualIntake,meals,dri,trackToday]);
   const [reportWk,setReportWk]=useState(null); // דוח שבועי למטפל — תחילת השבוע המדווח
@@ -19847,7 +20322,7 @@ function AppInner(){
     const daysArr=days.map(d=>JSON.parse(JSON.stringify(d.before)));
     // יעד מיקרו מוגבר לימים שנותרו — רק לרכיבים שבחוסר, ועם תקרה (פי 1.8 מהיעד היומי, ומתחת לגבול העליון הבטוח)
     const dP=planDRI(dri); const dri2={...dP};
-    rp.deficits.forEach(({k})=>{ const need=(dP[k].dri*7*0.98-(rp.consumed[k]||0))/(rp.n*0.98); let v=Math.max(dP[k].dri,need); v=Math.min(v,dP[k].dri*1.8); if(dP[k].ul) v=Math.min(v,dP[k].ul*0.9); dri2[k]={...dP[k],dri:v}; });
+    rp.deficits.forEach(({k})=>{ const W1=wkDri(dP[k]); const need=(W1*7*0.98-(rp.consumed[k]||0))/(rp.n*0.98); let v=Math.max(W1,need); v=Math.min(v,W1*1.8); if(dP[k].ul) v=Math.min(v,dP[k].ul*0.9); dri2[k]={...dP[k],dri:v,weekDri:W1}; });
     const tok=++restTok.current;
     setRestRun({loading:true});
     runGenAsync(withAgeMealCapsGen(dri, restOfWeekGen(daysArr,rp.consumed,target,dri,dri2,rp.deficits.map(d=>d.k),excludedFks)),null,()=>restTok.current!==tok)
@@ -19855,7 +20330,7 @@ function AppInner(){
         const out=days.map((d,i)=>({...d,after:daysArr[i]}));
         const projOf=list=>trackSum([rp.consumed,...list.map(p=>trackTotalsOf(MEAL_KEYS.flatMap(mk=>p[mk]||[])))]);
         const pb=projOf(days.map(d=>d.before)), pa=projOf(out.map(d=>d.after));
-        const rows=rp.deficits.map(({k})=>({k,before:Math.round((pb[k]||0)/(dP[k].dri*7)*100),after:Math.round((pa[k]||0)/(dP[k].dri*7)*100)}));
+        const rows=rp.deficits.map(({k})=>({k,before:Math.round((pb[k]||0)/(wkDri(dP[k])*7)*100),after:Math.round((pa[k]||0)/(wkDri(dP[k])*7)*100)}));
         setRestRun({data:{days:out,rows}}); })
       .catch(e=>{ console.error(e); if(restTok.current===tok) setRestRun(null); });
   };
@@ -19873,10 +20348,10 @@ function AppInner(){
     </div>);
   const bodyPanelNode=(<>
     <WeightPanel lang={lang} profile={profile} setProfile={setProfile} tdee={tdee} target={target} log={weightLog} setLog={setWeightLog}/>
-    <SupplementPanel lang={lang} log={suppLog} setLog={setSuppLog}/>
+    <SupplementPanel lang={lang} log={suppLog} setLog={setSuppLog} vegan={isVegan} simple={!detailView}/>
   </>);
   const trackPanelNode=(
-    <WeeklyTrackingPanel hist={trackHist} today={trackToday} lang={lang} dri={dri} profile={profile} alerts={trackAlertList} restInfo={trackRest} onUpdateRest={startRestUpdate} mealGapOf={trackMealGap} onReport={wk=>setReportWk(wk)}/>
+    <WeeklyTrackingPanel hist={trackHist} today={trackToday} lang={lang} dri={dri} profile={profile} alerts={trackAlertList} restInfo={trackRest} onUpdateRest={startRestUpdate} mealGapOf={trackMealGap} onReport={wk=>setReportWk(wk)} simple={!detailView}/>
   );
   const dayKey=`d${dayIdx}`;
   function getMeal(mk){return meals[dayKey]?.[mk]||[];}
@@ -20149,8 +20624,8 @@ function AppInner(){
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
       onSuggestRecipesNSFWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
-      onSuggestMixedDayPlan={()=>askBudgetThen("day",()=>setMixedPlanOpen(true))}
-      onSuggestMixedWeekPlan={()=>askBudgetThen("week",()=>setMixedWeekPlanOpen(true))}/>
+      onSuggestMixedDayPlan={isVegan?undefined:()=>askBudgetThen("day",()=>setMixedPlanOpen(true))}
+      onSuggestMixedWeekPlan={isVegan?undefined:()=>askBudgetThen("week",()=>setMixedWeekPlanOpen(true))}/>
   );
   // גרסה ייעודית לסרגל הצד ב-Desktop (לבקשת המשתמש): האופציות מוצגות ישירות בסרגל עצמו (alwaysOpen), לא בחלון
   // נפתח בלחיצה. "השלם יום" ו"נקה" הוסרו מכאן והועברו לתוך לוח הארוחות עצמו (בין קוביית בוקר לצהריים)
@@ -20160,8 +20635,8 @@ function AppInner(){
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
       onSuggestRecipesNSFWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
-      onSuggestMixedDayPlan={()=>askBudgetThen("day",()=>setMixedPlanOpen(true))}
-      onSuggestMixedWeekPlan={()=>askBudgetThen("week",()=>setMixedWeekPlanOpen(true))}/>
+      onSuggestMixedDayPlan={isVegan?undefined:()=>askBudgetThen("day",()=>setMixedPlanOpen(true))}
+      onSuggestMixedWeekPlan={isVegan?undefined:()=>askBudgetThen("week",()=>setMixedWeekPlanOpen(true))}/>
   );
   // מקטע החלפת "מתוכנן/בפועל" — מוצג בראש אזור התוכן הראשי גם בפריסת ה-Desktop. כפתור האיפוס הידני (🧹) שהיה
   // כאן הוסר (לבקשת המשתמש): הוא התייתר ברגע שנוסף איפוס אוטומטי של התפריט המתוכנן בכל כניסה חדשה לאפליקציה
@@ -20205,7 +20680,7 @@ function AppInner(){
   const omegaConversionNode=(
     <div style={microSectionCardStyle}>
       <div style={{...microSectionTitleStyle,fontSize:19}}>{lang==="he"?"המרת ALA לכדי EPA/DHA":"ALA→EPA/DHA Conversion"}</div>
-      <WeeklyEpaDhaBar plannedTotals={weeklyPlannedTotals} actualTotals={weeklyActualTotals} lang={lang}/>
+      <WeeklyEpaDhaBar plannedTotals={weeklyPlannedTotals} actualTotals={weeklyActualTotals} lang={lang} sex={profile.sex}/>
     </div>
   );
   const knaSectionNode=(
@@ -20246,10 +20721,10 @@ function AppInner(){
         ok: v=> v!=null && v<=5,
         text: he?"אומגה 6 ואומגה 3 מתחרות בגוף על אותם אנזימים. כשיש עודף אומגה 6, הגוף ממיר פחות מאומגה 3 הצמחית (ALA) לצורות הפעילות EPA ו-DHA, והאיזון נוטה לכיוון תהליכים דלקתיים. מקורות טובים לאומגה 3: זרעי פשתן טחונים, צ'יה ואגוזי מלך.":"Omega-6 and omega-3 compete for the same enzymes. Excess omega-6 reduces conversion of plant omega-3 (ALA) into active EPA and DHA and tilts the balance toward inflammatory processes. Good omega-3 sources: ground flaxseed, chia and walnuts." },
       { name: he?"אשלגן : נתרן":"Potassium : Sodium",
-        range: he?"לפחות 2:1":"≥2:1",
+        range: he?"לפחות 2:1 (לפי משקל)":"≥2:1 (by weight)",
         day: r(displayTotals.potassium||0, displayTotals.sodium||0), week: r(wk?.potassium||0, wk?.sodium||0),
         ok: v=> v!=null && v>=2,
-        text: he?"אשלגן מאזן את השפעת הנתרן על לחץ הדם ועל כלי הדם. תזונה שבה האשלגן גבוה לפחות פי 2 מהנתרן קשורה לסיכון נמוך יותר ליתר לחץ דם ולמחלות לב. פירות, ירקות וקטניות מעלים אשלגן; מלח ומזון מעובד מעלים נתרן.":"Potassium offsets sodium's effect on blood pressure and blood vessels. A diet with at least twice as much potassium as sodium is linked to lower risk of hypertension and heart disease. Fruit, vegetables and legumes raise potassium; salt and processed food raise sodium." },
+        text: he?"אשלגן מאזן את השפעת הנתרן על לחץ הדם. היחס נמדד לפי משקל (במ\"ג). אבל יחס טוב לא מספיק: גם כמות הנתרן עצמה חשובה, ולכן התכנון מגביל אותה ל-2,300 מ\"ג ביום (מגיל 65 או עם יתר לחץ דם — 2,000). פירות, ירקות וקטניות מעלים אשלגן; מלח ומזון מעובד מעלים נתרן.":"Potassium offsets sodium's effect on blood pressure. The ratio is measured by weight (mg). But a good ratio isn't enough: the amount of sodium itself matters too, so planning caps it at 2,300 mg a day (2,000 from age 65 or with high blood pressure). Fruit, vegetables and legumes raise potassium; salt and processed food raise sodium." },
       (()=>{
         // סידן:זרחן — ההערכה תלויה במקור הזרחן: כשכולו צמחי, היחס עצמו משני וקובע רק שהסידן עומד ביעד;
         // כשיש זרחן מן החי (או מוסף) — היחס רלוונטי יותר, והטקסט מציין איזה חלק מהזרחן מגיע משם
@@ -20275,16 +20750,31 @@ function AppInner(){
     ];
     const cell={padding:"10px 8px",fontSize:16,color:"#1E3A2B",borderBottom:"1px solid #E2DED4",textAlign:"center",verticalAlign:"middle"};
     const headCell={...cell,fontSize:15,fontWeight:800,color:"#FFFFFF",background:"#1E3A2B",borderBottom:"none"};
-    const rowsSel = which==="omega" ? rows.slice(0,1) : rows.slice(1);
-    const val=(v,ok)=>(<span style={{fontWeight:800,fontSize:16,color:v==null?"#6B7C72":ok?"#2e7d32":"#c62828"}}>{fmtR(v)} {v==null?"":ok?"✓":"✗"}</span>);
+    // אומגות (ביקורת דיאטנית): ALA בגרמים מול היעד (AI) — זה המדד שקובע ושהמנוע אוכף; אומגה 6 בגרמים והיחס — מידע בלבד
+    const sexM=profile.sex==="male", ageN=+profile.age||35;
+    const alaMin=sexM?1.6:1.1, laAI=sexM?(ageN>=51?14:17):(ageN>=51?11:12);
+    const fmtG=v=>v==null?"—":`${fmtN(v,1)}${he?" ג'":"g"}`;
+    const omegaRows=[
+      { name: he?"אומגה 3 (ALA)":"Omega-3 (ALA)", range: he?`לפחות ${alaMin} ג' ביום`:`≥${alaMin} g/day`,
+        day: displayTotals.omega3||0, week: wk?.omega3||0, fmt: fmtG, okDay: v=>v>=alaMin, okWeek: v=>v>=alaMin*7*0.98,
+        text: he?"ALA היא חומצת השומן מסוג אומגה 3 שהגוף לא מייצר בעצמו, ולכן היא המדד שקובע בתזונה צמחית. התכנון מקפיד שכל יום יגיע לפחות ליעד (צריכה מספקת לפי IOM). מקורות עשירים: זרעי פשתן טחונים, צ'יה, אגוזי מלך וזרעי המפ.":"ALA is the omega-3 fatty acid the body can't make, so it's the measure that matters on a plant-based diet. Planning makes sure every day reaches at least the target (IOM adequate intake). Rich sources: ground flaxseed, chia, walnuts and hemp seeds." },
+      { name: he?"אומגה 6 (LA)":"Omega-6 (LA)", range: he?`מידע · צריכה מספקת כ-${laAI} ג' ביום`:`Info · adequate ≈${laAI} g/day`,
+        day: displayTotals.omega6||0, week: wk?.omega6||0, fmt: fmtG, info: true,
+        text: he?"גם אומגה 6 (חומצה לינולאית) חיונית. ההנחיות העדכניות (למשל של איגוד הלב האמריקאי) לא ממליצות להפחית אותה. היא מגיעה בעיקר מזרעים, אגוזים, טחינה ודגנים מלאים.":"Omega-6 (linoleic acid) is essential too. Current guidelines (e.g. the American Heart Association) don't recommend cutting it. It comes mainly from seeds, nuts, tahini and whole grains." },
+      { name: he?"יחס אומגה 6 : 3":"Omega-6 : 3 ratio", range: he?"מידע · עד כ-5:1 נחשב טוב":"Info · up to ~5:1 is considered good",
+        day: r(displayTotals.omega6||0, displayTotals.omega3||0), week: r(wk?.omega6||0, wk?.omega3||0), info: true,
+        text: he?"היחס מוצג כמידע בלבד. לפי הידע העדכני, מה שקובע הוא כמות ה-ALA המוחלטת ולא היחס, ולכן היחס כבר לא משמש אילוץ בתכנון.":"The ratio is shown for information only. Current evidence points to the absolute amount of ALA, not the ratio, so the ratio is no longer a planning constraint." },
+    ];
+    const rowsSel = which==="omega" ? omegaRows : rows.slice(1);
+    const val=(v,ok,fmt)=>(<span style={{fontWeight:800,fontSize:16,color:v==null?"#6B7C72":ok==null?"#1E3A2B":ok?"#2e7d32":"#c62828"}}>{(fmt||fmtR)(v)} {v==null||ok==null?"":ok?"✓":"✗"}</span>);
     return(
       <div style={microSectionCardStyle}>
-        <div style={{...microSectionTitleStyle,fontSize:17}}>⚖️ {which==="omega"?(he?"יחס אומגה 6 : אומגה 3":"Omega-6 : Omega-3 Ratio"):(he?"יחסים תזונתיים":"Nutrient Ratios")}</div>
+        <div style={{...microSectionTitleStyle,fontSize:17}}>⚖️ {which==="omega"?(he?"אומגה 3 ואומגה 6":"Omega-3 & Omega-6"):(he?"יחסים תזונתיים":"Nutrient Ratios")}</div>
         <div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",direction:he?"rtl":"ltr",borderRadius:10,overflow:"hidden"}}>
           <thead><tr>
-            <th style={{...headCell,textAlign:he?"right":"left"}}>{he?"יחס":"Ratio"}</th>
-            <th style={headCell}>{he?"טווח רצוי":"Target range"}</th>
+            <th style={{...headCell,textAlign:he?"right":"left"}}>{which==="omega"?(he?"רכיב":"Nutrient"):(he?"יחס":"Ratio")}</th>
+            <th style={headCell}>{which==="omega"?(he?"יעד":"Target"):(he?"טווח רצוי":"Target range")}</th>
             <th style={headCell}>{he?"יומי":"Daily"}</th>
             <th style={headCell}>{he?"שבועי":"Weekly"}</th>
           </tr></thead>
@@ -20293,8 +20783,8 @@ function AppInner(){
               <tr style={{background:"#FFFFFF"}}>
                 <td style={{...cell,fontWeight:800,textAlign:he?"right":"left"}}>{row.name}</td>
                 <td style={{...cell,fontSize:16}}>{row.range}</td>
-                <td style={cell}>{val(row.day,(row.okDay||row.ok)(row.day))}</td>
-                <td style={cell}>{val(row.week,(row.okWeek||row.ok)(row.week))}</td>
+                <td style={cell}>{val(row.day,row.info?null:(row.okDay||row.ok)(row.day),row.fmt)}</td>
+                <td style={cell}>{val(row.week,row.info?null:(row.okWeek||row.ok)(row.week),row.fmt)}</td>
               </tr>
               <tr style={{background:"#F7F5EF"}}>
                 <td colSpan={4} style={{...cell,fontSize:16,lineHeight:1.6,color:"#1E3A2B",textAlign:he?"right":"left",borderBottom:i<rowsSel.length-1?"3px solid #E2DED4":"none"}}>{row.text}</td>
@@ -20307,6 +20797,11 @@ function AppInner(){
       </div>
     );
   };
+  const simpleMicroNode=(full)=>{ const src=dashSource==="actual"; const days=src?7:[0,1,2,3,4,5,6].filter(d=>Object.values(meals[`d${d}`]||{}).some(a=>a&&a.length)).length;
+    return <SimpleMicroPanel weekTotals={src?weeklyActualTotals:weeklyPlannedTotals} days={days} profile={profile} lang={lang} full={full} sourceLabel={src?(lang==="he"?"בפועל, עם המתוכנן לימים שלא תועדו":"actual, with the plan for unlogged days"):(lang==="he"?"מתוכנן":"planned")}/>; };
+  const summaryNode=<Summary totals={displayTotals} target={target} goal={profile.goal} wKg={wKg} profile={profile}
+              lang={lang} onInfo={setInfoOpen} nds={nds}
+              estimatedCost={dayCost(Object.fromEntries(MEAL_KEYS.map(mk=>[mk,dashSource==="actual"?getActualMealDefaulted(logDate,mk):getMeal(mk)])),priceOverrides)} dailyBudget={budgetDerived(monthlyBudget)?.daily} onOpenCostSwap={()=>setCostSwapModalOpen(true)}/>;
   const ratiosSectionNode=ratiosNodeFor("minerals");
   const omegaRatioTableNode=ratiosNodeFor("omega");
   // שומן רוֹווי + כולסטרול — פאנל מלא (יומי+שבועי), לבקשת המשתמש. קיים רק בגרסה הצמחונית (fork)
@@ -20344,8 +20839,8 @@ function AppInner(){
           (UL), נפרדת מהיעד (RDA) — כדי שההקשר יהיה ברור גם לפני שקורה חריגה, לא רק אחרי */}
       <div style={{fontSize:13,color:"#a6440f",fontWeight:500,marginBottom:9,lineHeight:1.5,background:"#fdf3ee",border:"1px solid #f0d9b8",borderRadius:8,padding:"6px 9px"}}>
         {lang==="he"
-          ?"⚠️ לסלניום, יוד ומנגן יש — בנוסף ליעד הרגיל (RDA) — גם תקרת בטיחות עליונה (UL): הרמה היומית המרבית שנחשבת בטוחה כמעט לכל האוכלוסייה. הערכים: סלניום 400µg · יוד 1100µg · מנגן 15mg. אלה שלושת הנוטריאנטים היחידים שניתן לחצות בפועל מתזונה צמחית רגילה (בעיקר דרך אגוזי ברזיל, מלח מיודד/אצות ים, ודגנים/עלים/אגוזים עתירי-מנגן). מעבר ה-UL מסומן באדום למטה, גם אם הערך עדיין מעל ה-RDA (יעד תקין) — והתקרה המדויקת מוצגת תמיד ליד כל אחד משלושתם, גם כשעדיין בטווח בטוח."
-          :"⚠️ Selenium, iodine and manganese have — beyond the regular target (RDA) — a Tolerable Upper Intake Level (UL): the highest daily level considered safe for nearly the whole population. Values: selenium 400µg · iodine 1100µg · manganese 15mg. These are the only three nutrients realistically crossable on a typical plant-based diet (mainly via Brazil nuts, iodized salt/seaweed, and manganese-rich grains/greens/nuts). Crossing the UL is marked in red below, even while still above the RDA (a normally-good target) — and the exact ceiling is always shown next to each of the three, even while still in the safe range."}
+          ?"⚠️ לסלניום, יוד ומנגן יש — בנוסף ליעד הרגיל (RDA) — גם תקרת בטיחות עליונה (UL): הרמה היומית המרבית שנחשבת בטוחה כמעט לכל האוכלוסייה. הערכים: סלניום 400µg · יוד 1100µg · מנגן 15mg. שימו לב: ב-IOM (ארה\"ב) ה-UL למנגן הוא 11mg, והאפליקציה משתמשת ב-15mg במכוון — זו סטייה מהתקן: המנגן שבמזון נספג בוויסות (הגוף מפחית ספיגה כשיש מספיק), פיטאט מפחית את זמינותו, והרשות האירופית (EFSA) לא קבעה לו UL כלל. אלה שלושת הנוטריאנטים היחידים שניתן לחצות בפועל מתזונה צמחית רגילה (בעיקר דרך אגוזי ברזיל, מלח מיודד/אצות ים, ודגנים/עלים/אגוזים עתירי-מנגן). מעבר ה-UL מסומן באדום למטה, גם אם הערך עדיין מעל ה-RDA (יעד תקין) — והתקרה המדויקת מוצגת תמיד ליד כל אחד משלושתם, גם כשעדיין בטווח בטוח."
+          :"⚠️ Selenium, iodine and manganese have — beyond the regular target (RDA) — a Tolerable Upper Intake Level (UL): the highest daily level considered safe for nearly the whole population. Values: selenium 400µg · iodine 1100µg · manganese 15mg. Note: the IOM (US) UL for manganese is 11mg, and the app deliberately uses 15mg — a departure from the standard: manganese from food is absorbed in a regulated way (the body absorbs less when stores are sufficient), phytate lowers its availability, and the European authority (EFSA) set no UL for it at all. These are the only three nutrients realistically crossable on a typical plant-based diet (mainly via Brazil nuts, iodized salt/seaweed, and manganese-rich grains/greens/nuts). Crossing the UL is marked in red below, even while still above the RDA (a normally-good target) — and the exact ceiling is always shown next to each of the three, even while still in the safe range."}
       </div>
       <MicroPanel meals={displayMealsObj} totals={displayTotals} otherTotals={dashSource==="actual"?dayTotals:actualDayTotals} otherLabel={dashSource==="actual"?(lang==="he"?"מתוכנן":"Planned"):(lang==="he"?"בפועל":"Actual")} profile={profile} lang={lang} onInfo={setInfoOpen}/>
     </div>
@@ -20357,13 +20852,14 @@ function AppInner(){
       const plannedVal=weeklyPlannedTotals[k]||0, actualVal=weeklyActualTotals[k]||0;
       // תקרת בטיחות שבועית (UL×7) — לבקשת המשתמש: אותה לוגיקה בדיוק כמו היומי, רק על סך השבוע. זה ציר נפרד
       // מ"היעד השבועי" (RDA×7) שכבר מוצג — אפשר להיות גם מעל ה-RDA השבועי וגם מעל ה-UL השבועי בו-זמנית
-      const weeklyUL = driW[k].ul!=null ? driW[k].ul*7 : null;
+      const isNa = k==="sodium";
+      const weeklyUL = isNa ? (resolveHealthProfile(profile).sodiumMax||2300)*7 : driW[k].ul!=null ? driW[k].ul*7 : null;
       const plannedOverUL = weeklyUL!=null && plannedVal>weeklyUL;
       const actualOverUL = weeklyUL!=null && actualVal>weeklyUL;
       return {key:k,label:DRI_LABELS[k]?.[lang]||k,unit:driW[k].unit,weeklyTarget,plannedVal,actualVal,
         plannedPct:weeklyTarget>0?Math.round(plannedVal/weeklyTarget*100):0,
         actualPct:weeklyTarget>0?Math.round(actualVal/weeklyTarget*100):0,
-        weeklyUL,plannedOverUL,actualOverUL};
+        weeklyUL,plannedOverUL,actualOverUL,isNa};
     });
     const sortedRowsW=[...rowsW].sort((a,b)=>a.plannedPct-b.plannedPct);
     const ulRowsExist=sortedRowsW.some(r=>r.weeklyUL!=null);
@@ -20381,6 +20877,8 @@ function AppInner(){
               :"⚠️ Selenium, iodine and manganese also have a weekly safety ceiling (daily UL × 7) — separate from the regular weekly target shown in each row. Crossing it is flagged in red ('ceiling!') below the relevant row, even when the regular weekly target (RDA) is well covered."}
           </div>
         )}
+        <CalciumNotice lang={lang} profile={profile} pct={[0,1,2,3,4,5,6].every(d=>Object.values(meals[`d${d}`]||{}).some(a=>a&&a.length))?(rowsW.find(r=>r.key==="calcium")||{}).plannedPct:null}/>
+        {driW.iron?.planDri!=null&&driW.iron.planDri<driW.iron.dri&&<div style={{fontSize:12,color:"#3A4A42",background:"#F5F2EB",borderRadius:8,padding:"5px 8px",marginBottom:6,lineHeight:1.45}}>{lang==="he"?`ℹ️ ברזל: היעד המלא (${driW.iron.dri} מ"ג ליום) מוצג בשקיפות, אבל הציון השבועי נמדד מול ${driW.iron.planDri} מ"ג — כמות שאפשר להגיע אליה ממזון. בגיל הפוריות כדאי לבדוק פריטין ולהתייעץ לגבי תוסף.`:`ℹ️ Iron: the full target (${driW.iron.dri} mg/day) is shown for transparency, but the weekly score is measured against ${driW.iron.planDri} mg — an amount reachable from food. At reproductive age, check ferritin and ask about a supplement.`}</div>}
         {sortedRowsW.map(r=>(
           <div key={r.key} style={{background:"#FFFFFF",borderRadius:10,padding:"8px 10px",marginBottom:6,border:(r.plannedOverUL||r.actualOverUL)?"1px solid #e5a08f":"1px solid #E2DED4"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
@@ -20399,7 +20897,7 @@ function AppInner(){
             <Bar value={r.actualVal} goal={r.weeklyTarget} color={r.actualOverUL?"#c62828":r.actualPct>=98?"#2e7d32":"#b8860b"} h={4} trackColor="#E2DED4"/>
             {r.weeklyUL!=null&&(
               <div style={{fontSize:13,fontWeight:700,color:(r.plannedOverUL||r.actualOverUL)?"#c62828":"#a6440f",marginTop:6,background:(r.plannedOverUL||r.actualOverUL)?"#fdecea":"#fdf3ee",border:`1px solid ${(r.plannedOverUL||r.actualOverUL)?"#e5a08f":"#f0d9b8"}`,borderRadius:6,padding:"4px 8px",display:"inline-block"}}>
-                {lang==="he"?`⚠ תקרת בטיחות שבועית (UL×7): `:`⚠ Weekly safety ceiling (UL×7): `}<span dir="ltr" style={{display:"inline-block"}}>{fmtN(r.weeklyUL,0)}{r.unit}</span>
+                {r.isNa?(lang==="he"?`⚠ תקרת נתרן שבועית (×7): `:`⚠ Weekly sodium ceiling (×7): `):(lang==="he"?`⚠ תקרת בטיחות שבועית (UL×7): `:`⚠ Weekly safety ceiling (UL×7): `)}<span dir="ltr" style={{display:"inline-block"}}>{fmtN(r.weeklyUL,0)}{r.unit}</span>
               </div>
             )}
           </div>
@@ -20497,7 +20995,7 @@ function AppInner(){
   // מסכי-משנה בלשונית "אבות המזון" (לבקשת המשתמש): מאקרו+חלבון / יחס אומגות+המרת ALA / חומצות אמינו חיוניות / שומן רווי וכולסטרול
   const MACRO_SUBS=[
     {k:"macro",l:lang==="he"?"🍽 מאקרו":"🍽 Macros",node:(<MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} lang={lang} onInfo={setInfoOpen}/>)},
-    {k:"omega",l:lang==="he"?"⚖️ יחס אומגות והמרת ALA":"⚖️ Omega Ratio & ALA Conversion",node:(<>{omegaRatioTableNode}<div style={{marginTop:16}}>{omegaConversionNode}</div></>)},
+    {k:"omega",l:lang==="he"?"⚖️ אומגה 3 ו-6":"⚖️ Omega-3 & 6",node:(<>{omegaRatioTableNode}<div style={{marginTop:16}}>{omegaConversionNode}</div></>)},
     {k:"amino",l:lang==="he"?"🧬 חומצות אמינו חיוניות":"🧬 Essential Amino Acids",node:aminoSectionNode},
     {k:"satfat",l:lang==="he"?"🥓 שומן רווי וכולסטרול":"🥓 Sat. Fat & Cholesterol",node:satFatSectionNode},
   ];
@@ -20505,7 +21003,7 @@ function AppInner(){
   const macroSubButtonsNode=(
     <div style={{display:"flex",flexDirection:"column",gap:4,width:"100%"}}>
       {MACRO_SUBS.map(({k,l})=>(
-        <button key={k} onClick={()=>setMacroSub(k)}
+        <button key={k} onClick={()=>{setMacroSub(k);setMacroPicked(true);}}
           style={{width:"100%",padding:"8px 12px",borderRadius:10,border:macroSub===k?"1px solid #1E3A2B":"1px solid #E2DED4",background:macroSub===k?"#DCEAD9":"#F5F2EB",color:"#1E3A2B",fontSize:12,fontWeight:macroSub===k?800:600,cursor:"pointer",textAlign:lang==="he"?"right":"left"}}>
           {l}
         </button>
@@ -20525,7 +21023,7 @@ function AppInner(){
   const microCategoryButtonsNode=(
     <div style={{display:"flex",flexDirection:"column",gap:4,width:"100%"}}>
       {MICRO_CATEGORIES.map(({k,l})=>(
-        <button key={k} onClick={()=>setMicroSub(k)}
+        <button key={k} onClick={()=>{setMicroSub(k);setMicroPicked(true);}}
           style={{width:"100%",padding:"8px 12px",borderRadius:10,border:microSub===k?"1px solid #1E3A2B":"1px solid #E2DED4",background:microSub===k?"#DCEAD9":"#F5F2EB",color:"#1E3A2B",fontSize:12,fontWeight:microSub===k?800:600,cursor:"pointer",textAlign:lang==="he"?"right":"left"}}>
           {l}
         </button>
@@ -20575,7 +21073,7 @@ function AppInner(){
       ))}
       {/* לבקשת המשתמש: כפתור "דיווחים עצמיים" בתחתית סרגל הצד — פותח את SelfReportModal, עצמאי לגמרי מהטאבים
           הרגילים (לא tab state, אלא מודל צף נפרד, כמו רשימת קניות) */}
-      <button onClick={()=>setSelfReportOpen(true)}
+      <button id="onboard-selfreport" onClick={()=>setSelfReportOpen(true)}
         style={{padding:"14px 16px",borderRadius:12,border:"none",background:"#F5F2EB",color:"#6B7C72",fontSize:15,cursor:"pointer",fontWeight:600,textAlign:lang==="he"?"right":"left",width:"100%"}}>
         📋 {lang==="he"?"דיווחים עצמיים":"Self Reports"}
       </button>
@@ -20588,6 +21086,18 @@ function AppInner(){
     </div>
   );
 
+  // תצוגה פשוטה שלב ב': כפתור "ℹ️ מידע" אחד שפותח תפריט קטן (מדריך, מקורות, מסך פתיחה, ובטלפון גם תקציב).
+  // כפתור האזהרה לא נכנס לתפריט — הוא נשאר גלוי בכל תצוגה (החלטת המשתמש)
+  const infoMenuNode=(desk)=>{ const he=lang==="he";
+    const items=[["📘",he?"מדריך למשתמש":"User Guide",()=>setInfoOpen("userGuide")],["🔬",he?"מקורות הנתונים":"Data sources",()=>setFoodSrcOpen(true)],["✨",he?"מסך פתיחה":"Welcome",()=>setShowWelcome(true)],...(desk?[]:[["💰",he?"ניהול תקציב":"Budget Mgmt",()=>setPriceEditorOpen(true)]])];
+    return (<div style={{position:"relative"}}>
+      <button id="onboard-info-menu" onClick={()=>setInfoMenuOpen(o=>!o)} aria-expanded={infoMenuOpen} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+        <span style={{fontSize:15}}>ℹ️</span> {he?"מידע":"Info"} <span style={{fontSize:9}}>{infoMenuOpen?"▲":"▼"}</span>
+      </button>
+      {infoMenuOpen&&<div style={{position:"absolute",top:"100%",[desk?"left":"right"]:0,marginTop:6,background:"#FFFFFF",border:"1px solid #E2DED4",borderRadius:12,boxShadow:"0 8px 24px rgba(30,58,43,0.18)",zIndex:80,minWidth:190,padding:6,direction:he?"rtl":"ltr"}}>
+        {items.map(([ic,l,fn])=>(<button key={l} onClick={()=>{setInfoMenuOpen(false);fn();}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"transparent",border:"none",borderRadius:8,padding:"9px 10px",fontSize:13.5,fontWeight:700,color:"#1E3A2B",cursor:"pointer",textAlign:he?"right":"left"}}><span style={{fontSize:16}}>{ic}</span>{l}</button>))}
+      </div>}
+    </div>); };
   return(
     <div style={{minHeight:"100vh",width:"100%",boxSizing:"border-box",background:"#FBF8F3",color:"#1E3A2B",fontFamily:"Segoe UI,system-ui,sans-serif",maxWidth:contentMaxWidth,margin:"0 auto",paddingBottom:isDesktop?24:100,paddingInline:isDesktop?24:0,transition:"max-width .15s ease"}}>
       <style>{`@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}input[type=number]::-webkit-inner-spin-button{opacity:1}html,body{margin:0;padding:0;width:100%;display:block!important;place-items:initial!important}#root{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;text-align:initial!important}.profile-num-input::placeholder{color:#B8B0A2!important;font-weight:400!important;opacity:1}`}</style>
@@ -20599,14 +21109,15 @@ function AppInner(){
           // הפוך מסדר ה-DOM הרגיל (שמתאים למובייל בלבד), לבקשת המשתמש
           <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",gap:12}}>
             <div style={{display:"flex",gap:6,alignItems:"center",justifySelf:"start"}}>
+              <button id="detail-toggle" onClick={toggleDetail} title={lang==="he"?"מעבר בין תצוגה פשוטה למפורטת":"Switch between simple and detailed view"} style={{background:detailView?"#1E3A2B":"#FFFFFF",border:"1px solid #1E3A2B",borderRadius:8,color:detailView?"#fff":"#1E3A2B",padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:700}}>{detailView?(lang==="he"?"✨ תצוגה פשוטה":"✨ Simple view"):(lang==="he"?"🔍 פירוט מלא":"🔍 Full details")}</button>
               <button onClick={()=>setLang(l=>{const n=l==="he"?"en":"he";save("wfpb_lang",n);return n;})} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:700}}>{lang==="he"?"EN":"עב"}</button>
               <button id="onboard-disclaimer" onClick={()=>setInfoOpen("disclaimer")} title={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} aria-label={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} style={{background:"#c62828",border:"1px solid #c62828",borderRadius:8,color:"#fff",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
                 <span style={{fontSize:15}}>⚠</span> {lang==="he"?"אזהרה":"Warning"}
               </button>
-              <button onClick={()=>setInfoOpen("userGuide")} title={lang==="he"?"מדריך למשתמש באפליקציה":"App user guide"} aria-label={lang==="he"?"מדריך למשתמש באפליקציה":"App user guide"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+              {detailView?<><button onClick={()=>setInfoOpen("userGuide")} title={lang==="he"?"מדריך למשתמש באפליקציה":"App user guide"} aria-label={lang==="he"?"מדריך למשתמש באפליקציה":"App user guide"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
                 <span style={{fontSize:15}}>📘</span> {lang==="he"?"מדריך למשתמש":"User Guide"}
               </button>
-              <button onClick={()=>setFoodSrcOpen(true)} title={lang==="he"?"מקורות נתוני המזון והצלבה מול מאגר משרד הבריאות":"Food data sources and MoH database check"} aria-label={lang==="he"?"מקורות נתוני המזון":"Food data sources"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+              <button id="onboard-datasources" onClick={()=>setFoodSrcOpen(true)} title={lang==="he"?"מקורות נתוני המזון והצלבה מול מאגר משרד הבריאות":"Food data sources and MoH database check"} aria-label={lang==="he"?"מקורות נתוני המזון":"Food data sources"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
                 <span style={{fontSize:15}}>🔬</span> {lang==="he"?"מקורות הנתונים":"Data sources"}
               </button>
               {/* תיקון (לבקשת המשתמש: "במסך הפתיחה") — כפתור לפתיחה-חוזרת של מסך-הפתיחה, לצד מדריך-למשתמש —
@@ -20614,7 +21125,7 @@ function AppInner(){
                   דיאטנית) בלי צורך לנקות-נתוני-אתר כדי-לגרום-לו-להופיע-שוב */}
               <button onClick={()=>setShowWelcome(true)} title={lang==="he"?"מסך פתיחה":"Welcome screen"} aria-label={lang==="he"?"מסך פתיחה":"Welcome screen"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
                 <span style={{fontSize:15}}>✨</span> {lang==="he"?"מסך פתיחה":"Welcome"}
-              </button>
+              </button></>:infoMenuNode(true)}
             </div>
             <div id="onboard-profile" style={{justifySelf:"center"}}>
               <Profile profile={profile} setProfile={setProfile} rememberProfile={rememberProfile} setRememberProfile={setRememberProfile} tdee={tdee} target={target} lang={lang} onInfo={setInfoOpen} compact/>
@@ -20638,15 +21149,16 @@ function AppInner(){
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
             <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <button id="detail-toggle" onClick={toggleDetail} title={lang==="he"?"מעבר בין תצוגה פשוטה למפורטת":"Switch between simple and detailed view"} style={{background:detailView?"#1E3A2B":"#FFFFFF",border:"1px solid #1E3A2B",borderRadius:8,color:detailView?"#fff":"#1E3A2B",padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:700}}>{detailView?(lang==="he"?"✨ תצוגה פשוטה":"✨ Simple view"):(lang==="he"?"🔍 פירוט מלא":"🔍 Full details")}</button>
               <button onClick={()=>setLang(l=>{const n=l==="he"?"en":"he";save("wfpb_lang",n);return n;})} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:700}}>{lang==="he"?"EN":"עב"}</button>
               <button id="onboard-disclaimer-mobile" onClick={()=>setInfoOpen("disclaimer")} title={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} aria-label={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} style={{background:"#c62828",border:"1px solid #c62828",borderRadius:8,color:"#fff",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
                 <span style={{fontSize:15}}>⚠</span> {lang==="he"?"אזהרה":"Warning"}
               </button>
             </div>
-            <button onClick={()=>setInfoOpen("userGuide")} title={lang==="he"?"מדריך למשתמש באפליקציה":"App user guide"} aria-label={lang==="he"?"מדריך למשתמש באפליקציה":"App user guide"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+            {detailView?<><button onClick={()=>setInfoOpen("userGuide")} title={lang==="he"?"מדריך למשתמש באפליקציה":"App user guide"} aria-label={lang==="he"?"מדריך למשתמש באפליקציה":"App user guide"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
               <span style={{fontSize:15}}>📘</span> {lang==="he"?"מדריך למשתמש":"User Guide"}
             </button>
-            <button onClick={()=>setFoodSrcOpen(true)} title={lang==="he"?"מקורות נתוני המזון והצלבה מול מאגר משרד הבריאות":"Food data sources and MoH database check"} aria-label={lang==="he"?"מקורות נתוני המזון":"Food data sources"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+            <button id="onboard-datasources-mobile" onClick={()=>setFoodSrcOpen(true)} title={lang==="he"?"מקורות נתוני המזון והצלבה מול מאגר משרד הבריאות":"Food data sources and MoH database check"} aria-label={lang==="he"?"מקורות נתוני המזון":"Food data sources"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
               <span style={{fontSize:15}}>🔬</span> {lang==="he"?"מקורות הנתונים":"Data sources"}
             </button>
             {/* תיקון (לבקשת המשתמש: "איפה המסך שבנית?" - זו פריסת-המובייל, שהתגלתה כשכפולה-נפרדת מפריסת-
@@ -20656,7 +21168,7 @@ function AppInner(){
             </button>
             <button id="onboard-budget-mobile" onClick={()=>setPriceEditorOpen(true)} title={lang==="he"?"ניהול תקציב ומחירים":"Budget & Price Management"} aria-label={lang==="he"?"ניהול תקציב ומחירים":"Budget & Price Management"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
               <span style={{fontSize:15}}>💰</span> {lang==="he"?"ניהול תקציב":"Budget Mgmt"}
-            </button>
+            </button></>:infoMenuNode(false)}
             {/* כפתור "🛒 רשימה" (רשימת קניות) הוסר מהממשק לבקשת המשתמש. המנגנון עצמו (shoppingListOpen state,
                 ShoppingListModal, וכל הלוגיקה הפנימית) נשאר בקוד במלואו לשימוש עתידי — ניתן להחזיר את הכפתור
                 בקלות ע"י שחזור השורה: <button onClick={()=>setShoppingListOpen(true)} .../> */}
@@ -20681,6 +21193,7 @@ function AppInner(){
       {/* Content */}
       <div style={{padding:"10px 12px"}}>
         {(tab==="meals"||tab==="micro"||tab==="macros")&&!desktopSidebarTab&&dashSourceToggleNode}
+        {tab==="meals"&&<MedicalNotice profile={profile} lang={lang}/>}
         {tab==="meals"&&!desktopMealsLayout&&(
           <>
             {MEAL_KEYS.map(mk=>(<div key={mk} id={mk==="breakfast"?"onboard-mealcard-mobile":undefined}>
@@ -20690,7 +21203,7 @@ function AppInner(){
                 onSaved={()=>setSavedOpen(mk)}
                 onToggleSoak={idx=>toggleSoaked(mk,idx)}
                 onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
-                lang={lang} recipes={recipes} priceOverrides={priceOverrides}/></div>
+                lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/></div>
             ))}
             {/* "השלם יום" ו"נקה יום" — לבקשת המשתמש: היו קיימים רק בפריסת ה-Desktop (בין קוביות הארוחות), חסרים
                 לגמרי בגרסת המובייל. נוספו כאן כשורת שני כפתורים רחבים, מיד אחרי כרטיסי הארוחות ולפני הסיכום —
@@ -20730,9 +21243,7 @@ function AppInner(){
               </div>
             )}
             {saveDayToast && <div style={{fontSize:11,color:"#2e7d32",marginTop:4,textAlign:"center"}}>{saveDayToast}</div>}
-            <Summary totals={displayTotals} target={target} goal={profile.goal} wKg={wKg} profile={profile}
-              lang={lang} onInfo={setInfoOpen} nds={nds}
-              estimatedCost={dayCost(Object.fromEntries(MEAL_KEYS.map(mk=>[mk,dashSource==="actual"?getActualMealDefaulted(logDate,mk):getMeal(mk)])),priceOverrides)} dailyBudget={budgetDerived(monthlyBudget)?.daily} onOpenCostSwap={()=>setCostSwapModalOpen(true)}/>
+            {detailView?summaryNode:<SimpleDaySummary totals={displayTotals} target={target} profile={profile} lang={lang} full={summaryNode}/>}
           </>
         )}
         {tab==="meals"&&desktopMealsLayout&&(
@@ -20756,7 +21267,7 @@ function AppInner(){
                   onSaved={()=>setSavedOpen("breakfast")}
                   onToggleSoak={idx=>toggleSoaked("breakfast",idx)}
                   onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
-                  lang={lang} recipes={recipes} priceOverrides={priceOverrides}/>
+                  lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 </div>
                 {/* "השלם יום" ו"נקה יום" — לבקשת המשתמש, ממוקמים כאן במפורש בין קוביית ארוחת הבוקר לקוביית ארוחת
                     הצהריים (לא בסרגל הצד), עם gridRow:"span 2" כדי שהעמודה האמצעית תישאר ממורכזת אנכית גם
@@ -20790,7 +21301,7 @@ function AppInner(){
                   onSaved={()=>setSavedOpen("snack")}
                   onToggleSoak={idx=>toggleSoaked("snack",idx)}
                   onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
-                  lang={lang} recipes={recipes} priceOverrides={priceOverrides}/>
+                  lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 {["lunch","dinner"].map(mk=>(
                   <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""}
                     onTimeChange={t=>setMealTime(mk,t)}
@@ -20798,38 +21309,36 @@ function AppInner(){
                     onSaved={()=>setSavedOpen(mk)}
                     onToggleSoak={idx=>toggleSoaked(mk,idx)}
                     onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
-                    lang={lang} recipes={recipes} priceOverrides={priceOverrides}/>
+                    lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 ))}
               </div>
-              <Summary totals={displayTotals} target={target} goal={profile.goal} wKg={wKg} profile={profile}
-                lang={lang} onInfo={setInfoOpen} nds={nds}
-                estimatedCost={dayCost(Object.fromEntries(MEAL_KEYS.map(mk=>[mk,dashSource==="actual"?getActualMealDefaulted(logDate,mk):getMeal(mk)])),priceOverrides)} dailyBudget={budgetDerived(monthlyBudget)?.daily} onOpenCostSwap={()=>setCostSwapModalOpen(true)}/>
+              {detailView?summaryNode:<SimpleDaySummary totals={displayTotals} target={target} profile={profile} lang={lang} full={summaryNode}/>}
             </div>
           </div>
         )}
-        {tab==="macros"&&!isDesktop&&(
+        {tab==="macros"&&!isDesktop&&(detailView?(
           <>
             {macroSubChipsNode}
             {macroSubCur.node}
           </>
-        )}
+        ):<SimpleMacroPanel totals={displayTotals} profile={profile} lang={lang} full={<>{macroSubChipsNode}{macroSubCur.node}</>}/>)}
         {tab==="macros"&&isDesktop&&(
           <div style={{display:"flex",gap:20,alignItems:"flex-start"}}>
             <div style={{width:300,flexShrink:0,position:"sticky",top:100}}>
               {sidebarNavNode}
             </div>
             <div style={{flex:1,minWidth:0}}>
-              {/* מסך-המשנה שנבחר בסרגל הצד (מאקרו / אומגות / אמינו / שומן רווי) */}
-              {macroSubCur.node}
+              {/* מסך-המשנה שנבחר בסרגל הצד (מאקרו / אומגות / אמינו / שומן רווי); בתצוגה פשוטה — סיכום חלבון עד שנבחר מסך */}
+              {detailView||macroPicked?macroSubCur.node:<SimpleMacroPanel totals={displayTotals} profile={profile} lang={lang} full={macroSubCur.node}/>}
             </div>
           </div>
         )}
-        {tab==="micro"&&!desktopMicroLayout&&(
+        {tab==="micro"&&!desktopMicroLayout&&(detailView?(
           <>
             {ratiosSectionNode}
             {microVitSectionNode}
           </>
-        )}
+        ):simpleMicroNode(<>{ratiosSectionNode}{microVitSectionNode}</>))}
         {tab==="micro"&&desktopMicroLayout&&(
           // פריסת Desktop: לבקשת המשתמש, לשונית "מיקרו" צומצמה — הפירוט (יחסים/המרת אומגות/שומן רוֹווי/
           // ויטמינים ומינרלים) עבר לשורת כפתורים בסרגל הצד (microCategoryButtonsNode, מתחת לכפתור "מיקרו"),
@@ -20839,7 +21348,7 @@ function AppInner(){
               {sidebarNavNode}
             </div>
             <div style={{flex:1,minWidth:0}}>
-              {(MICRO_CATEGORIES.find(c=>c.k===microSub)||MICRO_CATEGORIES[0]).node}
+              {detailView||microPicked?(MICRO_CATEGORIES.find(c=>c.k===microSub)||MICRO_CATEGORIES[0]).node:simpleMicroNode(null)}
             </div>
           </div>
         )}
@@ -20847,7 +21356,7 @@ function AppInner(){
           {logSubNav}
           {logSub==="track" ? trackPanelNode : logSub==="body" ? bodyPanelNode : (
           <FoodLogPanel logDate={logDate} onDateChange={setLogDate} meals={meals} actualIntake={actualIntake} lang={lang}
-            onMarkPlanned={markMealAsPlanned} onAdd={addActualItem} onRemove={removeActualItem} onSetLeftover={setActualItemLeftover} onClear={clearActualMeal} onResetDay={resetActualDay} onInfo={setInfoOpen}/>
+            onMarkPlanned={markMealAsPlanned} onFree={markMealFree} onAdd={addActualItem} onRemove={removeActualItem} onSetLeftover={setActualItemLeftover} onClear={clearActualMeal} onResetDay={resetActualDay} onInfo={setInfoOpen} simple={!detailView}/>
           )}
         </>)}
         {tab==="log"&&isDesktop&&(
@@ -20868,7 +21377,7 @@ function AppInner(){
               {logSubNav}
               {logSub==="track" ? trackPanelNode : logSub==="body" ? bodyPanelNode : (
               <FoodLogPanel logDate={logDate} onDateChange={setLogDate} meals={meals} actualIntake={actualIntake} lang={lang}
-                onMarkPlanned={markMealAsPlanned} onAdd={addActualItem} onRemove={removeActualItem} onSetLeftover={setActualItemLeftover} onClear={clearActualMeal} onResetDay={resetActualDay} onInfo={setInfoOpen}/>
+                onMarkPlanned={markMealAsPlanned} onFree={markMealFree} onAdd={addActualItem} onRemove={removeActualItem} onSetLeftover={setActualItemLeftover} onClear={clearActualMeal} onResetDay={resetActualDay} onInfo={setInfoOpen} simple={!detailView}/>
               )}
             </div>
           </div>
@@ -20902,7 +21411,7 @@ function AppInner(){
           </button>
         ))}
         {/* לבקשת המשתמש: כפתור "דיווחים עצמיים" בתפריט התחתון של מובייל — פותח מודל צף, לא tab רגיל */}
-        <button onClick={()=>setSelfReportOpen(true)}
+        <button id="onboard-selfreport-mobile" onClick={()=>setSelfReportOpen(true)}
           style={{flex:1,minWidth:0,padding:"7px 1px",borderRadius:10,border:"none",background:"transparent",color:"#6B7C72",fontSize:10.5,cursor:"pointer",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",letterSpacing:-0.3}}>
           📋 {lang==="he"?"דיווחים":"Reports"}
         </button>
@@ -20982,7 +21491,7 @@ function AppInner(){
           onClearWeek={()=>{ clearEntireWeek(); setWeekPlanOpen(false); }}/>
       )}
       {foodSrcOpen&&<FoodSourcesModal lang={lang} onClose={()=>setFoodSrcOpen(false)}/>}
-      {selfReportOpen&&<SelfReportModal profile={profile} lang={lang} onClose={()=>setSelfReportOpen(false)} onWeight={(dk,v,oldV)=>setWeightLog(prev=>{ const n={...(prev||{})}; if(v>0) n[dk]=Math.round(v*10)/10; else if(n[dk]!=null&&(oldV==null||+n[dk]===+oldV)) delete n[dk]; save("wfpb_weight_log",n); return n; })}/>}
+      {selfReportOpen&&<SelfReportModal profile={profile} lang={lang} simple={!detailView} onClose={()=>setSelfReportOpen(false)} onWeight={(dk,v,oldV)=>setWeightLog(prev=>{ const n={...(prev||{})}; if(v>0) n[dk]=Math.round(v*10)/10; else if(n[dk]!=null&&(oldV==null||+n[dk]===+oldV)) delete n[dk]; save("wfpb_weight_log",n); return n; })}/>}
       {mixedPlanOpen&&(
         <MixedDayPlanModal data={mixedPlanData} target={target} wKg={wKg} hp={hp} profile={profile} lang={lang} budget={planByBudget&&monthlyBudget>0?budgetDerived(monthlyBudget):null}
           onClose={()=>setMixedPlanOpen(false)}
