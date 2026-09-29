@@ -17449,8 +17449,7 @@ function isDayDocumented(actualIntake, dk){ const day=actualIntake&&actualIntake
 // ── פרופילי רגישות/אלרגיה (לבקשת המשתמש) — כל קבוצה מוסיפה את המזונות שלה לרשימת "לעולם לא להציע"; מתכונים שמכילים
 // אותם מוחרגים אוטומטית (אותו מנגנון של החרגת מזון בודד)
 const SENS_GROUPS={
-  // טבעוני (ביקורת משתמשים): מסתיר את כל המזונות מן החי מההצעות, ואת מצב "שלב מוצרים מן החי"
-  vegan:{he:"טבעוני",en:"Vegan",get fks(){ return Object.keys(FDB).filter(k=>FDB[k]?.cat==="מן החי"); }},
+  // (כפתור "טבעוני" הוסר לבקשת המשתמש — מי שסימן אותו בעבר מנוקה בטעינה, ראו AppInner)
   soy:{he:"סויה",en:"Soy",fks:["tofu","tempeh","edamame","natto","soymilkFortified","soymilkOrgPlain","soyYogurtPlain","soyYogurtOrgPlain"]},
   gluten:{he:"גלוטן",en:"Gluten",fks:["wholeWheatBread","wholePita","bulgurCooked","bulgurDry","couscous","couscousCooked","wholeWPasta","freekeh","spelledFlour","pearlBarleyCooked","pearlBarleyDry","wheatGerm"]},
   nuts:{he:"אגוזים",en:"Tree nuts",fks:["almonds","walnuts","hazelnuts","cashews","pistachio","brazilNuts","almondbutter"]},
@@ -18083,7 +18082,7 @@ function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,set
           {tdee&&<div style={{marginTop:7,fontSize:10,color:"#6B7C72",textAlign:"center"}}>{lang==="he"?"יעד":"Target"}: <span style={{color:"#8C6D53",fontWeight:700}}>{target}</span> kcal{(+profile.kcalAdj||0)!==0?(lang==="he"?` (כולל תיקון לפי מעקב המשקל: ${profile.kcalAdj>0?"+":""}${profile.kcalAdj})`:` (incl. weight-tracking correction: ${profile.kcalAdj>0?"+":""}${profile.kcalAdj})`):""}</div>}
         </div>
         <div style={{background:"#F5F2EB",borderRadius:10,padding:"9px 10px",border:"1px solid #E2DED4",marginTop:9}}>
-          <div style={{fontSize:10,color:"#6B7C72",marginBottom:6}}>{lang==="he"?"תזונה טבעונית, רגישויות, אלרגיות ופסח — מזונות ומתכונים עם הרכיבים שנבחרו לא יוצעו":"Vegan diet, sensitivities, allergies & Passover — foods and recipes containing the selected items won't be suggested"}</div>
+          <div style={{fontSize:10,color:"#6B7C72",marginBottom:6}}>{lang==="he"?"רגישויות, אלרגיות ופסח — מזונות ומתכונים עם הרכיבים שנבחרו לא יוצעו":"Sensitivities, allergies & Passover — foods and recipes containing the selected items won't be suggested"}</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
             {Object.entries(SENS_GROUPS).map(([k,g])=>{ const on=(profile.sensitivities||[]).includes(k); return (
               <button key={k} onClick={()=>setProfile(p=>{ const cur=p.sensitivities||[]; return {...p,sensitivities:cur.includes(k)?cur.filter(x=>x!==k):[...cur,k]}; })} style={{padding:"5px 11px",borderRadius:20,border:on?"none":"1px solid #D9D3C5",background:on?(k==="vegan"?"#2e7d32":"#c62828"):"#FFFFFF",color:on?"white":"#1E3A2B",fontSize:12,fontWeight:700,cursor:"pointer"}}>{on?(k==="vegan"?"🌱 ":"🚫 "):""}{lang==="he"?g.he:g.en}</button>); })}
@@ -20450,6 +20449,8 @@ function AppInner(){
   const hp=resolveHealthProfile(profile);
   const medKey=(profile.medical||[]).join(",");
   const isVegan=(profile.sensitivities||[]).includes("vegan");
+  // כפתור "טבעוני" הוסר מהרגישויות (לבקשת המשתמש). מנקים סימון ישן כדי שלא יישאר פעיל בלי אפשרות לבטל אותו
+  useEffect(()=>{ if(isVegan) setProfile(p=>({...p,sensitivities:(p.sensitivities||[]).filter(x=>x!=="vegan")})); },[isVegan]);
   const [detailView,setDetailView]=useState(()=>!!load("wfpb_detail_view",false)); // תצוגה פשוטה כברירת מחדל
   const [microPicked,setMicroPicked]=useState(false);
   const [macroPicked,setMacroPicked]=useState(false); // כמו microPicked — ללשונית אבות המזון
