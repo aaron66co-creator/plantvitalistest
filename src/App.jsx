@@ -1719,6 +1719,16 @@ function ensureStewRecipeUsed(plan, tgt, recipeUsage={}){
 // לכן זה השלב האחרון ממש בכל מחולל. ההכנסה ניטרלית קלורית: מחליפה פריטים מאותה קבוצה באותה ארוחה (קטנית/דגן
 // גולמיים, סלט קטניות), ורק אם צריך — מקטינה פריטים גמישים אחרים. אם אי אפשר להישאר בטווח הקלורי — מבטלת
 const STEW_CATS=["תבשילי קטניות","תבשילי דגנים"];
+// כללי תמהיל הארוחות (אותם גבולות כמו enforceMealShareCeiling / ensureMealShareFloor) — ציון = סך החריגה מעבר לגבולות.
+// השלבים האחרונים (תבשיל יומי, עיגול כפות) לא מקבלים שינוי שמגדיל את הציון (לבקשת המשתמש: "לשמור על כללי התמהיל")
+const MEAL_SHARE_MIN={breakfast:0.20, lunch:0.20, dinner:0.16};
+function mealShareViolation(plan){
+  const mk4=["breakfast","snack","lunch","dinner"]; const k={}; let tot=0;
+  mk4.forEach(m=>{ k[m]=(plan[m]||[]).reduce((a,it)=>a+ingNut(it.fk,it.g,it.soaked).kcal,0); tot+=k[m]; });
+  if (!(tot>0)) return 0; let v=0;
+  mk4.forEach(m=>{ const sh=k[m]/tot; const mx=GLOBAL_MEAL_SHARE_MAX[m]; const mn=MEAL_SHARE_MIN[m]; if (mx!=null&&sh>mx) v+=sh-mx; if (mn!=null&&(plan[m]||[]).length&&sh<mn) v+=mn-sh; });
+  return v;
+}
 function stewCatOf(fk){ const fd=TEMP_FDB[fk]; if(!fd||!fd._isRecipe) return null;
   const c=bookCategoryOf({name:fd.he,type:fd._recipeType,foodGroup:fd._foodGroup,ings:fd._ings}); return STEW_CATS.includes(c)?c:null; }
 function guaranteeDailyStews(plan, tgt, excl, usage, allowedIds){
@@ -1739,11 +1749,11 @@ function guaranteeDailyStews(plan, tgt, excl, usage, allowedIds){
   const NO_SHRINK_CATS=new Set(["פרי","ירק","עלים","תבלינים"]);
   const NO_SHRINK_FKS=new Set(["flaxseed","chiaseeds","wakame","nori","saltIodized",...CA_KEEP]);
   // מקטין פריטים גמישים (לא מתכונים) ביום עד שנחתכו X קק"ל — פריט נספר יורד ביחידה שלמה, פריט משקלי עד 40%
-  const shrinkDay=X=>{
+  const shrinkDay=(X,prefMk)=>{
     let cut=0;
     const cands=[]; meals.forEach(mk=>(plan[mk]||[]).forEach((it,idx)=>{ const fd=FDB[it.fk];
       if (!fd || fd._isRecipe || NO_SHRINK_CATS.has(fd.cat) || NO_SHRINK_FKS.has(it.fk)) return; cands.push({mk,it}); }));
-    cands.sort((a,b)=>kOf(b.it)-kOf(a.it));
+    cands.sort((a,b)=>((a.mk===prefMk?0:1)-(b.mk===prefMk?0:1))||(kOf(b.it)-kOf(a.it)));
     for (const {mk,it} of cands) {
       if (cut>=X) break;
       const fd=FDB[it.fk]; const k=kOf(it); if (!(k>0)) continue;
@@ -1775,6 +1785,7 @@ function guaranteeDailyStews(plan, tgt, excl, usage, allowedIds){
     const other=STEW_CATS.find(c=>c!==cat);
     const pref=cat==="תבשילי קטניות"?["lunch","dinner"]:["dinner","lunch"];
     const mealOrder=[...pref.filter(mk=>!mealHas(mk,other)), ...pref.filter(mk=>mealHas(mk,other)), "breakfast"].filter(mk=>(plan[mk]||[]).length);
+    const shareBefore=mealShareViolation(plan);
     let placed=false;
     for (const mk of mealOrder) {
       for (const fk of cands) {
@@ -1783,9 +1794,9 @@ function guaranteeDailyStews(plan, tgt, excl, usage, allowedIds){
         plan[mk]=(plan[mk]||[]).filter(it=>!sameGroup(cat,it));
         plan[mk].push({fk,g});
         const over=dayK()-tgt;
-        if (over<=0 || shrinkDay(over)) {
+        if (over<=0 || shrinkDay(over, mk)) {
           if (dayK()<tgt*0.98) ensureCalorieFloor(plan, tgt);
-          if (has(cat) && dayK()<=tgt*1.005 && dayK()>=tgt*0.95) { placed=true; if (usage) usage[fk]=(usage[fk]||0)+1; break; }
+          if (has(cat) && dayK()<=tgt*1.005 && dayK()>=tgt*0.95 && mealShareViolation(plan)<=shareBefore+0.005) { placed=true; if (usage) usage[fk]=(usage[fk]||0)+1; break; }
         }
         meals.forEach(m=>{ plan[m]=snap[m]; });
       }
@@ -1821,6 +1832,7 @@ function roundSpoonPortions(plan, tgt, dri){
     let n=near;
     if (tgt && kAt(n)>tgt*1.0) n=lo;
     else if (tgt && kAt(n)<tgt*0.98 && kAt(hi)<=tgt*1.0) n=hi;
+    if (n>q && tgt) { const v0=mealShareViolation(plan); const keep=plan[mk][idx]; plan[mk][idx]={...it,g:n*su.g}; const v1=mealShareViolation(plan); plan[mk][idx]=keep; if (v1>v0+0.001) n=lo; }
     if (n>q && UL_KEYS.length) { const base=dayNut(); const cur=ingNut(it.fk,it.g,it.soaked); const nxt=ingNut(it.fk,n*su.g,it.soaked);
       if (UL_KEYS.some(k=>(base[k]||0)-(cur[k]||0)+(nxt[k]||0) > dri[k].ul && (nxt[k]||0)>(cur[k]||0))) { n=lo; if (q<0.5 && it.fk!=="flaxseed" && it.fk!=="chiaseeds") { plan[mk][idx]={...it,g:0,__drop:true}; return; } } }
     // פחות מחצי כף שהעיגול לחצי היה מעביר את היום מעל היעד — מוותרים עליו (כמות זניחה), חוץ מפשתן/צ'יה (אומגה 3)
