@@ -14872,6 +14872,11 @@ const DEF_RECIPES=[
 {id:"sal05sa",name:"סלט תרד, אבוקדו ועגבניות",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"spinach",g:90},{fk:"avocado",g:100},{fk:"tomato",g:200},{fk:"lemon",g:25}],instructions:"מסדרים עלי תרד בקערה, מוסיפים קוביות אבוקדו ועגבנייה ומתבלים במיץ לימון. (מקור טוב לוויטמין E, חומצה פולית ואשלגן.)"},
 {id:"sal08ar",name:"סלט רוקט, נבטי עדשים ועגבניות",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"arugula",g:60},{fk:"lentilSprouts",g:80},{fk:"tomato",g:200},{fk:"lemon",g:25}],instructions:"שוטפים את הרוקט ואת הנבטים. חותכים עגבניות לקוביות. מערבבים ומתבלים במיץ לימון. (רוקט — מקור סידן נספג היטב; נבטי עדשים — ברזל, והלימון והעגבנייה משפרים את ספיגתו.)"},{id:"sal09rm",name:"סלט חסה ערבית, מלפפון וקלמנטינה",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"romaine",g:140},{fk:"cucumber",g:119},{fk:"clementine",g:150},{fk:"lemon",g:25}],instructions:"קורעים את החסה, פורסים מלפפון ומפרידים את הקלמנטינות לפלחים. מערבבים ומתבלים בלימון."},{id:"veg01gb",name:"שעועית ירוקה בשום ולימון",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"ירק",ings:[{fk:"greenBeans",g:400},{fk:"garlic",g:6},{fk:"lemon",g:25},{fk:"oliveOil",g:7.5}],instructions:"מבשלים את השעועית 5–6 דקות במים רותחים ומסננים. מחממים שמן זית עם שום פרוס דקה, מוסיפים את השעועית ומערבבים. מתבלים בלימון."},{id:"veg02bn",name:"דלורית אפויה עם טחינה",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"ירק",ings:[{fk:"butternut",g:500},{fk:"tahiniFullRaw",g:22.5},{fk:"lemon",g:25},{fk:"cinnamon",g:1}],instructions:"חותכים דלורית לקוביות, מפזרים קינמון ואופים ב-200 מעלות כ-35 דקות. מגישים עם טחינה מדוללת בלימון ובמעט מים."},{id:"sal06bb",name:"סלט כרוב סיני, ברוקולי ושומשום",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"bokChoy",g:210},{fk:"broccoli",g:170},{fk:"sesame",g:9},{fk:"lemon",g:25}],instructions:"חולטים פרחי ברוקולי 2 דקות ומצננים במים קרים. קוצצים כרוב סיני דק. מערבבים, מתבלים בלימון ומפזרים שומשום קלוי. (מקור טוב לסידן, כולין וויטמין C.)"},
 {id:"sal07gt",name:"סלט עלים ירוקים ופטריות בטחינה גולמית",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"kale",g:60},{fk:"swisschard",g:72},{fk:"mushroom",g:140},{fk:"tahiniFullRaw",g:22.5},{fk:"lemon",g:25}],instructions:"קורעים קייל ומנגולד לחתיכות, פורסים פטריות דק. מדללים את הטחינה בלימון ומעט מים ויוצקים מעל. (מקור טוב לסידן ולכולין.)"},
+// מתכונים עם נבט חיטה (לבקשת המשתמש) — כף נבט חיטה (7 גר') למנה, בתוך תקרת 14 גר' ביום
+{id:"wg01por",name:"דייסת שיבולת שועל, תפוח ונבט חיטה",servings:2,type:"דייסה",preferredMeal:"breakfast",foodGroup:"דגן",ings:[{fk:"oatsMedRaw",g:80},{fk:"soymilkFortified",g:240},{fk:"apple",g:120},{fk:"wheatGerm",g:14},{fk:"walnuts",g:14},{fk:"cinnamon",g:1}],instructions:"מביאים לרתיחה משקה סויה עם חצי כוס מים. מוסיפים שיבולת שועל ותפוח מגורר ומבשלים 5 דקות תוך ערבוב. מורידים מהאש, מפזרים נבט חיטה, אגוזי מלך קצוצים וקינמון."},
+{id:"wg02sal",name:"סלט עגבניות, מלפפון ונבט חיטה",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"tomato",g:200},{fk:"cucumber",g:238},{fk:"springOnion",g:30},{fk:"parsley",g:8},{fk:"lemon",g:25},{fk:"oliveOil",g:7.5},{fk:"wheatGerm",g:14}],instructions:"קוצצים עגבניות, מלפפונים, בצל ירוק ופטרוזיליה. מתבלים במיץ לימון ושמן זית. מפזרים נבט חיטה ממש לפני ההגשה, כדי שיישאר פריך."},
+{id:"wg03lat",name:"לביבות עדשים ונבט חיטה",servings:4,type:"חביתה",preferredMeal:"any",foodGroup:"קטנית",ings:[{fk:"redLentils",g:330},{fk:"oatFlour",g:46},{fk:"wheatGerm",g:28},{fk:"onion",g:110},{fk:"garlic",g:6},{fk:"parsley",g:16},{fk:"oliveOil",g:15},{fk:"turmericGround",g:2},{fk:"blackPepperGround",g:1}],instructions:"מועכים עדשים אדומות מבושלות. מוסיפים בצל ושום קצוצים דק, פטרוזיליה, קמח שיבולת שועל, נבט חיטה, כורכום ופלפל, ולשים לעיסה אחידה. יוצרים 8 לביבות ומטגנים במחבת מוברשת בשמן זית, 3–4 דקות מכל צד."},
+{id:"wg04bwl",name:"קערת יוגורט סויה, פירות יער ונבט חיטה",servings:1,type:"קערה",preferredMeal:"breakfast",foodGroup:"חלבון",ings:[{fk:"soyYogurtPlain",g:170},{fk:"blueberry",g:74},{fk:"banana",g:60},{fk:"wheatGerm",g:7},{fk:"flaxseed",g:7}],instructions:"שמים יוגורט סויה בקערה. מוסיפים אוכמניות וחצי בננה פרוסה. מפזרים מעל נבט חיטה וזרעי פשתן טחונים."},
 ];
 // חבילת 50 מתכוני WFPB מוכנים מראש (תבשילים/מרקים/פשטידות/מאפים/סלטים/ממרחים) — לבקשת המשתמש, כפתרון
 // לבעיית הדבקה שנכשלה בסביבות מובייל מסוימות (clipboard read חסום בתוך ה-iframe המוגבל של הארטיפקט). כל
@@ -15538,7 +15543,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
                 </span>
               )}
             </div>
-            {withCourses(mk, plan[mk]||[], (it,i)=>{
+            {withCourses(mk, plan[mk]||[], (it,i,_last,addon)=>{
               const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return null;
               const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
               const kcal=Math.round(ingNut(it.fk,it.g).kcal);
@@ -15546,7 +15551,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
               return(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,color:"#1E3A2B",padding:"3px 0",gap:8}}>
                   <span style={{display:"flex",alignItems:"center",gap:4,unicodeBidi:"plaintext"}}>
-                    {foodName(it.fk,lang)}
+                    {foodName(it.fk,lang)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}
                     {fd._isRecipe && (
                       <button onClick={()=>setViewRecipeId(it.fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                         style={{background:"#E8EFE9",border:"1px solid #bcd4bf",borderRadius:6,color:"#2e7d32",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
@@ -15922,7 +15927,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
                       </span>
                     )}
                   </div>
-                  {withCourses(mk, dayMealItems, (it,idx)=>{
+                  {withCourses(mk, dayMealItems, (it,idx,_last,addon)=>{
                     const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return null;
                     const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
                     const kcal=Math.round(ingNut(it.fk,it.g).kcal);
@@ -15930,7 +15935,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
                     return(
                       <div key={idx} style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,color:"#1E3A2B",padding:"3px 0",gap:8}}>
                         <span style={{display:"flex",alignItems:"center",gap:4,unicodeBidi:"plaintext"}}>
-                          {foodName(it.fk,lang)}
+                          {foodName(it.fk,lang)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}
                           {fd._isRecipe && (
                             <button onClick={()=>setViewRecipeId(it.fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                               style={{background:"#E8EFE9",border:"1px solid #bcd4bf",borderRadius:6,color:"#2e7d32",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
@@ -17087,15 +17092,22 @@ function courseOf(fk){ const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return "main";
   return "main"; }
 const COURSE_LABELS={starter:{he:"🥗 פתיחה",en:"🥗 Starter"},main:{he:"🍲 עיקרית",en:"🍲 Main"},dessert:{he:"🍎 קינוח",en:"🍎 Dessert"}};
 // מחזיר את רשימת הפריטים מקובצת לפי מנות (אם יש לפחות שתי קבוצות) — render(it, idx המקורי, האחרון-בקבוצה)
+// נבט חיטה ואצות וואקמה מוצגים צמוד לסלט, מיד אחריו, עם "(להוספה)" (לבקשת המשתמש) — תצוגה בלבד, הכמויות והתכנון לא משתנים
+const SALAD_ADDON_FKS=new Set(["wheatGerm","wakame"]);
+function isSaladFk(fk){ if (String(fk).startsWith("autosal_")) return true; const c=recipeCatOfFk(fk); return !!c && (c.startsWith("סלטי")||c==="ארוחות סלט"); }
 function withCourses(mk, items, render, lang, inline){
-  const list=(items||[]).map((it,idx)=>({it,idx}));
-  const flat=()=>list.map(({it,idx})=>render(it,idx,idx===list.length-1));
+  let list=(items||[]).map((it,idx)=>({it,idx}));
+  const salad=list.find(x=>isSaladFk(x.it.fk));
+  const addons=salad?list.filter(x=>SALAD_ADDON_FKS.has(x.it.fk)):[];
+  if (addons.length) { const rest=list.filter(x=>!SALAD_ADDON_FKS.has(x.it.fk)); const at=rest.indexOf(salad)+1; list=[...rest.slice(0,at),...addons.map(x=>({...x,addon:true})),...rest.slice(at)]; }
+  const courseOfRow=x=>x.addon?courseOf(salad.it.fk):courseOf(x.it.fk);
+  const flat=()=>list.map((x,i)=>render(x.it,x.idx,i===list.length-1,!!x.addon));
   if (!(mk==="lunch"||mk==="dinner")) return flat();
-  const groups=["starter","main","dessert"].map(c=>({c,rows:list.filter(x=>courseOf(x.it.fk)===c)})).filter(g=>g.rows.length);
+  const groups=["starter","main","dessert"].map(c=>({c,rows:list.filter(x=>courseOfRow(x)===c)})).filter(g=>g.rows.length);
   if (groups.length<2) return flat();
   return groups.map(g=>(<div key={g.c} style={inline?{display:"flex",flexWrap:"wrap",gap:"2px 0",width:"100%",alignItems:"center"}:{}}>
     <div style={{width:"100%",fontSize:14,fontWeight:800,color:"#2F3B34",letterSpacing:.2,marginTop:6,marginBottom:2}}>{COURSE_LABELS[g.c][lang==="he"?"he":"en"]}</div>
-    {g.rows.map((x,i)=>render(x.it,x.idx,i===g.rows.length-1))}</div>));
+    {g.rows.map((x,i)=>render(x.it,x.idx,i===g.rows.length-1,!!x.addon))}</div>));
 }
 // מסגרת "מפת שולחן" משובצת לכרטיסי ארוחה (לבקשת המשתמש — אפשרות ב): המשבצות במסגרת, התוכן על משטח בהיר
 // צבע ייחודי לכל ארוחה (לבקשת המשתמש): בוקר ירוק, ביניים אדום, צהריים כחול, ערב צהוב
@@ -17154,7 +17166,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
           {/* רשימת רכיבים כ"צ'יפים" נפרדים (במקום שורת טקסט מאוחדת אחת) — נחוץ כדי לאפשר מתג "מושרה" בודד
               לכל קטנית/דגן בנפרד, בלי לפגוע בקומפקטיות עבור שאר הרכיבים שמוצגים בדיוק כמו קודם */}
           <div style={{display:"flex",flexWrap:"wrap",gap:"2px 0",fontSize:11,color:"#1E3A2B",lineHeight:1.9,fontWeight:500}}>
-            {withCourses(mealKey, ings, ({fk,g,soaked},idx,lastInGroup)=>{
+            {withCourses(mealKey, ings, ({fk,g,soaked},idx,lastInGroup,addon)=>{
               const fd=FDB[fk]||TEMP_FDB[fk];if(!fd)return null;
               // חשוב: למתכון יש גודל-מנה משלו (fd._servingG) שמחושב מתוך המרכיבים בפועל — לא ברירת המחדל הגנרית של הקטגוריה
               // (שרק במקרה תואמת לפעמים). בלי זה, "1 מנה שלמה" מוצגת בטעות כ"¾ מנה" או "0.96 מנה" למרות שהכמות נכונה ושלמה.
@@ -17181,7 +17193,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                         מתצוגות אחרות באפליקציה (חלון-הצעת-שבוע/יום, תצוגת-מתכון) שכן מציגות "kcal · gr'" לכל שורה.
                         נבדק חישובית (סימולציה, 140 ארוחות): סכום-קלוריות-לפי-פריט תמיד תואם בדיוק לסך-הארוחה
                         המוצג (0 אי-התאמות) — אין באג בחישוב עצמו, רק חוסר-תצוגה. נוסף כאן */}
-                    {qty} {foodName(fk,lang)}{!simple&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
+                    {qty} {foodName(fk,lang)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}{!simple&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
                   {fd._isRecipe && (
                     <button onClick={()=>setViewRecipeId(fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                       style={{marginInlineStart:3,marginInlineEnd:isLast?0:3,background:"#F7EFE3",border:"1px solid #d9c2a3",borderRadius:6,color:"#8C6D53",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
