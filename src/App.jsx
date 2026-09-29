@@ -19622,6 +19622,17 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
               <button onClick={closeView} style={{flexShrink:0,padding:"6px 14px",borderRadius:9,border:"1px solid #c9b8e8",background:"#F5F2EB",color:"#4527a0",fontSize:14,fontWeight:800,cursor:"pointer"}}>✕ {lang==="he"?"סגור":"Close"}</button>
             </div>
             <div style={{fontSize:14,color:"#4527a0",fontWeight:700,marginBottom:14}}>{BOOK_CATEGORY_LABELS[lang][bookCategoryOf(r)]} · {r.servings} {lang==="he"?"מנות":"servings"} · <span style={{color:"#c1440e"}}>{kcal} kcal</span> {lang==="he"?"למנה":"/ serving"}</div>
+            {/* ויטמינים ומינרלים למנה (לבקשת המשתמש) — מחושב מאותם ערכים שמנוע התכנון רואה, כולל אובדן בבישול */}
+            <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{lang==="he"?"💊 ויטמינים ומינרלים (למנה)":"💊 Vitamins & minerals (per serving)"}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:6,marginBottom:6}}>
+              {["vitC","vitB1","vitB6","vitB9","potassium","calcium","iron","zinc","magnesium","vitE"].map(k=>{ const d=dri[k]; if(!d) return null;
+                const val=(entry.per100[k]||0)*sg/100; const pct=Math.round(val/d.dri*100); const color=pct>=25?"#1b5e20":pct>=10?"#8a6608":"#8a3408";
+                return(<div key={k} style={{background:"#F5F2EB",borderRadius:9,padding:"6px 9px",border:"1px solid #E2DED4"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:6}}><span style={{fontSize:13,fontWeight:700,color:"#1E3A2B"}}>{DRI_LABELS[k]?.[lang]||k}</span><span style={{fontSize:13,fontWeight:800,color}}>{pct}%</span></div>
+                  <div style={{fontSize:12,color:"#34443b"}}><span dir="ltr" style={{display:"inline-block"}}>{fmtN(val,val<10?1:0)} {d.unit}</span></div>
+                </div>); })}
+            </div>
+            <div style={{fontSize:12.5,color:"#34443b",marginBottom:14}}>{lang==="he"?"האחוז — מתוך הצריכה היומית המומלצת.":"% of the recommended daily intake."}{recipeHasCookLoss(r)?(lang==="he"?" 🔥 הערכים כוללים אובדן בבישול (ויטמין C, B1, B6, חומצה פולית, אשלגן).":" 🔥 Values include cooking losses (vitamin C, B1, B6, folate, potassium)."):""}</div>
             <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{lang==="he"?"🧾 רכיבים":"🧾 Ingredients"}</div>
             <div style={{marginBottom:16}}>
               {(r.ings||[]).map((ing,i)=>{ const fd=FDB[ing.fk]; if(!fd) return null; const su=getServingUnit(ing.fk,fd,lang);
