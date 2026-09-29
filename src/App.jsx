@@ -290,12 +290,19 @@ function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}ca
 // רץ פעם אחת, מייד עם טעינת הסקריפט, לפני שכל state של React מאותחל — כדי שה-useState הראשוני של meals כבר
 // יקרא את הערך המנוקה. נוגע רק בתפריט המתוכנן (wfpb_meals) — לא בפרופיל (יש לו כבר את מתג "wfpb_remember_profile"
 // הנפרד), לא ביומן האכילה בפועל, ולא במתכונים השמורים
+// תיקון (לבקשת המשתמש: "בכל כניסה מוצגות הארוחות מהכניסה הקודמת") — בטלפון הדפדפן שומר/משחזר את הטאב ואיתו את
+// sessionStorage, כך שכניסה חדשה לא זוהתה. עכשיו גם: אם עברו יותר מ-30 דקות מהשימוש האחרון (wfpb_last_seen) — זו
+// כניסה חדשה. רענון או חזרה תוך פחות מ-30 דקות שומרים את מה שנבנה
+const IDLE_RESET_MS=30*60*1000, LAST_SEEN_KEY="wfpb_last_seen";
+function markSeen(){ try{ localStorage.setItem(LAST_SEEN_KEY,String(Date.now())); }catch{} }
+function idleTooLong(){ try{ const t=+localStorage.getItem(LAST_SEEN_KEY)||0; return t>0&&Date.now()-t>IDLE_RESET_MS; }catch{ return false; } }
 (function resetMealsOnNewSession(){
   try{
-    if(!sessionStorage.getItem("wfpb_session_active")){
+    if(!sessionStorage.getItem("wfpb_session_active")||idleTooLong()){
       localStorage.removeItem("wfpb_meals");
       sessionStorage.setItem("wfpb_session_active","1");
     }
+    markSeen();
   }catch{}
 })();
 function uid(){return Math.random().toString(36).slice(2,9);}
@@ -1906,7 +1913,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
     adjust(freed, mk, it=>isRawLegume(it.fk)||isCookedGrain(it.fk)); if (okAfter(v0)) return true; restore(s1);
     const legN=(plan[mk]||[]).reduce((a,it)=>a+legPortions(it),0), grN=(plan[mk]||[]).reduce((a,it)=>a+grainPortions(it),0);
     if (grN<0.99 && tryAdd(mk, unused(COOKED_GRAIN_FKS), v0)) return true;
-    if (legN<0.99 && tryAdd(mk, unused(COOKED_LEGUME_FKS), v0)) return true;
+    if (legN<0.99 && tryAdd(mk, unused(COOKED_LEGUME_FKS.filter(fk=>!GLOBAL_BANNED_STANDALONE.has(fk))), v0)) return true;
     return false; };
 
   // משלים קלוריות שהתפנו כשאין דרך "נקייה": הגדלת פריטים גמישים בכל היום (גם פרי), ואז מנה שלמה של דגן/קטנית
@@ -1925,7 +1932,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
   for (const mk of ALL) { const bad=(plan[mk]||[]).filter(it=>{ const fd=FDB[it.fk]; return !it._user&&fd&&!fd._isRecipe&&GLOBAL_BANNED_STANDALONE.has(it.fk); });
     if (!bad.length) continue; const v0=mealShareViolation(plan); const s0=snap(); const k0=dayK();
     plan[mk]=(plan[mk]||[]).filter(it=>!bad.includes(it));
-    if (!refill(mk, k0-dayK(), v0)) { restore(s0); plan[mk]=(plan[mk]||[]).filter(it=>{ const fd=FDB[it.fk]; return !(fd&&!fd._isRecipe&&GLOBAL_BANNED_STANDALONE.has(it.fk)&&kOf(it)<60); }); } }
+    if (!refill(mk, k0-dayK(), v0)) { restore(s0); plan[mk]=(plan[mk]||[]).filter(it=>{ const fd=FDB[it.fk]; return it._user||!(fd&&!fd._isRecipe&&GLOBAL_BANNED_STANDALONE.has(it.fk)); }); fillDay(k0-dayK(), null); } }
   // (1ב) זרעים (לבקשת המשתמש). סוג זרעים אחד לארוחה:
   // • פשתן/צ'יה — כף אחת לפחות, עד 2 לפי הצורך (אומגה 3), ורק בארוחה שיש בה "מנה מארחת" — סלט, פשטידה, מרק, תבשיל
   //   או קערה (isSeedHostFk); בתפריט הם מוצגים לידה "(להוספה)". בארוחה בלי מנה כזו — עוברים לארוחה שיש בה, או יורדים.
@@ -2063,6 +2070,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
       if (legPortions(it)>0&&rest.reduce((a,x)=>a+legPortions(x),0)>0.01) return false;
       if (grainPortions(it)>0&&rest.reduce((a,x)=>a+grainPortions(x),0)>0.01) return false;
       if (rest.some(x=>x.fk===it.fk)) return false; // אותו מוצר לא פעמיים בארוחה
+      if (SEED_CAP_G[it.fk]!=null&&(rest.some(x=>SEED_CAP_G[x.fk]!=null)||(OMEGA_SEED_TBSP_G[it.fk]&&!rest.some(x=>isSeedHostFk(x.fk))))) return false; // סוג זרעים אחד; פשתן/צ'יה — ליד מנה מארחת
       const SOYDRINK=f=>f==="soymilkFortified"||f==="soymilkOrgPlain"; if (SOYDRINK(it.fk)&&rest.some(x=>SOYDRINK(x.fk))) return false;
       if (it.fk==="edamame"&&rest.some(x=>SOY_FKS_ALL.has(x.fk)&&!COURSE_YOG.has(x.fk)&&!SOYDRINK(x.fk))) return false;
       if (COURSE_YOG.has(it.fk)&&rest.some(x=>COURSE_YOG.has(x.fk))) return false;
@@ -2155,6 +2163,14 @@ function tidyMealLogic(plan, tgt, dri, excl){
   for (const mk of ALL) { if (dayK()<=tgt*1.005) break; const i=(plan[mk]||[]).findIndex(isOmega); if (i<0) continue; const it=plan[mk][i]; const t=OMEGA_SEED_TBSP_G[it.fk];
     if (it.g<2*t-0.05) continue; plan[mk][i]={...it,g:t}; if (ala()<alaMin) plan[mk][i]=it; }
   if (dayK()>tgt*1.005) adjust(-(dayK()-tgt), null, it=>seedIt(it)||isRawLegume(it.fk)||isCookedGrain(it.fk), true);
+  // (6ב) תקרות בטיחות (מנגן, סלניום) — קשיח בסוף השלב: מורידים יחידה של נבט חיטה / זרעים / אגוזים (הכי עשיר ברכיב
+  // החורג), ומשלימים קלוריות במקום אחר
+  for (const x of UL) for (let guard=0; guard<4 && (dayNut()[x]||0)>dri[x].ul; guard++) {
+    let best=null; ALL.forEach(m=>(plan[m]||[]).forEach((it,i)=>{ if (it._user) return; const f=FDB[it.fk]; if (!f||f._isRecipe||!(it.fk==="wheatGerm"||f.cat==="זרעים"||f.cat==="אגוזים")) return;
+      const v=ingNut(it.fk,it.g,it.soaked)[x]||0; if (!best||v>best.v) best={m,i,it,v}; }));
+    if (!best) break; const k0=dayK(); const st=pieceStepG(best.it.fk)||wholeUnitStepG(best.it.fk)||best.it.g; const ng=Math.round((best.it.g-st)*100)/100;
+    if (ng<=0.05) plan[best.m].splice(best.i,1); else plan[best.m][best.i]={...best.it,g:ng};
+    fillDay(k0-dayK(), null); }
   // (7) אגוזים וזרעים ביחידות שלמות לפי סוגם: שקדים/לוז/קשיו/פיסטוקים — יחידות, אגוזי מלך — חצאים, בוטנים — כפות,
   // פשתן/צ'יה — כפות, חמנייה/דלעת/שומשום — רבעי כף. הפרש הקלוריות זניח (לכל היותר חצי יחידה לפריט)
   snapPieceUnits(plan);
@@ -4149,7 +4165,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   const LEU_THR=(dri?._age||35)>=65?2.5:2.0;
   const leuOf=mk=>{ let a=0; for (const it of (plan[mk]||[])) a+=(nutC(it.fk,it.g,it.soaked).leucine||0); return a; };
   const leuPenalty=()=>{ const v=["breakfast","lunch","dinner"].map(leuOf).sort((a,b)=>b-a); return Math.max(0,LEU_THR-v[0])+Math.max(0,LEU_THR-v[1]); };
-  const LEU_SRC=["lupinBeansCooked","edamame","redLentils","greenLentils","chickpeas","blackBeans","tempeh","pumpkinS","peanuts","soyYogurtPlain","soymilkFortified"];
+  const LEU_SRC=["lupinBeansCooked","edamame","chickpeas","blackBeans","pumpkinS","soyYogurtPlain","soymilkFortified"].filter(fk=>!GLOBAL_BANNED_STANDALONE.has(fk)); // עדשים, טמפה ובוטנים — רק בתוך מתכון
   const leuMoves=()=>{ const mv=[]; if (leuPenalty()<=0) return mv;
     const u=used(); const top=["breakfast","lunch","dinner"].filter(m=>(plan[m]||[]).length).sort((a,b)=>leuOf(b)-leuOf(a)).slice(0,2).filter(m=>leuOf(m)<LEU_THR);
     for (const mk of top) { const its=plan[mk];
@@ -5116,7 +5132,7 @@ function enforceCalorieCeilingAndFloor(plan, tgt){
 // ensureCalciumAdequacyFinal (שרץ אחרי applyMealHygieneFinalRules) בונה לעצמו רשימת-מועמדים נפרדת, בלי
 // לבדוק מול הרשימה הזו בכלל. הועברה לקבוע גלובלי, כדי שגם מנגנונים אחרים (לא רק applyMealHygieneFinalRules
 // עצמה) יוכלו להימנע מהצעת הפריטים האלה כעצמאיים. נוסף גם "leek" (כרישה) לפי הבקשה החדשה
-const GLOBAL_BANNED_STANDALONE = new Set(["pumpkin","peanuts","vinegar","appleCiderVinegar","oliveOil","brusselsSp","turnip","zucchini","cauliflower","broccoli","kale","asparagus","nori","cabbageWhite","cabbageRed","bokChoy","tahiniFullRaw","tahiniRaw","tofu","tempeh","onion","leek","dateSilan"]);
+const GLOBAL_BANNED_STANDALONE = new Set(["redLentils","greenLentils","brownLentils","blackLentils","pumpkin","peanuts","vinegar","appleCiderVinegar","oliveOil","brusselsSp","turnip","zucchini","cauliflower","broccoli","kale","asparagus","nori","cabbageWhite","cabbageRed","bokChoy","tahiniFullRaw","tahiniRaw","tofu","tempeh","onion","leek","dateSilan"]);
 function applyMealHygieneFinalRules(plan, tgt){
   const BREAD_FKS = new Set(["wholeWheatBread","wholePita"]);
   const LENTIL_FKS = new Set(["redLentils","greenLentils","brownLentils","blackLentils"]);
@@ -17867,7 +17883,13 @@ function FoodLogMealRow({mealKey,status,items,plannedItems,onMarkPlanned,onFree,
 // "סלט ירקות ועלים" אחד שמכיל בדיוק אותם רכיבים ואותן כמויות (כך שהערכים התזונתיים לא משתנים כלל). הסלט נשמר
 // במכשיר ונרשם כמתכון "נסתר" (לא מופיע בספר המתכונים ולא נבחר ע"י המחוללים — רק מתאר את הפריטים שאוחדו)
 const AUTO_SALAD_STORAGE="wfpb_auto_salads";
+// שם הסלט המאוחד — שמות הרכיבים בלי הסוגריים שלהם (לבקשת המשתמש: "סלט ירקות ועלים (תרד טרי, אצות וואקמה (יבשות, לפני
+// השריה))" מבלבל). מחושב מחדש גם לסלטים ששמורים מגרסה קודמת
+function autoSaladNames(ings){ const plain=(fk,l)=>foodName(fk,l).replace(/\s*\([^)]*\)/g,"").trim();
+  const hasLeaf=ings.some(i=>(FDB[i.fk]||{}).cat==="עלים");
+  return {he:`${hasLeaf?"סלט ירקות ועלים":"סלט ירקות ופטריות"} (${ings.map(i=>plain(i.fk,"he")).join(", ")})`, en:`${hasLeaf?"Vegetable & greens salad":"Vegetable & mushroom salad"} (${ings.map(i=>plain(i.fk,"en")).join(", ")})`}; }
 function registerAutoSalad(r){
+  const nm=autoSaladNames(r.ings||[]); r={...r,name:nm.he,nameEn:nm.en};
   const e=recipeToFdbEntry(r); if (r.nameEn) e.en=r.nameEn;
   Object.defineProperty(TEMP_FDB, r.id, {value:e, enumerable:false, configurable:true, writable:true});
 }
@@ -17883,7 +17905,7 @@ function consolidateMealSalads(plan){
   let store=null; const out={...plan}; let changed=false;
   for (const mk of ["breakfast","lunch","dinner"]) {
     const its=plan[mk]||[];
-    const raw=its.filter(it=>{ if(!it||!it.fk||it._user||it._keep) return false; const f=FDB[it.fk]; return !!f&&(f.cat==="ירק"||f.cat==="עלים")&&it.fk!=="garlic"; });
+    const raw=its.filter(it=>{ if(!it||!it.fk||it._user||it._keep) return false; const f=FDB[it.fk]; return !!f&&(f.cat==="ירק"||f.cat==="עלים")&&it.fk!=="garlic"&&!SALAD_ADDON_FKS.has(it.fk); }); // וואקמה — "(להוספה)" ליד הסלט, לא בתוכו
     const hasLeaf=raw.some(it=>FDB[it.fk].cat==="עלים"), hasMush=raw.some(it=>it.fk==="mushroom");
     if (raw.length<2 || !(hasLeaf||hasMush)) continue; // עלים או פטריות לצד ירק נוסף — מוצגים יחד כסלט (לבקשת המשתמש)
     const ings=raw.map(it=>({fk:it.fk,g:Math.round(it.g*10)/10})).sort((a,b)=>FDB[a.fk].cat===FDB[b.fk].cat?(a.fk<b.fk?-1:1):(FDB[a.fk].cat==="עלים"?-1:1));
@@ -20714,6 +20736,13 @@ function AppInner(){
 
   useState(()=>{ loadAutoSalads(); return 0; }); // סלטי "ירקות ועלים" שאוחדו — נרשמים לפני שהארוחות השמורות מוצגות
   const[meals,setMeals]=useState(()=>load("wfpb_meals",{}));
+  // האפליקציה נשארה פתוחה ברקע יותר מ-30 דקות — כשחוזרים אליה זו כניסה חדשה: התפריט המתוכנן מתאפס (כמו בטעינה)
+  useEffect(()=>{
+    const onVis=()=>{ if (document.visibilityState==="visible") { if (idleTooLong()) { setMeals({}); save("wfpb_meals",{}); } markSeen(); } else markSeen(); };
+    const tick=setInterval(()=>{ if (document.visibilityState==="visible") markSeen(); },60000);
+    document.addEventListener("visibilitychange",onVis); window.addEventListener("pagehide",markSeen);
+    return ()=>{ clearInterval(tick); document.removeEventListener("visibilitychange",onVis); window.removeEventListener("pagehide",markSeen); };
+  },[]);
   // "לעולם לא להציע" ברמת מרכיב בודד (לא-אוהב/אלרגיה) — Set של fk-ים, נשמר ב-localStorage, נטען כמערך ומומר
   // ל-Set לנוחות שימוש (has() במקום includes())
   const EXCLUDED_FKS_STORAGE="wfpb_excluded_fks";
