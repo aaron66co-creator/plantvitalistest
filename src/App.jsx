@@ -13618,7 +13618,7 @@ function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
     enforceDailyCalorieBand(day, target, dri, excludedFks); // שער 98-100% סופי לכל יום בשבוע
   yield {phase:"polish",i:__di+1}; }
   yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipeIds, (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
-  { const __su={}; Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, __su, new Set(recipeIds))); Object.keys(week).forEach(k=>{ roundSpoonPortions(week[k], target, dri); rebalanceMealShares(week[k]); }); } // שלב אחרון לכל יום
+  { const __su={}; Object.keys(week).forEach(k=>ensureCalorieFloor(week[k], target)); /* רצפת קלוריות אחרונה — יום שירד מתחת ל-98% בשלבים השבועיים */ Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, __su, new Set(recipeIds))); Object.keys(week).forEach(k=>{ roundSpoonPortions(week[k], target, dri); rebalanceMealShares(week[k]); }); } // שלב אחרון לכל יום
   return week;
 }
 // גרסה שבועית של מחולל "הצע ארוחות ממתכונים" (generateRecipesNSFDayPlan) — לבקשת המשתמש. מריצה את אותו
@@ -14549,6 +14549,7 @@ function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=nu
     enforceDailyCalorieBand(day, target, dri, excludedFks); // שער 98-100% סופי לכל יום בשבוע
   yield {phase:"polish",i:__di+1}; } }
   yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id), (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id)); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
+  Object.keys(week).forEach(k=>ensureCalorieFloor(week[k], target)); // רצפת קלוריות אחרונה לפני השלבים הסופיים
   Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, finalUsage, new Set(recipes.map(r=>r.id)))); Object.keys(week).forEach(k=>{ roundSpoonPortions(week[k], target, dri); rebalanceMealShares(week[k]); }); // שלב אחרון לכל יום
   return {week, updatedUsage: finalUsage};
 }
