@@ -331,6 +331,14 @@ function fmtQty(v){
   return fmtN(v,2).toString();
 }
 // כמות + יחידה, בלי "1" מיותר לפני יחידה בודדת (לבקשת המשתמש): "כוס עדשים" במקום "1 כוס עדשים"
+// שם פריט עם כמות, בלי כפילות מילה (לבקשת המשתמש: "תאנים תאנה" → "תאנה"): כשהיחידה זהה לשם — רק כמות+יחידה;
+// כששם הפריט מתחיל ביחידה ("תמר מג׳הול" ביחידת "תמר") — רק מספר+שם
+function itemLabel(fk,su,v,lang){ const name=foodName(fk,lang); if(!su||su.weightOnly) return null;
+  const pl=v>1.01, full=lang==="he"?(pl?su.nameHePl:su.nameHe):(pl?su.nameEnPl:su.nameEn); // "8 חצאי אגוזי מלך"
+  if(full){ const q=fmtQty(v); return q==="1"?full:`${q} ${full}`; }
+  const sg=lang==="he"?su.he:su.en, sgPl=lang==="he"?su.hePl:su.enPl, low=x=>(x||"").toLowerCase();
+  if(sg&&(low(sg)===low(name)||(sgPl&&low(sgPl)===low(name)))) return qtyWithUnit(su,v,lang); // "23 שקדים", "12 קשיו"
+  if(sg&&name.startsWith(sg+" ")){ const q=fmtQty(v); return q==="1"?name:`${q} ${name}`; } return null; }
 function qtyWithUnit(su,v,lang){ const q=fmtQty(v); const w=unitWord(su,v,lang); return q==="1"?w:`${q} ${w}`; }
 // שים לב: nut.kcal מיושר תמיד לאותה נוסחת Atwater (netCarbs×4 + סיבים×2 + חלבון×4 + שומן×9) שמוצגת בכל מקום
 // באפליקציה (כרטיס ארוחה, סיכום יומי, אחוז מהיעד) — ראה calcKcalActual למטה. בלי היישור הזה, מנוע היצירה האוטומטי
@@ -343,7 +351,9 @@ function qtyWithUnit(su,v,lang){ const q=fmtQty(v); const w=unitWord(su,v,lang);
 // גודל הבונוס: ברזל +15%, אבץ +25% (הכי מושפע מפיטאט), סידן +10% (פחות מושפע מהשריה בהקשר הזה מאשר אוקסלאט).
 const SOAK_BIOAVAIL_BOOST = {iron:1.15, zinc:1.25, calcium:1.10};
 const SOAKABLE_CATS = new Set(["קטנית","דגן"]);
-function isSoakableFk(fk){ const fd=FDB[fk]||TEMP_FDB[fk]; return !!fd && SOAKABLE_CATS.has(fd.cat) && !fd._isRecipe; }
+// לחם, פיתה, פסטה וקמחים לא "מושרים" (לבקשת המשתמש: "אל תשאל על לחם האם הושרה")
+const NOT_SOAKABLE_FKS = new Set(["wholeWheatBread","wholePita","wholeWPasta","lentilFlour","oatFlour","chickpeaFlour","spelledFlour"]);
+function isSoakableFk(fk){ const fd=FDB[fk]||TEMP_FDB[fk]; return !!fd && SOAKABLE_CATS.has(fd.cat) && !fd._isRecipe && !NOT_SOAKABLE_FKS.has(fk); }
 // ביצועים: בנייה בלולאה אחת (במקום reduce עם העתקת-אובייקט בכל צעד, שהייתה ריבועית וצרכה ~70% מזמן תכנון השבוע) — תוצאה זהה
 function zeroNut(){const o={};for(let i=0;i<ALL_KEYS.length;i++)o[ALL_KEYS[i]]=0;return o;}
 function ingNut(fk,g,soaked){const fd=FDB[fk]||TEMP_FDB[fk];if(!fd)return zeroNut();const f=g/100;const p=fd.per100;const nut={};for(let i=0;i<ALL_KEYS.length;i++){const k=ALL_KEYS[i];nut[k]=(p[k]||0)*f;}if(soaked&&SOAKABLE_CATS.has(fd.cat)&&!fd._isRecipe){Object.keys(SOAK_BIOAVAIL_BOOST).forEach(k=>{nut[k]=(nut[k]||0)*SOAK_BIOAVAIL_BOOST[k];});}nut.kcal=calcKcalActual(nut);return nut;}
@@ -1816,14 +1826,31 @@ const SPOON_UNITS=new Set(["כף","כפית","כף קצוץ","כפית מגור�
 // (בבדיקה — יום בלי תבשיל). מונה סינכרוני סביב קריאת מחולל-היום בלבד, כך שביטול באמצע לא משאיר אותו דלוק
 let __SPOON_ROUND_OFF=0;
 function withoutSpoonRound(fn){ __SPOON_ROUND_OFF++; try{ return fn(); } finally{ __SPOON_ROUND_OFF--; } }
-// ===== סידור ארוחות אחרון (לבקשת המשתמש, על סמך תפריט אמיתי) =====
-// 1. תבשיל קטניות בא עם דגן באותה ארוחה — תבשיל דגנים או דגן מבושל. אם אין: מעבירים לשם תבשיל דגנים מארוחה אחרת,
-//    ואם אין כזה — מוסיפים חצי כוס דגן מבושל ומפנים לה מקום באותה ארוחה.
-// 2. לא יותר ממנה אחת (כוס) של קטניות מבושלות בארוחה — העודף מוסר והקלוריות עוברות לפריטים אחרים באותה ארוחה.
-// 3. מלח לא יושב באותה ארוחה עם אצות וואקמה — עובר לארוחה עיקרית בלי מלח ובלי וואקמה, עדיף עם קטניות.
-// 4. נתרן יומי לא עובר את התקרה — מקטינים מלח מוסף ברבעי כפית.
-// כל שינוי (1–2) מבוטל אם הקלוריות יוצאות מהטווח או שתמהיל הארוחות מחמיר
+// ===== סידור ארוחות אחרון (לבקשת המשתמש, על סמך תפריטים אמיתיים) =====
+// כל השינויים ביחידות שלמות: כוס דגן/קטנית, פרוסת לחם, מנת מתכון — לא "חצי כוס" ולא "0.91 פרוסה".
+// 1. פריטים שלא מוגשים לבד (כרוב, כרוב סיני, טמפה, נאטו, ושאר GLOBAL_BANNED_STANDALONE) — מוסרים; הם מופיעים רק בתוך מתכון.
+// 2. בכל ארוחה לכל היותר מנת קטניות אחת ומנת דגנים אחת (תבשיל = מנה, כוס מבושלת = מנה). מנה עודפת מוסרת.
+// 3. תבשיל קטניות בא עם דגן (תבשיל דגנים או כוס דגן מבושל); מרק בא עם מנת דגנים (גם פרוסת לחם).
+// 4. מלח לא באותה ארוחה עם וואקמה; נתרן יומי עד התקרה.
+// קלוריות שהתפנו/נוספו מאוזנות בפריטים גמישים ביחידות שלמות. שינוי שמוציא את הקלוריות מהטווח או מחמיר את
+// תמהיל הארוחות — מבוטל
 const COOKED_GRAIN_FKS=["brownRiceCooked","quinoaCooked","bulgurCooked","buckwheatCooked","pearlBarleyCooked","couscousCooked","freekeh","wholeWPasta","amaranth"];
+const COOKED_LEGUME_FKS=["chickpeas","redLentils","greenLentils","brownLentils","blackLentils","blackBeans","whiteBeans","redKidney","pintoBeans","broadBeans","lupinBeansCooked","mungBeans","splitPeas","blackEyedPeas","pisumPeas"];
+const BREAD_FKS=new Set(["wholeWheatBread","wholePita"]);
+// זרעים כפריט בפני עצמו (לבקשת המשתמש): רבע כף חמנייה/דלעת/שומשום; פשתן/צ'יה כף אחת עד שתיים. גרם למנה המרבית
+// לארוחה לכל סוג. נבט חיטה אינו זרע ולא נכלל. מתכונים לא מושפעים
+const SEED_CAP_G={sunflowerS:2.5,pumpkinS:2.5,sesame:2.25,flaxseed:14,chiaseeds:24};
+// פשתן/צ'יה: גרם לכף (כף אחת לפחות, עד 2 לארוחה)
+const OMEGA_SEED_TBSP_G={flaxseed:7,chiaseeds:12};
+// "מנה מארחת" לפשתן/צ'יה (לבקשת המשתמש): סלט, פשטידה, מרק, תבשיל, קערה, דייסה (מתכון או שיבולת שועל) או יוגורט (סויה/חלב)
+const SEED_HOST_CATS=new Set(["פשטידות","מרקים","קערות","תבשילי קטניות","תבשילי דגנים","דייסות"]);
+const SEED_HOST_FKS=new Set(["soyYogurtPlain","soyYogurtOrgPlain","yogurtPlain3","yogurtGreek","oatsCooked","oatsThinRaw","oatsMedRaw","oatsThickRaw"]);
+function isSeedHostFk(fk){ if (SEED_HOST_FKS.has(fk)||isSaladFk(fk)) return true; const c=recipeCatOfFk(fk); return !!c&&SEED_HOST_CATS.has(c); }
+function snapPieceUnits(plan){
+  for (const mk of ["breakfast","snack","lunch","dinner"]) if (plan[mk]) plan[mk]=plan[mk].map(it=>{ if(!it||!it.fk||it._user||!pieceStepG(it.fk)) return it;
+    const fd=FDB[it.fk]; if(!fd||fd._isRecipe) return it; const g=snapPieceG(it.fk,it.g); return Math.abs(g-it.g)>0.005?{...it,g}:it; }).filter(it=>!(it&&it.fk&&pieceStepG(it.fk)&&!it._user&&it.g<=0));
+  return plan;
+}
 function tidyMealLogic(plan, tgt, dri, excl){
   if (!plan || !tgt || __SPOON_ROUND_OFF>0) return plan;
   const MAIN=["breakfast","lunch","dinner"], ALL=["breakfast","snack","lunch","dinner"];
@@ -1831,72 +1858,158 @@ function tidyMealLogic(plan, tgt, dri, excl){
   const dayK=()=>ALL.flatMap(m=>plan[m]||[]).reduce((a,it)=>a+kOf(it),0);
   const snap=()=>{ const o={}; ALL.forEach(m=>{ o[m]=(plan[m]||[]).map(x=>({...x})); }); return o; };
   const restore=o=>{ ALL.forEach(m=>{ plan[m]=o[m].map(x=>({...x})); }); }; // עותק חדש — כדי שניסיון הבא לא ישנה את השמירה עצמה
-  const okAfter=(v0)=>{ const k=dayK(); return k>=tgt*0.975 && k<=tgt*1.005 && mealShareViolation(plan)<=v0+0.005; };
-  const unitG=fk=>{ const u=getServingUnit(fk,FDB[fk],"he"); return u&&u.g?u.g:100; };
+  const UL=["selenium","manganese"].filter(k=>dri&&dri[k]&&dri[k].ul!=null);
+  const dayNut=()=>sumNuts(ALL.flatMap(m=>plan[m]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
+  const ul0=dayNut(); // תקרות בטיחות: שינוי לא יעבור את התקרה (אם לפניו היום היה מתחתיה) ולא יחמיר חריגה קיימת
+  const okAfter=(v0)=>{ const k=dayK(); if(!(k>=tgt*0.975 && k<=tgt*1.005 && mealShareViolation(plan)<=v0+0.005)) return false;
+    if (UL.length){ const n=dayNut(); if (UL.some(x=>(n[x]||0)>Math.max(dri[x].ul,(ul0[x]||0)+0.01))) return false; } return true; };
+  const fdOf=fk=>FDB[fk]||TEMP_FDB[fk];
+  const unitG=fk=>{ const fd=fdOf(fk); if(fd&&fd._isRecipe) return fd._servingG||200; const u=getServingUnit(fk,FDB[fk],"he"); return u&&u.g?u.g/(u.count||1):100; };
+  const catOf=fk=>{ const fd=fdOf(fk); if(!fd) return null; return fd._isRecipe?recipeCatOfFk(fk):fd.cat; };
   const isLegStew=fk=>stewCatOf(fk)==="תבשילי קטניות", isGrainStew=fk=>stewCatOf(fk)==="תבשילי דגנים";
+  const isSoup=fk=>catOf(fk)==="מרקים";
   const isCookedGrain=fk=>COOKED_GRAIN_FKS.includes(fk);
-  const hasGrain=mk=>(plan[mk]||[]).some(it=>isGrainStew(it.fk)||isCookedGrain(it.fk));
   const isRawLegume=fk=>{ const fd=FDB[fk]; return !!fd&&!fd._isRecipe&&fd.cat==="קטנית"&&!SOY_FKS_ALL.has(fk); };
-  const FLEX_NO=new Set(["פרי","ירק","עלים","תבלינים"]), FLEX_KEEP=new Set(["flaxseed","chiaseeds","wakame","nori","saltIodized",...SOY_FKS_ALL,"tahiniRaw","tahiniFullRaw"]);
-  // שינוי קלורי בפריטים גמישים (לא מתכונים): delta<0 מקטין, delta>0 מגדיל — קודם באותה ארוחה
+  const legPortions=it=>isLegStew(it.fk)?Math.max(1,Math.round(it.g/unitG(it.fk))):isRawLegume(it.fk)?it.g/unitG(it.fk):0;
+  const grainPortions=it=>isGrainStew(it.fk)?Math.max(1,Math.round(it.g/unitG(it.fk))):isCookedGrain(it.fk)?it.g/unitG(it.fk):0;
+  // מנת דגנים: תבשיל דגנים, כוס דגן מבושל, או מתכון שרובו דגן (סלט קינואה, טאבולה)
+  const isGrainDish=fk=>{ const fd=TEMP_FDB[fk]; return !!(fd&&fd._isRecipe&&!isLegStew(fk)&&isGrainDominantGlobal(fd)); };
+  const hasGrain=mk=>(plan[mk]||[]).some(it=>isGrainStew(it.fk)||isCookedGrain(it.fk)||isGrainDish(it.fk));
+  const FLEX_NO=new Set(["פרי","ירק","עלים","תבלינים"]), FLEX_KEEP=new Set(["flaxseed","chiaseeds","sunflowerS","pumpkinS","sesame","wakame","nori","saltIodized","brazilNuts",...SOY_FKS_ALL,"tahiniRaw","tahiniFullRaw"]);
+  // איזון קלורי בפריטים גמישים: פריט נספר (לחם, כוס, חופן) משתנה ביחידה שלמה בלבד; פריט רציף (שמן, חמאת אגוזים) — בגרמים.
+  // delta<0 מקטין, delta>0 מגדיל; קודם באותה ארוחה. לא מסיר פריט לגמרי
   const adjust=(delta, prefMk, skip, allowFruit)=>{
     let left=Math.abs(delta); const sign=delta<0?-1:1;
-    const cands=[]; ALL.forEach(m=>(plan[m]||[]).forEach(it=>{ const fd=FDB[it.fk]; if(!fd||fd._isRecipe||(FLEX_NO.has(fd.cat)&&!(allowFruit&&fd.cat==="פרי"))||FLEX_KEEP.has(it.fk)||(skip&&skip(it))) return; cands.push({m,it}); }));
+    const cands=[]; ALL.forEach(m=>(plan[m]||[]).forEach(it=>{ const rfd=TEMP_FDB[it.fk];
+      if (rfd&&rfd._isRecipe) { if (sign<0&&!(skip&&skip(it))&&Math.round(it.g/(rfd._servingG||200))>=2) cands.push({m,it}); return; } // מתכון שמוגש פעמיים — אפשר לרדת למנה אחת
+      const fd=FDB[it.fk]; if(!fd||(FLEX_NO.has(fd.cat)&&!(allowFruit&&fd.cat==="פרי"))||FLEX_KEEP.has(it.fk)||(skip&&skip(it))) return; cands.push({m,it}); }));
     cands.sort((a,b)=>((a.m===prefMk?0:1)-(b.m===prefMk?0:1))||(kOf(b.it)-kOf(a.it)));
-    for (const {m,it} of cands){ if(left<=1) break; const k=kOf(it); if(!(k>0)) continue; const arr=plan[m]; const i=arr.indexOf(it); if(i<0) continue;
-      const c=sign<0?Math.min(k*0.6,left):Math.min(k*0.6,left); arr[i]={...it,g:Math.round(it.g*(1+sign*c/k)*10)/10}; left-=c; }
-    return left<=1;
+    for (const {m,it} of cands){ if(left<=15) break; const arr=plan[m]; const i=arr.indexOf(it); if(i<0) continue; const k=kOf(it); if(!(k>0)) continue;
+      const fd=FDB[it.fk]||TEMP_FDB[it.fk]; const step=fd._isRecipe?(fd._servingG||200):(isWholeUnitCountable(it.fk,fd)?wholeUnitStepG(it.fk):null);
+      if (step&&step>0) { const units=Math.round(it.g/step); const kU=k/Math.max(1,units);
+        let n=Math.round(left/kU); if(sign<0) n=Math.min(n,units-1); else n=Math.min(n,Math.max(1,units)); if(n<=0) continue;
+        arr[i]={...it,g:Math.round((units+sign*n)*step*100)/100}; left-=n*kU; }
+      else { const c=Math.min(k*0.6,left); arr[i]={...it,g:Math.round(it.g*(1+sign*c/k)*10)/10}; left-=c; } }
+    return left<=15;
   };
-  // (1) זיווג תבשיל קטניות–דגן
-  for (const mk of MAIN) {
-    if (!(plan[mk]||[]).some(it=>isLegStew(it.fk)) || hasGrain(mk)) continue;
-    const v0=mealShareViolation(plan); const s0=snap(); let done=false;
-    for (const other of MAIN) { if (other===mk) continue;
-      const gi=(plan[other]||[]).findIndex(it=>isGrainStew(it.fk)); if (gi<0) continue;
-      if ((plan[other]||[]).some(it=>isLegStew(it.fk)) && !(plan[other]||[]).some(it=>isCookedGrain(it.fk))) continue; // לא משאירים שם תבשיל קטניות בלי דגן
-      plan[mk].push(plan[other].splice(gi,1)[0]);
-      if (okAfter(v0)) { done=true; break; } restore(s0); }
-    if (done) continue;
-    // העברת תבשיל הקטניות עצמו לארוחה שכבר יש בה דגן (ואין בה תבשיל קטניות)
-    const li=(plan[mk]||[]).findIndex(it=>isLegStew(it.fk));
-    for (const other of MAIN) { if (other===mk||!(plan[other]||[]).length||!hasGrain(other)||(plan[other]||[]).some(it=>isLegStew(it.fk))) continue;
-      plan[other].push(plan[mk].splice(li,1)[0]);
-      if (okAfter(v0)) { done=true; break; } restore(s0); }
-    if (done) continue;
-    const used=new Set(ALL.flatMap(m=>(plan[m]||[]).map(it=>it.fk)));
-    const grains=COOKED_GRAIN_FKS.filter(fk=>FDB[fk]&&!(excl&&excl.has(fk)));
-    const order=[...grains.filter(fk=>!used.has(fk)),...grains.filter(fk=>used.has(fk))];
-    for (const allowFruit of [false,true]) { if (done) break;
-      for (const fk of order) { const g=Math.round(unitG(fk)/2*10)/10; const add={fk,g};
-        plan[mk].push(add); const over=dayK()-tgt; if (over>0) adjust(-over, mk, it=>it===add||isRawLegume(it.fk), allowFruit);
-        if (okAfter(v0)) { done=true; break; } restore(s0); } }
+  // מוסיף מנה שלמה של אחד מהמזונות (לפי הסדר) לארוחה ומאזן; מחזיר true אם הצליח בלי לשבור את הכללים
+  const tryAdd=(mk, fks, v0, grams)=>{ const s0=snap();
+    for (const allowFruit of [false,true]) for (const fk of fks) { if(!fdOf(fk)||(excl&&excl.has(fk))) continue; const add={fk,g:grams?grams(fk):unitG(fk)};
+      plan[mk].push(add); const over=dayK()-tgt; if (over>0) adjust(-over, mk, it=>it===add||isRawLegume(it.fk)||isCookedGrain(it.fk), allowFruit);
+      if (okAfter(v0)) return true; restore(s0); }
+    return false; };
+  const unused=list=>{ const used=new Set(ALL.flatMap(m=>(plan[m]||[]).map(it=>it.fk))); return [...list.filter(fk=>!used.has(fk)),...list.filter(fk=>used.has(fk))]; };
+  // ממלא קלוריות שהתפנו: קודם הגדלת פריטים גמישים; אחרת מנה שלמה של דגן/קטנית שחסרה בארוחה
+  const refill=(mk, freed, v0)=>{ if (freed<=15) return okAfter(v0); const s1=snap();
+    adjust(freed, mk, it=>isRawLegume(it.fk)||isCookedGrain(it.fk)); if (okAfter(v0)) return true; restore(s1);
+    const legN=(plan[mk]||[]).reduce((a,it)=>a+legPortions(it),0), grN=(plan[mk]||[]).reduce((a,it)=>a+grainPortions(it),0);
+    if (grN<0.99 && tryAdd(mk, unused(COOKED_GRAIN_FKS), v0)) return true;
+    if (legN<0.99 && tryAdd(mk, unused(COOKED_LEGUME_FKS), v0)) return true;
+    return false; };
+
+  // (0) יחידות שלמות קודם: לחם, פיתה, כוס דגן/קטנית ומנות מתכון — עיגול ליחידה הקרובה (לפחות 1)
+  for (const mk of ALL) plan[mk]=(plan[mk]||[]).map(it=>{ const fd=fdOf(it.fk); if(!fd) return it;
+    const whole=fd._isRecipe||BREAD_FKS.has(it.fk)||isCookedGrain(it.fk)||isRawLegume(it.fk); if(!whole) return it;
+    const u=unitG(it.fk); const n=Math.max(1,Math.round(it.g/u)); return Math.abs(n*u-it.g)<0.5?it:{...it,g:Math.round(n*u*100)/100}; });
+  // (1) פריטים שלא מוגשים לבד
+  for (const mk of ALL) { const bad=(plan[mk]||[]).filter(it=>{ const fd=FDB[it.fk]; return fd&&!fd._isRecipe&&GLOBAL_BANNED_STANDALONE.has(it.fk); });
+    if (!bad.length) continue; const v0=mealShareViolation(plan); const s0=snap(); const k0=dayK();
+    plan[mk]=(plan[mk]||[]).filter(it=>!bad.includes(it));
+    if (!refill(mk, k0-dayK(), v0)) { restore(s0); plan[mk]=(plan[mk]||[]).filter(it=>{ const fd=FDB[it.fk]; return !(fd&&!fd._isRecipe&&GLOBAL_BANNED_STANDALONE.has(it.fk)&&kOf(it)<60); }); } }
+  // (1ב) זרעים (לבקשת המשתמש). סוג זרעים אחד לארוחה:
+  // • פשתן/צ'יה — כף אחת לפחות, עד 2 לפי הצורך (אומגה 3), ורק בארוחה שיש בה "מנה מארחת" — סלט, פשטידה, מרק, תבשיל
+  //   או קערה (isSeedHostFk); בתפריט הם מוצגים לידה "(להוספה)". בארוחה בלי מנה כזו — עוברים לארוחה שיש בה, או יורדים.
+  // • חמנייה/דלעת/שומשום — רבע כף.
+  // אם אומגה 3 היומית חסרה: כף שנייה, אחר כך כף פשתן בארוחה מארחת נוספת, ובסוף אגוזי מלך בארוחה עיקרית אחרת
+  const seedIt=it=>{ const fd=FDB[it.fk]; return !!fd&&!fd._isRecipe&&SEED_CAP_G[it.fk]!=null; };
+  const isOmega=it=>seedIt(it)&&OMEGA_SEED_TBSP_G[it.fk]!=null;
+  const seedG=it=>{ const t=OMEGA_SEED_TBSP_G[it.fk]; return t?Math.min(2,Math.max(1,Math.round(it.g/t)))*t:SEED_CAP_G[it.fk]; };
+  const hostMeal=mk=>(plan[mk]||[]).some(it=>isSeedHostFk(it.fk));
+  const fitDown=(prefMk,keep)=>{ const over=dayK()-tgt; if (over>0) adjust(-over, prefMk, it=>it===keep||seedIt(it)||isRawLegume(it.fk)||isCookedGrain(it.fk)); };
+  let seedsCut=false;
+  // א. סוג אחד לארוחה, בכמות הקבועה
+  for (const mk of ALL) { const seeds=(plan[mk]||[]).filter(seedIt); if (!seeds.length) continue;
+    seeds.sort((a,b)=>((isOmega(b)?1:0)-(isOmega(a)?1:0))||(b.g/SEED_CAP_G[b.fk]-a.g/SEED_CAP_G[a.fk]));
+    const keep=seeds[0], g=seedG(keep); if (seeds.length===1&&Math.abs(keep.g-g)<0.05) continue;
+    plan[mk]=(plan[mk]||[]).filter(it=>!seedIt(it)||it===keep).map(it=>it===keep?{...it,g}:it); seedsCut=true; }
+  // ב. פשתן/צ'יה רק ליד מנה מארחת
+  for (const mk of ALL) { if (!(plan[mk]||[]).some(isOmega)||hostMeal(mk)) continue;
+    const v0=mealShareViolation(plan); const s0=snap(); let moved=false;
+    for (const m2 of ALL) { if (m2===mk||!hostMeal(m2)||(plan[m2]||[]).some(isOmega)) continue;
+      const it=plan[mk].splice(plan[mk].findIndex(isOmega),1)[0]; plan[m2]=plan[m2].filter(x=>!seedIt(x)); plan[m2].push(it);
+      if (mealShareViolation(plan)<=v0+0.005) { moved=true; break; } restore(s0); }
+    if (!moved) plan[mk]=plan[mk].filter(x=>!isOmega(x)); seedsCut=true; }
+  // ג. אומגה 3
+  const alaMin=alaMinOf(dri); const ala=()=>dayNut().omega3||0;
+  if (seedsCut && dayK()>tgt*1.005) fitDown(null,null);
+  if (ala()<alaMin) { const v0=mealShareViolation(plan);
+    for (const mk of ALL) { if (ala()>=alaMin) break; const i=(plan[mk]||[]).findIndex(isOmega); if (i<0) continue; const it=plan[mk][i]; const t=OMEGA_SEED_TBSP_G[it.fk]; if (it.g>=2*t-0.05) continue;
+      const s0=snap(); plan[mk][i]={...it,g:2*t}; fitDown(mk,plan[mk][i]); if (okAfter(v0)) seedsCut=true; else restore(s0); }
+    for (const mk of ALL) { if (ala()>=alaMin) break; if (!hostMeal(mk)||(plan[mk]||[]).some(isOmega)) continue;
+      const fk=Object.keys(OMEGA_SEED_TBSP_G).find(f=>FDB[f]&&!(excl&&excl.has(f))); if (!fk) break;
+      const s0=snap(); plan[mk]=plan[mk].filter(x=>!seedIt(x)); const add={fk,g:OMEGA_SEED_TBSP_G[fk]}; plan[mk].push(add); fitDown(mk,add);
+      if (okAfter(v0)) seedsCut=true; else restore(s0); }
+    if (ala()<alaMin) { const s0=snap(); let ok=false;
+      for (const mk of MAIN) { if (!(plan[mk]||[]).length||(plan[mk]||[]).some(it=>(FDB[it.fk]||{}).cat==="אגוזים")) continue;
+        for (const g of [14,28]) { plan[mk].push({fk:"walnuts",g}); const over=dayK()-tgt; if(over>0) adjust(-over, mk, it=>it.fk==="walnuts"||seedIt(it)||isRawLegume(it.fk)||isCookedGrain(it.fk));
+          if (okAfter(v0)&&ala()>=alaMin*0.95) { ok=true; break; } restore(s0); }
+        if (ok) break; } }
   }
-  // (2) לכל היותר כוס אחת של קטניות מבושלות בארוחה
-  for (const mk of MAIN) {
-    const legs=(plan[mk]||[]).filter(it=>isRawLegume(it.fk)); if (!legs.length) continue;
-    const units=legs.reduce((a,it)=>a+it.g/unitG(it.fk),0); if (units<=1.01) continue;
-    const v0=mealShareViolation(plan); const s0=snap(); const k0=dayK();
-    legs.sort((a,b)=>b.g/unitG(b.fk)-a.g/unitG(a.fk)); const keep=legs[0];
-    plan[mk]=(plan[mk]||[]).filter(it=>!isRawLegume(it.fk)||it===keep).map(it=>it===keep?{...it,g:unitG(it.fk)}:it);
-    const freed=k0-dayK(); if (freed>0) adjust(freed, mk, it=>isRawLegume(it.fk));
-    if (okAfter(v0)) continue;
-    restore(s0);
-    // חלופה: הכוס העודפת מוחלפת בדגן מבושל באותן קלוריות (בחצאי כוס) באותה ארוחה — מתאים גם לזיווג קטנית–דגן
-    plan[mk]=(plan[mk]||[]).filter(it=>!isRawLegume(it.fk)||it===keep).map(it=>it===keep?{...it,g:unitG(it.fk)}:it);
-    const freed2=k0-dayK(); let fixed=false;
-    if (freed2>0) {
-      const s1=snap(); const inMeal=COOKED_GRAIN_FKS.filter(fk=>(plan[mk]||[]).some(it=>it.fk===fk));
-      const pool=[...inMeal,...COOKED_GRAIN_FKS.filter(fk=>FDB[fk]&&!inMeal.includes(fk)&&!(excl&&excl.has(fk)))];
-      for (const fk of pool) { const half=unitG(fk)/2; const kPerG=ingNut(fk,100).kcal/100; if(!(kPerG>0)) continue;
-        const addG=Math.max(half, Math.round(freed2/kPerG/half)*half);
-        const ex=(plan[mk]||[]).findIndex(it=>it.fk===fk);
-        if (ex>=0) plan[mk][ex]={...plan[mk][ex],g:Math.round((plan[mk][ex].g+addG)*10)/10}; else plan[mk].push({fk,g:Math.round(addG*10)/10});
-        const over=dayK()-tgt; if (over>0) adjust(-over, mk, it=>COOKED_GRAIN_FKS.includes(it.fk)||isRawLegume(it.fk));
-        if (okAfter(v0)) { fixed=true; break; } restore(s1); }
+  if (seedsCut) {
+    // השלמת הקלוריות שירדו עם הזרעים: קודם אגוזים (סוג שלא הופיע היום) בארוחה עיקרית שאין בה אגוזים — גיוון בין
+    // הקבוצות ולאורך היום; אחרת הגדלת פריטים גמישים; ובסוף רצפת הקלוריות הרגילה (והזרעים נחתכים שוב אם נוספו)
+    if (dayK()<tgt*0.98) {
+      const v2=mealShareViolation(plan); const s2=snap(); let ok=false;
+      const usedFks=new Set(ALL.flatMap(m=>(plan[m]||[]).map(it=>it.fk)));
+      const NUTS=["almonds","walnuts","cashews","pistachio","hazelnuts"].filter(fk=>FDB[fk]&&!(excl&&excl.has(fk)));
+      const nutOrder=[...NUTS.filter(fk=>!usedFks.has(fk)),...NUTS.filter(fk=>usedFks.has(fk))];
+      const mealOrder=[...MAIN].sort((a,b)=>mealShareViolation(plan)-mealShareViolation(plan)||0);
+      outer: for (const g of [14,28]) for (const fk of nutOrder) for (const mk of mealOrder) {
+        if (!(plan[mk]||[]).length||(plan[mk]||[]).some(it=>(FDB[it.fk]||{}).cat==="אגוזים")) continue;
+        plan[mk].push({fk,g}); if (okAfter(v2)) { ok=true; break outer; } restore(s2); }
+      if (!ok) { adjust(tgt*0.99-dayK(), null, it=>seedIt(it)||isRawLegume(it.fk)||isCookedGrain(it.fk)); if (okAfter(v2)) ok=true; else restore(s2); }
+      if (!ok) { ensureCalorieFloor(plan, tgt);
+        for (const mk of ALL) plan[mk]=(plan[mk]||[]).map(it=>{ const fd=fdOf(it.fk); if(!fd) return it; // יחידות שלמות גם אחרי רצפת הקלוריות
+          if (!(fd._isRecipe||BREAD_FKS.has(it.fk)||isCookedGrain(it.fk)||isRawLegume(it.fk))) return it; const u=unitG(it.fk); const n=Math.max(1,Math.round(it.g/u)); return {...it,g:Math.round(n*u*100)/100}; });
+        for (const mk of ALL) { const sd=(plan[mk]||[]).filter(seedIt); if (sd.length>1||sd.some(it=>Math.abs(it.g-seedG(it))>0.05)) { const keep=sd.find(isOmega)||sd[0]; plan[mk]=(plan[mk]||[]).filter(it=>!seedIt(it)||it===keep).map(it=>it===keep?{...it,g:seedG(it)}:it); } } }
     }
-    if (!fixed) restore(s0);
   }
-  // (3) מלח לא באותה ארוחה עם וואקמה
+  // (2) לכל היותר מנת קטניות אחת ומנת דגנים אחת בארוחה
+  for (const mk of MAIN) for (const kind of ["leg","grain"]) {
+    const portions=kind==="leg"?legPortions:grainPortions; const items=(plan[mk]||[]).filter(it=>portions(it)>0);
+    const total=items.reduce((a,it)=>a+portions(it),0); if (total<=1.01) continue;
+    const v0=mealShareViolation(plan); const s0=snap(); const k0=dayK();
+    items.sort((a,b)=>(stewCatOf(b.fk)?1:0)-(stewCatOf(a.fk)?1:0)||kOf(b)-kOf(a)); const keep=items[0];
+    plan[mk]=(plan[mk]||[]).filter(it=>!items.includes(it)||it===keep).map(it=>it===keep?{...it,g:unitG(it.fk)}:it);
+    // קטניות עודפות בארוחה בלי דגן → מחליפים בכוס דגן מבושל (פותר גם את הזיווג קטנית–דגן)
+    if (kind==="leg" && !hasGrain(mk)) { const s1=snap(); plan[mk].push({fk:unused(COOKED_GRAIN_FKS).find(fk=>FDB[fk]&&!(excl&&excl.has(fk))),g:0});
+      const gi=plan[mk].length-1; plan[mk][gi].g=unitG(plan[mk][gi].fk); const diff=dayK()-tgt;
+      if (diff>0) adjust(-diff, mk, it=>it===plan[mk][gi]||isRawLegume(it.fk)||isCookedGrain(it.fk)); else if (-diff>15) adjust(-diff, mk, it=>isRawLegume(it.fk)||isCookedGrain(it.fk));
+      if (okAfter(v0)) continue; restore(s1); }
+    if (refill(mk, k0-dayK(), v0)) continue;
+    // חלופה: המנה העודפת (כוס קטניות/דגן) עוברת לארוחה עיקרית אחרת שאין בה מנה מאותה קבוצה — הקלוריות היומיות לא משתנות
+    restore(s0); const extra=(plan[mk]||[]).find(it=>it!==(plan[mk]||[]).find(x=>portions(x)>0&&stewCatOf(x.fk))&&!stewCatOf(it.fk)&&portions(it)>0);
+    let moved=false;
+    if (extra) for (const other of MAIN) { if (other===mk||!(plan[other]||[]).length||(plan[other]||[]).some(it=>portions(it)>0)) continue;
+      const i=plan[mk].indexOf(extra); plan[other].push({...plan[mk].splice(i,1)[0],g:unitG(extra.fk)});
+      if (okAfter(v0)) { moved=true; break; } restore(s0); }
+    if (!moved) restore(s0); }
+  // (3) תבשיל קטניות עם דגן; מרק עם מנת דגנים
+  for (const mk of MAIN) {
+    const items=plan[mk]||[]; const needLeg=items.some(it=>isLegStew(it.fk))&&!hasGrain(mk);
+    const needSoup=items.some(it=>isSoup(it.fk))&&!hasGrain(mk)&&!items.some(it=>BREAD_FKS.has(it.fk));
+    if (!needLeg&&!needSoup) continue;
+    const v0=mealShareViolation(plan); const s0=snap(); let done=false;
+    for (const other of MAIN) { if (other===mk) continue; const gi=(plan[other]||[]).findIndex(it=>isGrainStew(it.fk)); if (gi<0) continue;
+      if ((plan[other]||[]).some(it=>isLegStew(it.fk)||isSoup(it.fk))) continue;
+      plan[mk].push(plan[other].splice(gi,1)[0]); if (okAfter(v0)) { done=true; break; } restore(s0); }
+    if (!done && needLeg) { const li=(plan[mk]||[]).findIndex(it=>isLegStew(it.fk));
+      for (const other of MAIN) { if (other===mk||!(plan[other]||[]).length||!hasGrain(other)||(plan[other]||[]).some(it=>isLegStew(it.fk))) continue;
+        plan[other].push(plan[mk].splice(li,1)[0]); if (okAfter(v0)) { done=true; break; } restore(s0); } }
+    if (!done) done=tryAdd(mk, unused(COOKED_GRAIN_FKS), v0);
+    if (!done && !needLeg) done=tryAdd(mk, ["wholeWheatBread","wholePita"], v0);
+  }
+  // (4) מלח לא באותה ארוחה עם וואקמה
   if (plan.snack) plan.snack=plan.snack.filter(it=>it.fk!=="saltIodized");
   for (const mk of MAIN) {
     const si=(plan[mk]||[]).findIndex(it=>it.fk==="saltIodized");
@@ -1908,8 +2021,8 @@ function tidyMealLogic(plan, tgt, dri, excl){
     const salt=plan[mk].splice(si,1)[0]; const ex=plan[target].find(it=>it.fk==="saltIodized");
     if (ex) ex.g=Math.round((ex.g+salt.g)*100)/100; else plan[target].push(salt);
   }
-  // (4) נתרן יומי עד התקרה — מקטינים מלח מוסף ברבעי כפית
-  const cap=(dri&&dri._naCap)||2300; const q=unitG("saltIodized")/4;
+  // (5) נתרן יומי עד התקרה — מקטינים מלח מוסף ברבעי כפית
+  const cap=(dri&&dri._naCap)||2300; const q=(getServingUnit("saltIodized",FDB.saltIodized,"he")?.g||6)/4;
   const naDay=()=>sumNuts(ALL.flatMap(m=>plan[m]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).sodium||0;
   for (let guard=0; guard<12 && naDay()>cap; guard++) {
     let best=null; MAIN.forEach(m=>(plan[m]||[]).forEach((it,i)=>{ if(it.fk==="saltIodized"&&(!best||it.g>best.it.g)) best={m,i,it}; }));
@@ -1917,12 +2030,20 @@ function tidyMealLogic(plan, tgt, dri, excl){
     const ng=Math.round((best.it.g-q)*100)/100;
     if (ng<=0.05) plan[best.m].splice(best.i,1); else plan[best.m][best.i]={...best.it,g:ng};
   }
+  // (6) בדיקה אחרונה: היום מעל היעד (עיגולי יחידות שלמות לאורך השלבים) — כף שנייה של פשתן/צ'יה יורדת אם אומגה 3
+  // נשארת מספקת, ואחר כך איזון בפריטים גמישים (מותר גם פרי)
+  for (const mk of ALL) { if (dayK()<=tgt*1.005) break; const i=(plan[mk]||[]).findIndex(isOmega); if (i<0) continue; const it=plan[mk][i]; const t=OMEGA_SEED_TBSP_G[it.fk];
+    if (it.g<2*t-0.05) continue; plan[mk][i]={...it,g:t}; if (ala()<alaMin) plan[mk][i]=it; }
+  if (dayK()>tgt*1.005) adjust(-(dayK()-tgt), null, it=>seedIt(it)||isRawLegume(it.fk)||isCookedGrain(it.fk), true);
+  // (7) אגוזים וזרעים ביחידות שלמות לפי סוגם: שקדים/לוז/קשיו/פיסטוקים — יחידות, אגוזי מלך — חצאים, בוטנים — כפות,
+  // פשתן/צ'יה — כפות, חמנייה/דלעת/שומשום — רבעי כף. הפרש הקלוריות זניח (לכל היותר חצי יחידה לפריט)
+  snapPieceUnits(plan);
   return plan;
 }
 // איזון תמהיל אחרון (לבקשת המשתמש: "לשמור על כללי התמהיל"): אם ארוחה חורגת מגבולות החלק שלה ביום, מעבירים פריט
 // "נייד" (פרי, אגוזים, זרעים, יוגורט) לארוחה אחרת שיש בה מקום. סך היום לא משתנה, והתבשילים והמתכונים לא זזים.
 // מתקבל רק אם החריגה הכוללת קטנה. עובד גם על חריגות שהיו קיימות לפני התבשיל היומי
-const SHARE_MOVABLE_CATS=new Set(["פרי","אגוזים","זרעים"]);
+const SHARE_MOVABLE_CATS=new Set(["פרי","אגוזים"]); // זרעים לא זזים — כדי לא לצבור יותר מרבע כף בארוחה
 function rebalanceMealShares(plan){
   if (!plan || __SPOON_ROUND_OFF>0) return plan;
   const mk3=["breakfast","lunch","dinner"];
@@ -1950,7 +2071,7 @@ function roundSpoonPortions(plan, tgt, dri){
   const dayK=()=>meals.flatMap(mk=>plan[mk]||[]).reduce((a,it)=>a+ingNut(it.fk,it.g,it.soaked).kcal,0);
   const dayNut=()=>sumNuts(meals.flatMap(mk=>plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
   meals.forEach(mk=>{ (plan[mk]||[]).forEach((it,idx)=>{
-    if (it.fk==="saltIodized"||it.fk==="wakame") return;
+    if (it.fk==="saltIodized"||it.fk==="wakame"||pieceStepG(it.fk)!=null) return; // אגוזים וזרעים — ביחידות משלהם (snapPieceUnits)
     const fd=FDB[it.fk]; if (!fd||fd._isRecipe) return;
     const su=getServingUnit(it.fk,fd,"he"); if (!su||!su.g||su.weightOnly||!SPOON_UNITS.has(su.he)) return;
     const q=it.g/su.g; const lo=Math.max(0.5,Math.floor(q*2)/2), hi=Math.max(0.5,Math.ceil(q*2)/2);
@@ -14673,7 +14794,7 @@ const SERVING_UNITS={
 
 // טבלאות היחידות נבנות פעם אחת (ביצועים) במקום בכל קריאה — הפונקציה נקראת מאות אלפי פעמים בתכנון שבועי
 const __SU_OVERRIDES={avocado:{he:"חצי",en:"half",g:100},pineapple:{he:"פרוסה",en:"slice",g:85},
-    melon:{he:"פרוסה",en:"slice",g:160},watermelon:{he:"פרוסה",en:"slice",g:280},sweetPotatoRaw:{he:"יחידה בינונית",en:"medium",g:130},sweetPotatoCooked:{he:"יחידה בינונית",en:"medium",g:120},potatoRaw:{he:"יחידה בינונית",en:"medium",g:170},potatoCooked:{he:"יחידה בינונית",en:"medium",g:155},broadBeans:{he:"כוס מבושל",en:"cup (cooked)",g:170},peach:{he:"יחידה בינונית",en:"medium",g:150},lupinBeansCooked:{he:"כוס",en:"cup (cooked)",g:130},lettuce:{he:"עלה גדול",en:"large leaf",g:35},wheatGerm:{he:"כף",en:"tbsp",g:7},arugula:{he:"חופן",en:"handful",g:20},romaine:{he:"עלה גדול",en:"large leaf",g:28},driedFig:{he:"תאנה מיובשת",en:"dried fig",g:20},driedApricot:{he:"משמש מיובש",en:"dried apricot",g:8},greenBeans:{he:"כוס",en:"cup",g:125},butternut:{he:"כוס חתוך",en:"cup (cubed)",g:140},clementine:{he:"יחידה בינונית",en:"medium",g:75},lentilSprouts:{he:"כוס",en:"cup",g:77},radish:{he:"צנונים",en:"radishes",g:50,count:5},mintLeaf:{he:"כף קצוץ",en:"tbsp chopped",g:5},cilantroLeaf:{he:"כף קצוץ",en:"tbsp chopped",g:5},springOnion:{he:"גבעול",en:"stalk",g:15},bokChoy:{he:"כוס קצוץ",en:"cup (chopped)",g:70},kohlrabi:{he:"יחידה בינונית",en:"medium",g:135},leek:{he:"גבעול",en:"stalk",g:90},artichoke:{he:"יחידה שלמה",en:"whole",g:120},fennel:{he:"פקעת",en:"bulb",g:200},gingerRoot:{he:"כפית מגוררת",en:"tsp grated",g:5},persimmon:{he:"יחידה",en:"piece",g:168},fig:{he:"תאנים",en:"figs",g:80,count:2},quince:{he:"יחידה",en:"piece",g:150},lychee:{he:"כוס",en:"cup",g:190},tahiniRaw:{he:"כף",en:"tbsp",g:15},dateSilan:{he:"כף",en:"tbsp",g:20},chickpeaFlour:{he:"כוס",en:"cup",g:92},mungBeans:{he:"כוס",en:"cup (cooked)",g:202},splitPeas:{he:"כוס מבושל",en:"cup (cooked)",g:196},blackEyedPeas:{he:"כוס",en:"cup (cooked)",g:172},soymilkFortified:{he:"כוס",en:"cup",g:240},soymilkOrgPlain:{he:"כוס",en:"cup",g:240},soyYogurtPlain:{he:"גביע",en:"container",g:170},soyYogurtOrgPlain:{he:"גביע",en:"container",g:150},oatMilk:{he:"כוס",en:"cup",g:240},oatsThinRaw:{he:"כוס",en:"cup",g:80},oatsMedRaw:{he:"כוס",en:"cup",g:80},oatsThickRaw:{he:"כוס",en:"cup",g:80},oatFlour:{he:"כוס",en:"cup",g:92},oatsCooked:{he:"קערית",en:"bowl",g:240},buckwheatCooked:{he:"כוס",en:"cup (cooked)",g:168},bulgurCooked:{he:"כוס",en:"cup (cooked)",g:182},pearlBarleyCooked:{he:"כוס",en:"cup (cooked)",g:157},couscous:{he:"כוס יבש (גולמי)",en:"cup (dry, raw)",g:157},couscousCooked:{he:"כוס",en:"cup (cooked)",g:157},freekeh:{he:"כוס מבושל",en:"cup (cooked)",g:160},wholeWPasta:{he:"מנה",en:"serving",g:140},redKidney:{he:"כוס מבושל",en:"cup (cooked)",g:172},pintoBeans:{he:"כוס מבושל",en:"cup (cooked)",g:172},blackLentils:{he:"כוס",en:"cup (cooked)",g:198},brownLentils:{he:"כוס",en:"cup (cooked)",g:198},greenPeas:{he:"כוס",en:"cup",g:145},natto:{he:"מנה",en:"serving",g:85},broccoli:{he:"פרח בינוני",en:"floret",g:85},carrot:{he:"יחידה בינונית",en:"medium",g:61},cucumber:{he:"יחידה בינונית",en:"medium",g:119},yellowPepper:{he:"יחידה בינונית",en:"medium",g:119},greenPepper:{he:"יחידה בינונית",en:"medium",g:119},hotPepperRed:{he:"יחידה",en:"piece",g:15},hotPepperGreen:{he:"יחידה",en:"piece",g:15},beet:{he:"יחידה בינונית",en:"medium",g:82},eggplant:{he:"יחידה בינונית",en:"medium",g:200},zucchini:{he:"יחידה בינונית",en:"medium",g:196},cauliflower:{he:"פרח בינוני",en:"floret",g:100},corn:{he:"קלח",en:"ear",g:90},asparagus:{he:"עלי אספרגוס",en:"spears",g:60,count:4},brusselsSp:{he:"ניצני כרוב",en:"sprouts",g:60,count:4},pumpkin:{he:"כוס חתוך",en:"cup (cubed)",g:116},mushroom:{he:"כוס פרוס",en:"cup (sliced)",g:70},onion:{he:"יחידה בינונית",en:"medium",g:110},garlic:{he:"שן",en:"clove",g:3},lemon:{he:"מיץ חצי לימון",en:"½ lemon juice",g:25},orange:{he:"יחידה בינונית",en:"medium",g:131},kiwi:{he:"יחידה בינונית",en:"medium",g:76},mango:{he:"כוס חתוך",en:"cup (diced)",g:165},pear:{he:"יחידה בינונית",en:"medium",g:178},pomegranate:{he:"חצי",en:"half",g:100},raspberry:{he:"כוס",en:"cup",g:123},blueberry:{he:"כוס",en:"cup",g:148},strawberry:{he:"כוס פרוס",en:"cup (sliced)",g:152},blackberry:{he:"כוס",en:"cup",g:144},grapes:{he:"כוס",en:"cup",g:92},cherries:{he:"כוס",en:"cup",g:138},hazelnuts:{he:"חופן",en:"handful",g:28},cashews:{he:"חופן",en:"handful",g:28},peanuts:{he:"חופן",en:"handful",g:28},pistachio:{he:"פיסטוקים",en:"pistachios",g:28,count:49},brazilNuts:{he:"יחידה",en:"nut",g:7},sunflowerS:{he:"כף",en:"tbsp",g:10},pumpkinS:{he:"כף",en:"tbsp",g:10},sesame:{he:"כף",en:"tbsp",g:9},flaxseed:{he:"כף",en:"tbsp",g:7},chiaseeds:{he:"כפית",en:"tsp",g:4},parsley:{he:"כף קצוץ",en:"tbsp (chopped)",g:4},dill:{he:"כף קצוץ",en:"tbsp (chopped)",g:4},basil:{he:"כף קצוץ",en:"tbsp (chopped)",g:4},swisschard:{he:"כוס קצוץ",en:"cup (chopped)",g:36},tomatoSauce:{he:"כף",en:"tbsp",g:17},peanutButter:{he:"כף",en:"tbsp",g:16},saltIodized:{he:"כפית",en:"tsp",g:6},nori:{he:"גליון",en:"sheet",g:2.5},wakame:{he:"כפית (יבשה, לפני השריה)",en:"tsp (dried, before soaking)",g:2},cabbageWhite:{he:"כוס קצוץ",en:"cup (shredded)",g:70},cabbageRed:{he:"כוס קצוץ",en:"cup (shredded)",g:70},apricot:{he:"יחידה בינונית",en:"medium",g:35},medjoolDate:{he:"תמר",en:"date",g:24},guava:{he:"יחידה בינונית",en:"medium",g:55},papaya:{he:"פפאיה קטנה",en:"small",g:157},passionfruit:{he:"יחידה",en:"piece",g:18},starfruit:{he:"יחידה בינונית",en:"medium",g:91},mulberry:{he:"כוס",en:"cup",g:140},lentilFlour:{he:"כוס",en:"cup",g:92},wholeWheatBread:{he:"פרוסה",hePl:"פרוסות",en:"slice",enPl:"slices",g:32},wholePita:{he:"פיתה",hePl:"פיתות",en:"pita",enPl:"pitas",g:60},quinoaDry:{he:"כוס",en:"cup",g:170},buckwheatGreenDry:{he:"כוס",en:"cup",g:170},bulgurDry:{he:"כוס",en:"cup",g:140},pearlBarleyDry:{he:"כוס",en:"cup",g:200},sabra:{he:"יחידה בינונית",en:"medium",g:105},celeryWithLeaves:{he:"גבעול עם עלים",en:"stalk with leaves",g:64},eggWhole:{he:"ביצה",en:"egg",g:50},eggWhite:{he:"חלבון ביצה",en:"egg white",g:33},milk3pct:{he:"כוס",en:"cup",g:240},milk1pct:{he:"כוס",en:"cup",g:240},leben:{he:"כוס",en:"cup",g:240},yogurtPlain3:{he:"גביע",en:"container",g:150},yogurtGreek:{he:"גביע",en:"container",g:170},cottageCheese5:{he:"אריזה",en:"tub",g:250},whiteCheese5:{he:"אריזה",en:"tub",g:250},creamCheese5:{he:"כף",en:"tbsp",g:15},fetaCheese:{he:"קובייה",en:"cube",g:30},mozzarella:{he:"גרם",en:"gram",g:100,weightOnly:true},yellowCheese:{he:"פרוסה",en:"slice",g:20},processedCheese:{he:"פרוסה",en:"slice",g:20},butter:{he:"כף",en:"tbsp",g:14},sourCream15:{he:"כף",en:"tbsp",g:15},sweetCream38:{he:"כף",en:"tbsp",g:15},
+    melon:{he:"פרוסה",en:"slice",g:160},watermelon:{he:"פרוסה",en:"slice",g:280},sweetPotatoRaw:{he:"יחידה בינונית",en:"medium",g:130},sweetPotatoCooked:{he:"יחידה בינונית",en:"medium",g:120},potatoRaw:{he:"יחידה בינונית",en:"medium",g:170},potatoCooked:{he:"יחידה בינונית",en:"medium",g:155},broadBeans:{he:"כוס מבושל",en:"cup (cooked)",g:170},peach:{he:"יחידה בינונית",en:"medium",g:150},lupinBeansCooked:{he:"כוס",en:"cup (cooked)",g:130},lettuce:{he:"עלה גדול",en:"large leaf",g:35},wheatGerm:{he:"כף",en:"tbsp",g:7},arugula:{he:"חופן",en:"handful",g:20},romaine:{he:"עלה גדול",en:"large leaf",g:28},driedFig:{he:"תאנה מיובשת",en:"dried fig",g:20},driedApricot:{he:"משמש מיובש",en:"dried apricot",g:8},greenBeans:{he:"כוס",en:"cup",g:125},butternut:{he:"כוס חתוך",en:"cup (cubed)",g:140},clementine:{he:"יחידה בינונית",en:"medium",g:75},lentilSprouts:{he:"כוס",en:"cup",g:77},radish:{he:"צנונים",en:"radishes",g:50,count:5},mintLeaf:{he:"כף קצוץ",en:"tbsp chopped",g:5},cilantroLeaf:{he:"כף קצוץ",en:"tbsp chopped",g:5},springOnion:{he:"גבעול",en:"stalk",g:15},bokChoy:{he:"כוס קצוץ",en:"cup (chopped)",g:70},kohlrabi:{he:"יחידה בינונית",en:"medium",g:135},leek:{he:"גבעול",en:"stalk",g:90},artichoke:{he:"יחידה שלמה",en:"whole",g:120},fennel:{he:"פקעת",en:"bulb",g:200},gingerRoot:{he:"כפית מגוררת",en:"tsp grated",g:5},persimmon:{he:"יחידה",en:"piece",g:168},fig:{he:"תאנה",hePl:"תאנים",en:"fig",enPl:"figs",g:80,count:2},quince:{he:"יחידה",en:"piece",g:150},lychee:{he:"כוס",en:"cup",g:190},tahiniRaw:{he:"כף",en:"tbsp",g:15},dateSilan:{he:"כף",en:"tbsp",g:20},chickpeaFlour:{he:"כוס",en:"cup",g:92},mungBeans:{he:"כוס",en:"cup (cooked)",g:202},splitPeas:{he:"כוס מבושל",en:"cup (cooked)",g:196},blackEyedPeas:{he:"כוס",en:"cup (cooked)",g:172},soymilkFortified:{he:"כוס",en:"cup",g:240},soymilkOrgPlain:{he:"כוס",en:"cup",g:240},soyYogurtPlain:{he:"גביע",en:"container",g:170},soyYogurtOrgPlain:{he:"גביע",en:"container",g:150},oatMilk:{he:"כוס",en:"cup",g:240},oatsThinRaw:{he:"כוס",en:"cup",g:80},oatsMedRaw:{he:"כוס",en:"cup",g:80},oatsThickRaw:{he:"כוס",en:"cup",g:80},oatFlour:{he:"כוס",en:"cup",g:92},oatsCooked:{he:"קערית",en:"bowl",g:240},buckwheatCooked:{he:"כוס",en:"cup (cooked)",g:168},bulgurCooked:{he:"כוס",en:"cup (cooked)",g:182},pearlBarleyCooked:{he:"כוס",en:"cup (cooked)",g:157},couscous:{he:"כוס יבש (גולמי)",en:"cup (dry, raw)",g:157},couscousCooked:{he:"כוס",en:"cup (cooked)",g:157},freekeh:{he:"כוס מבושל",en:"cup (cooked)",g:160},wholeWPasta:{he:"מנה",en:"serving",g:140},redKidney:{he:"כוס מבושל",en:"cup (cooked)",g:172},pintoBeans:{he:"כוס מבושל",en:"cup (cooked)",g:172},blackLentils:{he:"כוס",en:"cup (cooked)",g:198},brownLentils:{he:"כוס",en:"cup (cooked)",g:198},greenPeas:{he:"כוס",en:"cup",g:145},natto:{he:"מנה",en:"serving",g:85},broccoli:{he:"פרח בינוני",en:"floret",g:85},carrot:{he:"יחידה בינונית",en:"medium",g:61},cucumber:{he:"יחידה בינונית",en:"medium",g:119},yellowPepper:{he:"יחידה בינונית",en:"medium",g:119},greenPepper:{he:"יחידה בינונית",en:"medium",g:119},hotPepperRed:{he:"יחידה",en:"piece",g:15},hotPepperGreen:{he:"יחידה",en:"piece",g:15},beet:{he:"יחידה בינונית",en:"medium",g:82},eggplant:{he:"יחידה בינונית",en:"medium",g:200},zucchini:{he:"יחידה בינונית",en:"medium",g:196},cauliflower:{he:"פרח בינוני",en:"floret",g:100},corn:{he:"קלח",en:"ear",g:90},asparagus:{he:"עלי אספרגוס",en:"spears",g:60,count:4},brusselsSp:{he:"ניצני כרוב",en:"sprouts",g:60,count:4},pumpkin:{he:"כוס חתוך",en:"cup (cubed)",g:116},mushroom:{he:"כוס פרוס",en:"cup (sliced)",g:70},onion:{he:"יחידה בינונית",en:"medium",g:110},garlic:{he:"שן",en:"clove",g:3},lemon:{he:"מיץ חצי לימון",en:"½ lemon juice",g:25},orange:{he:"יחידה בינונית",en:"medium",g:131},kiwi:{he:"יחידה בינונית",en:"medium",g:76},mango:{he:"כוס חתוך",en:"cup (diced)",g:165},pear:{he:"יחידה בינונית",en:"medium",g:178},pomegranate:{he:"חצי",en:"half",g:100},raspberry:{he:"כוס",en:"cup",g:123},blueberry:{he:"כוס",en:"cup",g:148},strawberry:{he:"כוס פרוס",en:"cup (sliced)",g:152},blackberry:{he:"כוס",en:"cup",g:144},grapes:{he:"כוס",en:"cup",g:92},cherries:{he:"כוס",en:"cup",g:138},hazelnuts:{he:"חופן",en:"handful",g:28},cashews:{he:"חופן",en:"handful",g:28},peanuts:{he:"חופן",en:"handful",g:28},pistachio:{he:"פיסטוקים",en:"pistachios",g:28,count:49},brazilNuts:{he:"יחידה",en:"nut",g:7},sunflowerS:{he:"כף",en:"tbsp",g:10},pumpkinS:{he:"כף",en:"tbsp",g:10},sesame:{he:"כף",en:"tbsp",g:9},flaxseed:{he:"כף",en:"tbsp",g:7},chiaseeds:{he:"כפית",en:"tsp",g:4},parsley:{he:"כף קצוץ",en:"tbsp (chopped)",g:4},dill:{he:"כף קצוץ",en:"tbsp (chopped)",g:4},basil:{he:"כף קצוץ",en:"tbsp (chopped)",g:4},swisschard:{he:"כוס קצוץ",en:"cup (chopped)",g:36},tomatoSauce:{he:"כף",en:"tbsp",g:17},peanutButter:{he:"כף",en:"tbsp",g:16},saltIodized:{he:"כפית",en:"tsp",g:6},nori:{he:"גליון",en:"sheet",g:2.5},wakame:{he:"כפית (יבשה, לפני השריה)",en:"tsp (dried, before soaking)",g:2},cabbageWhite:{he:"כוס קצוץ",en:"cup (shredded)",g:70},cabbageRed:{he:"כוס קצוץ",en:"cup (shredded)",g:70},apricot:{he:"יחידה בינונית",en:"medium",g:35},medjoolDate:{he:"תמר",en:"date",g:24},guava:{he:"יחידה בינונית",en:"medium",g:55},papaya:{he:"פפאיה קטנה",en:"small",g:157},passionfruit:{he:"יחידה",en:"piece",g:18},starfruit:{he:"יחידה בינונית",en:"medium",g:91},mulberry:{he:"כוס",en:"cup",g:140},lentilFlour:{he:"כוס",en:"cup",g:92},wholeWheatBread:{he:"פרוסה",hePl:"פרוסות",en:"slice",enPl:"slices",g:32},wholePita:{he:"פיתה",hePl:"פיתות",en:"pita",enPl:"pitas",g:60},quinoaDry:{he:"כוס",en:"cup",g:170},buckwheatGreenDry:{he:"כוס",en:"cup",g:170},bulgurDry:{he:"כוס",en:"cup",g:140},pearlBarleyDry:{he:"כוס",en:"cup",g:200},sabra:{he:"יחידה בינונית",en:"medium",g:105},celeryWithLeaves:{he:"גבעול עם עלים",en:"stalk with leaves",g:64},eggWhole:{he:"ביצה",en:"egg",g:50},eggWhite:{he:"חלבון ביצה",en:"egg white",g:33},milk3pct:{he:"כוס",en:"cup",g:240},milk1pct:{he:"כוס",en:"cup",g:240},leben:{he:"כוס",en:"cup",g:240},yogurtPlain3:{he:"גביע",en:"container",g:150},yogurtGreek:{he:"גביע",en:"container",g:170},cottageCheese5:{he:"אריזה",en:"tub",g:250},whiteCheese5:{he:"אריזה",en:"tub",g:250},creamCheese5:{he:"כף",en:"tbsp",g:15},fetaCheese:{he:"קובייה",en:"cube",g:30},mozzarella:{he:"גרם",en:"gram",g:100,weightOnly:true},yellowCheese:{he:"פרוסה",en:"slice",g:20},processedCheese:{he:"פרוסה",en:"slice",g:20},butter:{he:"כף",en:"tbsp",g:14},sourCream15:{he:"כף",en:"tbsp",g:15},sweetCream38:{he:"כף",en:"tbsp",g:15},
   };
 const __SU_DEFAULTS={
     דגן:{he:"כוס",en:"cup (cooked)",g:160},
@@ -14690,6 +14811,31 @@ const __SU_DEFAULTS={
     מאפה:{he:"מנה",en:"serving",g:80},
     מעובד:{he:"מנה",en:"serving",g:100},
   };
+// יחידות הצגה לאגוזים וזרעים (לבקשת המשתמש): שקדים/לוז/קשיו/פיסטוקים — יחידות שלמות; אגוזי מלך — חצאים;
+// בוטנים — כפות; פשתן וצ'יה — כפות שלמות; חמנייה, דלעת ושומשום — רבעי כף (grid). מנוע התכנון ממשיך לעבוד במנות
+// הרגילות (חופן/כף), ורק בסוף הכמות מיושרת לרשת היחידות האלה (snapPieceUnits) ומוצגת בהן
+const PIECE_UNITS={
+  almonds:{he:"שקד",hePl:"שקדים",en:"almond",enPl:"almonds",g:1.2,min:5},
+  hazelnuts:{he:"אגוז לוז",hePl:"אגוזי לוז",en:"hazelnut",enPl:"hazelnuts",g:1.33,min:5},
+  cashews:{he:"קשיו",hePl:"קשיו",en:"cashew",enPl:"cashews",g:1.55,min:5},
+  pistachio:{he:"פיסטוק",hePl:"פיסטוקים",en:"pistachio",enPl:"pistachios",g:0.57,min:10},
+  brazilNuts:{he:"אגוז ברזיל",hePl:"אגוזי ברזיל",en:"Brazil nut",enPl:"Brazil nuts",g:7},
+  walnuts:{he:"חצי",hePl:"חצאים",en:"half",enPl:"halves",g:2,nameHe:"חצי אגוז מלך",nameHePl:"חצאי אגוזי מלך",nameEn:"walnut half",nameEnPl:"walnut halves",min:4},
+  peanuts:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:9},
+  flaxseed:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:7},
+  chiaseeds:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:12},
+  sunflowerS:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:10,grid:0.25},
+  pumpkinS:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:10,grid:0.25},
+  sesame:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:9,grid:0.25},
+};
+function pieceStepG(fk){ const u=PIECE_UNITS[fk]; return u?u.g*(u.grid||1):null; }
+// כמות מיושרת לרשת היחידה (לפחות צעד אחד) — גם לתצוגה של פריט שלא עבר יישור (מתכנן אישי / הוספה ידנית)
+// min: כמות מזערית שיש בה טעם (לא "פיסטוק אחד") — פחות ממחציתה מושמט (0), אחרת מוגדל אליה
+function snapPieceG(fk,g,noMin){ const st=pieceStepG(fk); if(!st||!(g>0)) return g; let n=Math.max(1,Math.round(g/st)); const mn=noMin?1:(PIECE_UNITS[fk].min||1);
+  if (n<mn) n=(g/st<mn/2)?0:mn; return Math.round(n*st*100)/100; }
+// יחידת תצוגה לפריט בתפריט: יחידת-חתיכה אם הוגדרה, אחרת יחידת ההגשה הרגילה
+function displayUnit(fk,fd,lang){ return (fd&&!fd._isRecipe&&PIECE_UNITS[fk])||getServingUnit(fk,fd,lang); }
+function displayQtyG(fk,fd,g){ return fd&&!fd._isRecipe&&PIECE_UNITS[fk]?snapPieceG(fk,g,true):g; }
 function getServingUnit(fk,fd,lang){
   if(SERVING_UNITS[fk]) return SERVING_UNITS[fk];
   if(!fd) return null;
@@ -14699,7 +14845,7 @@ function getServingUnit(fk,fd,lang){
 }
 
 function servingLabel(fk,g,lang){
-  const fd=FDB[fk]||TEMP_FDB[fk]; const u=getServingUnit(fk,fd,lang); const gr=lang==="he"?"ג׳":"g";
+  const fd=FDB[fk]||TEMP_FDB[fk]; const u=displayUnit(fk,fd,lang); const gr=lang==="he"?"ג׳":"g"; if(u&&PIECE_UNITS[fk]) g=displayQtyG(fk,fd,g);
   if(!u){
     const cat=fd?.cat||"";
     let fallbackHe="",fallbackEn="",baseG=100;
@@ -15699,9 +15845,9 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
             </div>
             {withCourses(mk, plan[mk]||[], (it,i,_last,addon)=>{
               const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return null;
-              const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
+              const su=fd._isRecipe?recipeServingUnit(fd):displayUnit(it.fk,fd,lang);
               const kcal=Math.round(ingNut(it.fk,it.g).kcal);
-              const qty = su ? (su.weightOnly ? fmtWeightG(it.g,lang) : `${qtyWithUnit(su,(it.g/su.g)*(su.count||1),lang)}`) : "";
+              const qty = su ? (su.weightOnly ? fmtWeightG(it.g,lang) : `${qtyWithUnit(su,(displayQtyG(it.fk,fd,it.g)/su.g)*(su.count||1),lang)}`) : "";
               return(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,color:"#1E3A2B",padding:"3px 0",gap:8}}>
                   <span style={{display:"flex",alignItems:"center",gap:4,unicodeBidi:"plaintext"}}>
@@ -16083,9 +16229,9 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
                   </div>
                   {withCourses(mk, dayMealItems, (it,idx,_last,addon)=>{
                     const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return null;
-                    const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
+                    const su=fd._isRecipe?recipeServingUnit(fd):displayUnit(it.fk,fd,lang);
                     const kcal=Math.round(ingNut(it.fk,it.g).kcal);
-                    const qty = su ? (su.weightOnly ? fmtWeightG(it.g,lang) : `${qtyWithUnit(su,(it.g/su.g)*(su.count||1),lang)}`) : "";
+                    const qty = su ? (su.weightOnly ? fmtWeightG(it.g,lang) : `${qtyWithUnit(su,(displayQtyG(it.fk,fd,it.g)/su.g)*(su.count||1),lang)}`) : "";
                     return(
                       <div key={idx} style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,color:"#1E3A2B",padding:"3px 0",gap:8}}>
                         <span style={{display:"flex",alignItems:"center",gap:4,unicodeBidi:"plaintext"}}>
@@ -17252,9 +17398,12 @@ function isSaladFk(fk){ if (String(fk).startsWith("autosal_")) return true; cons
 function withCourses(mk, items, render, lang, inline){
   let list=(items||[]).map((it,idx)=>({it,idx}));
   const salad=list.find(x=>isSaladFk(x.it.fk));
-  const addons=salad?list.filter(x=>SALAD_ADDON_FKS.has(x.it.fk)):[];
-  if (addons.length) { const rest=list.filter(x=>!SALAD_ADDON_FKS.has(x.it.fk)); const at=rest.indexOf(salad)+1; list=[...rest.slice(0,at),...addons.map(x=>({...x,addon:true})),...rest.slice(at)]; }
-  const courseOfRow=x=>x.addon?courseOf(salad.it.fk):courseOf(x.it.fk);
+  // פשתן/צ'יה מוצגים "(להוספה)" ליד הסלט, ואם אין — ליד פשטידה/מרק/תבשיל/קערה (isSeedHostFk)
+  const anchor=salad||list.find(x=>isSeedHostFk(x.it.fk));
+  const isAddon=x=>!!anchor&&((salad&&SALAD_ADDON_FKS.has(x.it.fk))||OMEGA_SEED_TBSP_G[x.it.fk]!=null);
+  const addons=list.filter(isAddon);
+  if (addons.length) { const rest=list.filter(x=>!isAddon(x)); const at=rest.indexOf(anchor)+1; list=[...rest.slice(0,at),...addons.map(x=>({...x,addon:true})),...rest.slice(at)]; }
+  const courseOfRow=x=>x.addon?courseOf(anchor.it.fk):courseOf(x.it.fk);
   const flat=()=>list.map((x,i)=>render(x.it,x.idx,i===list.length-1,!!x.addon));
   if (!(mk==="lunch"||mk==="dinner")) return flat();
   const groups=["starter","main","dessert"].map(c=>({c,rows:list.filter(x=>courseOfRow(x)===c)})).filter(g=>g.rows.length);
@@ -17324,10 +17473,11 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
               const fd=FDB[fk]||TEMP_FDB[fk];if(!fd)return null;
               // חשוב: למתכון יש גודל-מנה משלו (fd._servingG) שמחושב מתוך המרכיבים בפועל — לא ברירת המחדל הגנרית של הקטגוריה
               // (שרק במקרה תואמת לפעמים). בלי זה, "1 מנה שלמה" מוצגת בטעות כ"¾ מנה" או "0.96 מנה" למרות שהכמות נכונה ושלמה.
-              const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(fk,fd,lang);
+              const su=fd._isRecipe?recipeServingUnit(fd):displayUnit(fk,fd,lang);
+              const gD=displayQtyG(fk,fd,g);
               let qty="";
               if(su){
-                qty = su.weightOnly ? fmtWeightG(g,lang) : `${qtyWithUnit(su,(g/su.g)*(su.count||1),lang)}`;
+                qty = su.weightOnly ? fmtWeightG(g,lang) : `${qtyWithUnit(su,(gD/su.g)*(su.count||1),lang)}`;
               } else {
                 qty=`${g}${lang==="he"?"גר׳":"g"}`;
               }
@@ -17347,7 +17497,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                         מתצוגות אחרות באפליקציה (חלון-הצעת-שבוע/יום, תצוגת-מתכון) שכן מציגות "kcal · gr'" לכל שורה.
                         נבדק חישובית (סימולציה, 140 ארוחות): סכום-קלוריות-לפי-פריט תמיד תואם בדיוק לסך-הארוחה
                         המוצג (0 אי-התאמות) — אין באג בחישוב עצמו, רק חוסר-תצוגה. נוסף כאן */}
-                    {qty} {foodName(fk,lang)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}{!simple&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
+                    {(su&&!fd._isRecipe&&itemLabel(fk,su,(gD/su.g)*(su.count||1),lang))||<>{qty} {foodName(fk,lang)}</>}{addon&&(lang==="he"?" (להוספה)":" (to add)")}{!simple&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
                   {fd._isRecipe && (
                     <button onClick={()=>setViewRecipeId(fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                       style={{marginInlineStart:3,marginInlineEnd:isLast?0:3,background:"#F7EFE3",border:"1px solid #d9c2a3",borderRadius:6,color:"#8C6D53",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
@@ -17509,8 +17659,8 @@ function FoodLogMealRow({mealKey,status,items,plannedItems,onMarkPlanned,onFree,
             <div style={{marginBottom:8}}>
               {items.map((it,i)=>{
                 const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd)return null;
-                const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
-                const qty=su?(su.weightOnly?`${Math.round(it.g)}${lang==="he"?"גר׳":"g"}`:`${qtyWithUnit(su,(it.g/su.g)*(su.count||1),lang)}`):`${it.g}${lang==="he"?"גר׳":"g"}`;
+                const su=fd._isRecipe?recipeServingUnit(fd):displayUnit(it.fk,fd,lang);
+                const qty=su?(su.weightOnly?`${Math.round(it.g)}${lang==="he"?"גר׳":"g"}`:`${qtyWithUnit(su,(displayQtyG(it.fk,fd,it.g)/su.g)*(su.count||1),lang)}`):`${it.g}${lang==="he"?"גר׳":"g"}`;
                 return(
                   <div key={i} style={{padding:"6px 2px",borderBottom:i<items.length-1?"1px solid #E2DED4":"none"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
