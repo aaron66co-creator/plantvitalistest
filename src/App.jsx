@@ -1842,9 +1842,9 @@ const BREAD_FKS=new Set(["wholeWheatBread","wholePita"]);
 const SEED_CAP_G={sunflowerS:2.5,pumpkinS:2.5,sesame:2.25,flaxseed:14,chiaseeds:24};
 // פשתן/צ'יה: גרם לכף (כף אחת לפחות, עד 2 לארוחה)
 const OMEGA_SEED_TBSP_G={flaxseed:7,chiaseeds:12};
-// "מנה מארחת" לפשתן/צ'יה (לבקשת המשתמש): סלט, פשטידה, מרק, תבשיל, קערה או יוגורט סויה
-const SEED_HOST_CATS=new Set(["פשטידות","מרקים","קערות","תבשילי קטניות","תבשילי דגנים"]);
-const SEED_HOST_FKS=new Set(["soyYogurtPlain","soyYogurtOrgPlain"]);
+// "מנה מארחת" לפשתן/צ'יה (לבקשת המשתמש): סלט, פשטידה, מרק, תבשיל, קערה, דייסה (מתכון או שיבולת שועל) או יוגורט (סויה/חלב)
+const SEED_HOST_CATS=new Set(["פשטידות","מרקים","קערות","תבשילי קטניות","תבשילי דגנים","דייסות"]);
+const SEED_HOST_FKS=new Set(["soyYogurtPlain","soyYogurtOrgPlain","yogurtPlain3","yogurtGreek","oatsCooked","oatsThinRaw","oatsMedRaw","oatsThickRaw"]);
 function isSeedHostFk(fk){ if (SEED_HOST_FKS.has(fk)||isSaladFk(fk)) return true; const c=recipeCatOfFk(fk); return !!c&&SEED_HOST_CATS.has(c); }
 function snapPieceUnits(plan){
   for (const mk of ["breakfast","snack","lunch","dinner"]) if (plan[mk]) plan[mk]=plan[mk].map(it=>{ if(!it||!it.fk||it._user||!pieceStepG(it.fk)) return it;
