@@ -1726,11 +1726,14 @@ function guaranteeDailyStews(plan, tgt, excl, usage, allowedIds){
   const has=cat=>all().some(it=>stewCatOf(it.fk)===cat);
   const mealHas=(mk,cat)=>(plan[mk]||[]).some(it=>stewCatOf(it.fk)===cat);
   const BREAD=new Set(["wholeWheatBread","wholePita"]);
+  const CA_KEEP=new Set([...SOY_FKS_ALL,"tahiniRaw","tahiniFullRaw","almonds","sesame"]);
   const sameGroup=(cat,it)=>{ const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return false;
     if (fd._isRecipe) return cat==="תבשילי קטניות" && recipeCatOfFk(it.fk)==="סלטי קטניות";
-    return cat==="תבשילי קטניות" ? fd.cat==="קטנית" : (fd.cat==="דגן" && !BREAD.has(it.fk)); };
+    return cat==="תבשילי קטניות" ? (fd.cat==="קטנית" && !CA_KEEP.has(it.fk)) : (fd.cat==="דגן" && !BREAD.has(it.fk)); };
+  // מקורות הסידן והכולין העיקריים (טופו ושאר מוצרי סויה, טחינה) — לא מוחלפים ולא מוקטנים: בדיקה בתקציב 1,600 קק"ל
+  // הראתה שבלי ההגנה הזו הסידן השבועי ירד מ-90%-105% ל-76%-91%
   const NO_SHRINK_CATS=new Set(["פרי","ירק","עלים","תבלינים"]);
-  const NO_SHRINK_FKS=new Set(["flaxseed","chiaseeds","wakame","nori","saltIodized"]);
+  const NO_SHRINK_FKS=new Set(["flaxseed","chiaseeds","wakame","nori","saltIodized",...CA_KEEP]);
   // מקטין פריטים גמישים (לא מתכונים) ביום עד שנחתכו X קק"ל — פריט נספר יורד ביחידה שלמה, פריט משקלי עד 40%
   const shrinkDay=X=>{
     let cut=0;
