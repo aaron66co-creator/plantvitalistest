@@ -15538,7 +15538,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
                 </span>
               )}
             </div>
-            {withCourses(mk, plan[mk]||[], (it,i)=>{
+            {withCourses(mk, plan[mk]||[], (it,i,_last,addon)=>{
               const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return null;
               const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
               const kcal=Math.round(ingNut(it.fk,it.g).kcal);
@@ -15546,7 +15546,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
               return(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,color:"#1E3A2B",padding:"3px 0",gap:8}}>
                   <span style={{display:"flex",alignItems:"center",gap:4,unicodeBidi:"plaintext"}}>
-                    {foodName(it.fk,lang)}
+                    {foodName(it.fk,lang)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}
                     {fd._isRecipe && (
                       <button onClick={()=>setViewRecipeId(it.fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                         style={{background:"#E8EFE9",border:"1px solid #bcd4bf",borderRadius:6,color:"#2e7d32",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
@@ -15922,7 +15922,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
                       </span>
                     )}
                   </div>
-                  {withCourses(mk, dayMealItems, (it,idx)=>{
+                  {withCourses(mk, dayMealItems, (it,idx,_last,addon)=>{
                     const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return null;
                     const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
                     const kcal=Math.round(ingNut(it.fk,it.g).kcal);
@@ -15930,7 +15930,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
                     return(
                       <div key={idx} style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,color:"#1E3A2B",padding:"3px 0",gap:8}}>
                         <span style={{display:"flex",alignItems:"center",gap:4,unicodeBidi:"plaintext"}}>
-                          {foodName(it.fk,lang)}
+                          {foodName(it.fk,lang)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}
                           {fd._isRecipe && (
                             <button onClick={()=>setViewRecipeId(it.fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                               style={{background:"#E8EFE9",border:"1px solid #bcd4bf",borderRadius:6,color:"#2e7d32",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
@@ -17087,15 +17087,22 @@ function courseOf(fk){ const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return "main";
   return "main"; }
 const COURSE_LABELS={starter:{he:"🥗 פתיחה",en:"🥗 Starter"},main:{he:"🍲 עיקרית",en:"🍲 Main"},dessert:{he:"🍎 קינוח",en:"🍎 Dessert"}};
 // מחזיר את רשימת הפריטים מקובצת לפי מנות (אם יש לפחות שתי קבוצות) — render(it, idx המקורי, האחרון-בקבוצה)
+// נבט חיטה מוצג צמוד לסלט, מיד אחריו, עם "(להוספה)" (לבקשת המשתמש) — תצוגה בלבד, הכמויות והתכנון לא משתנים
+const SALAD_ADDON_FKS=new Set(["wheatGerm"]);
+function isSaladFk(fk){ if (String(fk).startsWith("autosal_")) return true; const c=recipeCatOfFk(fk); return !!c && (c.startsWith("סלטי")||c==="ארוחות סלט"); }
 function withCourses(mk, items, render, lang, inline){
-  const list=(items||[]).map((it,idx)=>({it,idx}));
-  const flat=()=>list.map(({it,idx})=>render(it,idx,idx===list.length-1));
+  let list=(items||[]).map((it,idx)=>({it,idx}));
+  const salad=list.find(x=>isSaladFk(x.it.fk));
+  const addons=salad?list.filter(x=>SALAD_ADDON_FKS.has(x.it.fk)):[];
+  if (addons.length) { const rest=list.filter(x=>!SALAD_ADDON_FKS.has(x.it.fk)); const at=rest.indexOf(salad)+1; list=[...rest.slice(0,at),...addons.map(x=>({...x,addon:true})),...rest.slice(at)]; }
+  const courseOfRow=x=>x.addon?courseOf(salad.it.fk):courseOf(x.it.fk);
+  const flat=()=>list.map((x,i)=>render(x.it,x.idx,i===list.length-1,!!x.addon));
   if (!(mk==="lunch"||mk==="dinner")) return flat();
-  const groups=["starter","main","dessert"].map(c=>({c,rows:list.filter(x=>courseOf(x.it.fk)===c)})).filter(g=>g.rows.length);
+  const groups=["starter","main","dessert"].map(c=>({c,rows:list.filter(x=>courseOfRow(x)===c)})).filter(g=>g.rows.length);
   if (groups.length<2) return flat();
   return groups.map(g=>(<div key={g.c} style={inline?{display:"flex",flexWrap:"wrap",gap:"2px 0",width:"100%",alignItems:"center"}:{}}>
     <div style={{width:"100%",fontSize:14,fontWeight:800,color:"#2F3B34",letterSpacing:.2,marginTop:6,marginBottom:2}}>{COURSE_LABELS[g.c][lang==="he"?"he":"en"]}</div>
-    {g.rows.map((x,i)=>render(x.it,x.idx,i===g.rows.length-1))}</div>));
+    {g.rows.map((x,i)=>render(x.it,x.idx,i===g.rows.length-1,!!x.addon))}</div>));
 }
 // מסגרת "מפת שולחן" משובצת לכרטיסי ארוחה (לבקשת המשתמש — אפשרות ב): המשבצות במסגרת, התוכן על משטח בהיר
 // צבע ייחודי לכל ארוחה (לבקשת המשתמש): בוקר ירוק, ביניים אדום, צהריים כחול, ערב צהוב
@@ -17154,7 +17161,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
           {/* רשימת רכיבים כ"צ'יפים" נפרדים (במקום שורת טקסט מאוחדת אחת) — נחוץ כדי לאפשר מתג "מושרה" בודד
               לכל קטנית/דגן בנפרד, בלי לפגוע בקומפקטיות עבור שאר הרכיבים שמוצגים בדיוק כמו קודם */}
           <div style={{display:"flex",flexWrap:"wrap",gap:"2px 0",fontSize:11,color:"#1E3A2B",lineHeight:1.9,fontWeight:500}}>
-            {withCourses(mealKey, ings, ({fk,g,soaked},idx,lastInGroup)=>{
+            {withCourses(mealKey, ings, ({fk,g,soaked},idx,lastInGroup,addon)=>{
               const fd=FDB[fk]||TEMP_FDB[fk];if(!fd)return null;
               // חשוב: למתכון יש גודל-מנה משלו (fd._servingG) שמחושב מתוך המרכיבים בפועל — לא ברירת המחדל הגנרית של הקטגוריה
               // (שרק במקרה תואמת לפעמים). בלי זה, "1 מנה שלמה" מוצגת בטעות כ"¾ מנה" או "0.96 מנה" למרות שהכמות נכונה ושלמה.
@@ -17181,7 +17188,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                         מתצוגות אחרות באפליקציה (חלון-הצעת-שבוע/יום, תצוגת-מתכון) שכן מציגות "kcal · gr'" לכל שורה.
                         נבדק חישובית (סימולציה, 140 ארוחות): סכום-קלוריות-לפי-פריט תמיד תואם בדיוק לסך-הארוחה
                         המוצג (0 אי-התאמות) — אין באג בחישוב עצמו, רק חוסר-תצוגה. נוסף כאן */}
-                    {qty} {foodName(fk,lang)}{!simple&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
+                    {qty} {foodName(fk,lang)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}{!simple&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
                   {fd._isRecipe && (
                     <button onClick={()=>setViewRecipeId(fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                       style={{marginInlineStart:3,marginInlineEnd:isLast?0:3,background:"#F7EFE3",border:"1px solid #d9c2a3",borderRadius:6,color:"#8C6D53",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
