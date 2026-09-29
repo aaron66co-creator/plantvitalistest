@@ -1880,7 +1880,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
   // delta<0 מקטין, delta>0 מגדיל; קודם באותה ארוחה. לא מסיר פריט לגמרי
   const adjust=(delta, prefMk, skip, allowFruit)=>{
     let left=Math.abs(delta); const sign=delta<0?-1:1;
-    const cands=[]; ALL.forEach(m=>(plan[m]||[]).forEach(it=>{ const rfd=TEMP_FDB[it.fk];
+    const cands=[]; ALL.forEach(m=>(plan[m]||[]).forEach(it=>{ if (it._user) return; const rfd=TEMP_FDB[it.fk]; // פריט שהמשתמש בחר (השלם יום) — לא משנים
       if (rfd&&rfd._isRecipe) { if (sign<0&&!(skip&&skip(it))&&Math.round(it.g/(rfd._servingG||200))>=2) cands.push({m,it}); return; } // מתכון שמוגש פעמיים — אפשר לרדת למנה אחת
       const fd=FDB[it.fk]; if(!fd||(FLEX_NO.has(fd.cat)&&!(allowFruit&&fd.cat==="פרי"))||FLEX_KEEP.has(it.fk)||(skip&&skip(it))) return; cands.push({m,it}); }));
     cands.sort((a,b)=>((a.m===prefMk?0:1)-(b.m===prefMk?0:1))||(kOf(b.it)-kOf(a.it)));
@@ -1918,11 +1918,11 @@ function tidyMealLogic(plan, tgt, dri, excl){
     adjust(freed, null, it=>isRawLegume(it.fk)||isCookedGrain(it.fk), true); if (okAfter(v0)) return;
     for (const m of MAIN) { if (m===avoidMk||!(plan[m]||[]).length||dayK()>=tgt*0.975) continue; refill(m, tgt*0.99-dayK(), v0); } };
   // (0) יחידות שלמות קודם: לחם, פיתה, כוס דגן/קטנית ומנות מתכון — עיגול ליחידה הקרובה (לפחות 1)
-  for (const mk of ALL) plan[mk]=(plan[mk]||[]).map(it=>{ const fd=fdOf(it.fk); if(!fd) return it;
+  for (const mk of ALL) plan[mk]=(plan[mk]||[]).map(it=>{ const fd=fdOf(it.fk); if(!fd||it._user) return it;
     const whole=fd._isRecipe||BREAD_FKS.has(it.fk)||isCookedGrain(it.fk)||isRawLegume(it.fk); if(!whole) return it;
     const u=unitG(it.fk); const n=Math.max(1,Math.round(it.g/u)); return Math.abs(n*u-it.g)<0.5?it:{...it,g:Math.round(n*u*100)/100}; });
   // (1) פריטים שלא מוגשים לבד
-  for (const mk of ALL) { const bad=(plan[mk]||[]).filter(it=>{ const fd=FDB[it.fk]; return fd&&!fd._isRecipe&&GLOBAL_BANNED_STANDALONE.has(it.fk); });
+  for (const mk of ALL) { const bad=(plan[mk]||[]).filter(it=>{ const fd=FDB[it.fk]; return !it._user&&fd&&!fd._isRecipe&&GLOBAL_BANNED_STANDALONE.has(it.fk); });
     if (!bad.length) continue; const v0=mealShareViolation(plan); const s0=snap(); const k0=dayK();
     plan[mk]=(plan[mk]||[]).filter(it=>!bad.includes(it));
     if (!refill(mk, k0-dayK(), v0)) { restore(s0); plan[mk]=(plan[mk]||[]).filter(it=>{ const fd=FDB[it.fk]; return !(fd&&!fd._isRecipe&&GLOBAL_BANNED_STANDALONE.has(it.fk)&&kOf(it)<60); }); } }
@@ -1931,7 +1931,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
   //   או קערה (isSeedHostFk); בתפריט הם מוצגים לידה "(להוספה)". בארוחה בלי מנה כזו — עוברים לארוחה שיש בה, או יורדים.
   // • חמנייה/דלעת/שומשום — רבע כף.
   // אם אומגה 3 היומית חסרה: כף שנייה, אחר כך כף פשתן בארוחה מארחת נוספת, ובסוף אגוזי מלך בארוחה עיקרית אחרת
-  const seedIt=it=>{ const fd=FDB[it.fk]; return !!fd&&!fd._isRecipe&&SEED_CAP_G[it.fk]!=null; };
+  const seedIt=it=>{ const fd=FDB[it.fk]; return !it._user&&!!fd&&!fd._isRecipe&&SEED_CAP_G[it.fk]!=null; };
   const isOmega=it=>seedIt(it)&&OMEGA_SEED_TBSP_G[it.fk]!=null;
   const seedG=it=>{ const t=OMEGA_SEED_TBSP_G[it.fk]; return t?Math.min(2,Math.max(1,Math.round(it.g/t)))*t:SEED_CAP_G[it.fk]; };
   const hostMeal=mk=>(plan[mk]||[]).some(it=>isSeedHostFk(it.fk));
@@ -1992,8 +1992,9 @@ function tidyMealLogic(plan, tgt, dri, excl){
     const portions=kind==="leg"?legPortions:grainPortions; const items=(plan[mk]||[]).filter(it=>portions(it)>0);
     const total=items.reduce((a,it)=>a+portions(it),0); if (total<=1.01) continue;
     const v0=mealShareViolation(plan); const s0=snap(); const k0=dayK();
-    items.sort((a,b)=>(stewCatOf(b.fk)?1:0)-(stewCatOf(a.fk)?1:0)||kOf(b)-kOf(a)); const keep=items[0];
-    plan[mk]=(plan[mk]||[]).filter(it=>!items.includes(it)||it===keep).map(it=>it===keep?{...it,g:unitG(it.fk)}:it);
+    items.sort((a,b)=>(stewCatOf(b.fk)?1:0)-(stewCatOf(a.fk)?1:0)||kOf(b)-kOf(a)); const keep=items.find(x=>x._user)||items[0];
+    if (items.filter(x=>!x._user).length===0) continue; // הכול בחירת המשתמש — לא נוגעים
+    plan[mk]=(plan[mk]||[]).filter(it=>!items.includes(it)||it===keep||it._user).map(it=>it===keep&&!it._user?{...it,g:unitG(it.fk)}:it);
     // קטניות עודפות בארוחה בלי דגן → מחליפים בכוס דגן מבושל (פותר גם את הזיווג קטנית–דגן)
     if (kind==="leg" && !hasGrain(mk)) { const s1=snap(); plan[mk].push({fk:unused(COOKED_GRAIN_FKS).find(fk=>FDB[fk]&&!(excl&&excl.has(fk))),g:0});
       const gi=plan[mk].length-1; plan[mk][gi].g=unitG(plan[mk][gi].fk); const diff=dayK()-tgt;
@@ -2001,7 +2002,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
       if (okAfter(v0)) continue; restore(s1); }
     if (refill(mk, k0-dayK(), v0)) continue;
     // חלופה: המנה העודפת (כוס קטניות/דגן) עוברת לארוחה עיקרית אחרת שאין בה מנה מאותה קבוצה — הקלוריות היומיות לא משתנות
-    restore(s0); const extra=(plan[mk]||[]).find(it=>it!==(plan[mk]||[]).find(x=>portions(x)>0&&stewCatOf(x.fk))&&!stewCatOf(it.fk)&&portions(it)>0);
+    restore(s0); const extra=(plan[mk]||[]).find(it=>!it._user&&it!==(plan[mk]||[]).find(x=>portions(x)>0&&stewCatOf(x.fk))&&!stewCatOf(it.fk)&&portions(it)>0);
     let moved=false;
     if (extra) for (const other of MAIN) { if (other===mk||!(plan[other]||[]).length||(plan[other]||[]).some(it=>portions(it)>0)) continue;
       const i=plan[mk].indexOf(extra); plan[other].push({...plan[mk].splice(i,1)[0],g:unitG(extra.fk)});
@@ -2009,7 +2010,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
     if (!moved) { restore(s0);
       // תבשיל (דגנים או קטניות) פעמיים באותה ארוחה, כשמנה אחת שלו 200 קק"ל ומעלה — לעולם לא (לבקשת המשתמש):
       // יורדים למנה אחת בכל מקרה, והקלוריות מושלמות ביחידות שלמות במקום אחר ביום
-      const si=(plan[mk]||[]).findIndex(it=>(kind==="leg"?isLegStew(it.fk):isGrainStew(it.fk))&&Math.round(it.g/unitG(it.fk))>=2&&kOf({...it,g:unitG(it.fk)})>=200);
+      const si=(plan[mk]||[]).findIndex(it=>!it._user&&(kind==="leg"?isLegStew(it.fk):isGrainStew(it.fk))&&Math.round(it.g/unitG(it.fk))>=2&&kOf({...it,g:unitG(it.fk)})>=200);
       if (si>=0) { const it=plan[mk][si]; plan[mk][si]={...it,g:unitG(it.fk)}; fillDay(k0-dayK(), mk); } } }
   // (3) תבשיל קטניות עם דגן; מרק עם מנת דגנים
   for (const mk of MAIN) {
@@ -2017,10 +2018,10 @@ function tidyMealLogic(plan, tgt, dri, excl){
     const needSoup=items.some(it=>isSoup(it.fk))&&!hasGrain(mk)&&!items.some(it=>BREAD_FKS.has(it.fk));
     if (!needLeg&&!needSoup) continue;
     const v0=mealShareViolation(plan); const s0=snap(); let done=false;
-    for (const other of MAIN) { if (other===mk) continue; const gi=(plan[other]||[]).findIndex(it=>isGrainStew(it.fk)); if (gi<0) continue;
+    for (const other of MAIN) { if (other===mk) continue; const gi=(plan[other]||[]).findIndex(it=>isGrainStew(it.fk)&&!it._user); if (gi<0) continue;
       if ((plan[other]||[]).some(it=>isLegStew(it.fk)||isSoup(it.fk))) continue;
       plan[mk].push(plan[other].splice(gi,1)[0]); if (okAfter(v0)) { done=true; break; } restore(s0); }
-    if (!done && needLeg) { const li=(plan[mk]||[]).findIndex(it=>isLegStew(it.fk));
+    if (!done && needLeg && !(plan[mk]||[]).some(it=>isLegStew(it.fk)&&it._user)) { const li=(plan[mk]||[]).findIndex(it=>isLegStew(it.fk));
       for (const other of MAIN) { if (other===mk||!(plan[other]||[]).length||!hasGrain(other)||(plan[other]||[]).some(it=>isLegStew(it.fk))) continue;
         plan[other].push(plan[mk].splice(li,1)[0]); if (okAfter(v0)) { done=true; break; } restore(s0); } }
     if (!done) done=tryAdd(mk, unused(COOKED_GRAIN_FKS), v0);
@@ -2061,7 +2062,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
   const cap=(dri&&dri._naCap)||2300; const q=(getServingUnit("saltIodized",FDB.saltIodized,"he")?.g||6)/4;
   const naDay=()=>sumNuts(ALL.flatMap(m=>plan[m]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).sodium||0;
   // מלח ברבעי כפית שלמים (לא "0 כפית"): מעוגל לרבע הקרוב, ופחות משמינית כפית — מוסר; התקרה נאכפת מיד אחר כך
-  for (const m of ALL) plan[m]=(plan[m]||[]).map(it=>it.fk==="saltIodized"?{...it,g:Math.round(Math.round(it.g/q)*q*100)/100}:it).filter(it=>!(it.fk==="saltIodized"&&it.g<=0));
+  for (const m of ALL) plan[m]=(plan[m]||[]).map(it=>it.fk==="saltIodized"&&!it._user?{...it,g:Math.round(Math.round(it.g/q)*q*100)/100}:it).filter(it=>!(it.fk==="saltIodized"&&it.g<=0));
   for (let guard=0; guard<12 && naDay()>cap; guard++) {
     let best=null; MAIN.forEach(m=>(plan[m]||[]).forEach((it,i)=>{ if(it.fk==="saltIodized"&&(!best||it.g>best.it.g)) best={m,i,it}; }));
     if (!best) break;
@@ -2071,7 +2072,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
   { const k0=dayK(); if (placeOmega()) fillDay(k0-dayK(), null); }
   // לחם: עד 2 פרוסות או פיתה אחת בארוחה (תקרה קיימת; שלבי השלמת קלוריות יכלו לעבור אותה)
   for (const mk of ALL) for (const fk of ["wholeWheatBread","wholePita"]) { const cap=unitG(fk)*(fk==="wholePita"?1:2);
-    const tot=(plan[mk]||[]).filter(it=>it.fk===fk).reduce((a,it)=>a+it.g,0); if (tot<=cap+0.5) continue;
+    const tot=(plan[mk]||[]).filter(it=>it.fk===fk).reduce((a,it)=>a+it.g,0); if (tot<=cap+0.5||(plan[mk]||[]).some(it=>it.fk===fk&&it._user)) continue;
     const k0=dayK(); let first=true; plan[mk]=(plan[mk]||[]).filter(it=>{ if (it.fk!==fk) return true; if (first) { first=false; return true; } return false; }).map(it=>it.fk===fk?{...it,g:cap}:it);
     fillDay(k0-dayK(), mk); }
   // (6) בדיקה אחרונה: היום מעל היעד (עיגולי יחידות שלמות לאורך השלבים) — כף שנייה של פשתן/צ'יה יורדת אם אומגה 3
@@ -2115,7 +2116,7 @@ function roundSpoonPortions(plan, tgt, dri){
   const dayK=()=>meals.flatMap(mk=>plan[mk]||[]).reduce((a,it)=>a+ingNut(it.fk,it.g,it.soaked).kcal,0);
   const dayNut=()=>sumNuts(meals.flatMap(mk=>plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
   meals.forEach(mk=>{ (plan[mk]||[]).forEach((it,idx)=>{
-    if (it.fk==="saltIodized"||it.fk==="wakame"||pieceStepG(it.fk)!=null) return; // אגוזים וזרעים — ביחידות משלהם (snapPieceUnits)
+    if (it._user||it.fk==="saltIodized"||it.fk==="wakame"||pieceStepG(it.fk)!=null) return; // אגוזים וזרעים — ביחידות משלהם (snapPieceUnits)
     const fd=FDB[it.fk]; if (!fd||fd._isRecipe) return;
     const su=getServingUnit(it.fk,fd,"he"); if (!su||!su.g||su.weightOnly||!SPOON_UNITS.has(su.he)) return;
     const q=it.g/su.g; const lo=Math.max(0.5,Math.floor(q*2)/2), hi=Math.max(0.5,Math.ceil(q*2)/2);
@@ -8967,13 +8968,34 @@ function generatePersonalDayPlan(...a){ a[3]=planDRI(a[3]); return withAgeMealCa
   const res=generatePersonalDayPlan__impl(...a);
   if (!hasUser||!res) return res;
   const userFks=new Set(Object.values(existing).flat().filter(x=>x&&x.fk).map(x=>x.fk));
+  const tgt=a[0]||2000, dri=a[3], excl=a[6];
+  // ארוחה שהמשתמש התחיל לבנות — משלימים רק מה שחסר בה (לבקשת המשתמש: "מתעלם מהמנות שבניתי ומציג הצעות משלו"):
+  // פריטי המשתמש נשארים בדיוק כמו שהם, ומהצעות המחולל נכנסים רק סוגי מזון שאין עדיין בארוחה (לא מנת קטניות/דגן
+  // שנייה, לא תבשיל או מנה עיקרית נוספת, לא סלט/מרק/יוגורט/פרי נוסף), ועד תקרת הארוחה. ארוחה ריקה — הצעה מלאה
+  const kindOf=fk=>{ const fd=FDB[fk]||TEMP_FDB[fk]; if (!fd) return "misc";
+    const st=stewCatOf(fk); if (st==="תבשילי קטניות") return "leg"; if (st==="תבשילי דגנים") return "grain";
+    if (fd._isRecipe) { if (isLegumeDominantGlobal(fd)) return "leg"; if (isGrainDominantGlobal(fd)) return "grain"; if (isSaladFk(fk)) return "salad"; const c=recipeCatOfFk(fk); if (c==="מרקים") return "soup"; return "dish"; }
+    if (fd.cat==="קטנית") return SOY_FKS_ALL.has(fk)?"soy":"leg";
+    if (fk==="wholeWheatBread"||fk==="wholePita") return "bread";
+    if (fd.cat==="דגן") return "grain";
+    if (COURSE_YOG.has(fk)) return "yog";
+    if (fd.cat==="פרי") return "fruit"; if (fd.cat==="אגוזים") return "nuts"; if (fd.cat==="זרעים") return "seeds";
+    if (fd.cat==="ירק"||fd.cat==="עלים") return "veg";
+    return "misc"; };
+  const kOfIt=x=>ingNut(x.fk,x.g,x.soaked).kcal;
   const out={};
   for (const mk of Object.keys({...res,...existing})) {
     const mine=(existing[mk]||[]).filter(x=>x&&x.fk).map(x=>({fk:x.fk,g:x.g,...(x.soaked?{soaked:true}:{}),_user:true,_keep:true}));
     const added=(res[mk]||[]).filter(x=>x&&x.fk&&!userFks.has(x.fk));
-    out[mk]=[...mine,...added];
+    if (!mine.length) { out[mk]=added; continue; }
+    const have=new Set(mine.map(x=>kindOf(x.fk))); if (have.has("leg")&&have.has("grain")) have.add("dish");
+    // עד החלק הרגיל של הארוחה ביום (בוקר ~30%, צהריים ~35%, ערב ~28%)
+    const cap=(FREE_MEAL_SHARE[mk]||0.3)*tgt; let k=mine.reduce((t,x)=>t+kOfIt(x),0); const keep=[];
+    for (const x of added) { const kd=kindOf(x.fk), free=kd==="veg"||kd==="misc";
+      if (!free&&have.has(kd)) continue; const kx=kOfIt(x); if (!free&&k+kx>cap) continue;
+      keep.push(x); k+=kx; if (!free) have.add(kd); }
+    out[mk]=[...mine,...keep];
   }
-  const tgt=a[0]||2000, dri=a[3], excl=a[6];
   // רשת ביטחון: אם שלב כלשהו בכל זאת שינה/הזיז פריט של המשתמש — מחזירים אותו בדיוק ומאזנים שוב (עד פעמיים)
   const fixUser=pl=>{ let changed=false; const fks=new Set(); for (const mk of Object.keys(existing)) for (const u of (existing[mk]||[])) { if(!u||!u.fk) continue; fks.add(u.fk);
       const arr=pl[mk]||(pl[mk]=[]); const i=arr.findIndex(x=>x&&x.fk===u.fk);
@@ -8981,8 +9003,18 @@ function generatePersonalDayPlan(...a){ a[3]=planDRI(a[3]); return withAgeMealCa
         pl[mk]=[...(pl[mk]||[]),{fk:u.fk,g:u.g,...(u.soaked?{soaked:true}:{}),_user:true,_keep:true}]; } }
     return changed; };
   let plan=enforceDailyCalorieBand(out, tgt, dri, excl);
+  // גם כאן — שלב סידור הארוחות האחרון (יחידות שלמות, דגן לצד תבשיל קטניות, ירקות, מלח, זרעים), ופריטי המשתמש מוחזרים אחריו
+  plan=roundSpoonPortions(tidyMealLogic(plan, tgt, dri, excl), tgt, dri);
   for (let r=0; r<2 && fixUser(plan); r++) plan=enforceDailyCalorieBand(plan, tgt, dri, excl);
   fixUser(plan);
+  // ניקוי אחרון: בארוחה שהמשתמש בנה לא נשארת תוספת מסוג שכבר יש בה (שלבי האיזון מוסיפים דגן/קטנית בלי להתחשב בבחירתו);
+  // הקלוריות שהתפנו מאוזנות בכמויות בלבד
+  let cut=false;
+  for (const mk of Object.keys(existing)) { const mine=(plan[mk]||[]).filter(x=>x&&x._user); if (!mine.length) continue;
+    const have=new Set(mine.map(x=>kindOf(x.fk)).filter(k=>k!=="veg"&&k!=="misc"));
+    const seen=new Set(); plan[mk]=(plan[mk]||[]).filter(x=>{ if (!x||x._user) return true; const kd=kindOf(x.fk); if (kd==="veg"||kd==="misc") return true;
+      if (have.has(kd)||seen.has(kd)) { cut=true; return false; } seen.add(kd); return true; }); }
+  if (cut) { calorieBandOnly(plan, tgt); fixUser(plan); snapPieceUnits(plan); }
   return plan;
 }); }
 function generatePersonalDayPlan__impl(target, recipes=[], existingMeals=null, dri=null, wKg=0, hp=null, excludedFks=new Set()) {
@@ -17150,6 +17182,12 @@ function MealBuilder({mealKey,currentIngs,onClose,onSave,lang,recipes=[],exclude
   const[toast,setToast]=useState("");
   const[confirmClear,setConfirmClear]=useState(false);
   const[useUnits,setUseUnits]=useState({});
+  // סגירה בלי ״אשר״ (✕ או לחיצה מחוץ לחלון) מחקה בשקט את כל מה שנבנה — ואז ״השלם יום״ ראה ארוחה ריקה (לבקשת
+  // המשתמש). עכשיו: אם יש שינויים שלא נשמרו — שואלים אם לשמור
+  const[askClose,setAskClose]=useState(false);
+  const sig=a=>JSON.stringify((a||[]).map(x=>[x.fk,Math.round((x.g||0)*10)/10,!!x.soaked]));
+  const dirty=sig(ings)!==sig(currentIngs);
+  const requestClose=()=>{ if (dirty) setAskClose(true); else onClose(); };
 
   const recipeFdbEntries=useMemo(()=>recipes.map(r=>{
     const entry=recipeToFdbEntry(r);TEMP_FDB[r.id]=entry;return[r.id,entry];
@@ -17342,7 +17380,16 @@ function MealBuilder({mealKey,currentIngs,onClose,onSave,lang,recipes=[],exclude
   }
 
   return(
-    <div style={{position:"fixed",inset:0,zIndex:200,background:"#000c",display:"flex",alignItems:isDesktop?"center":"flex-end",justifyContent:"center"}} onClick={onClose}>
+    <div style={{position:"fixed",inset:0,zIndex:200,background:"#000c",display:"flex",alignItems:isDesktop?"center":"flex-end",justifyContent:"center"}} onClick={requestClose}>
+      {askClose&&<div onClick={e=>{e.stopPropagation();setAskClose(false);}} style={{position:"fixed",inset:0,zIndex:210,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+        <div onClick={e=>e.stopPropagation()} style={{background:"#FBF8F3",borderRadius:14,padding:18,width:"100%",maxWidth:320,border:"1px solid #E2DED4",boxShadow:"0 8px 24px rgba(0,0,0,.3)",direction:tx.dir,textAlign:lang==="he"?"right":"left"}}>
+          <div style={{fontSize:14,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{lang==="he"?"לשמור את השינויים?":"Save your changes?"}</div>
+          <div style={{fontSize:12,color:"#4A5A50",lineHeight:1.5,marginBottom:12}}>{lang==="he"?"בנית או שינית את הארוחה ועוד לא אישרת. בלי שמירה השינויים יימחקו.":"You built or changed this meal but haven't confirmed. Without saving, the changes are lost."}</div>
+          <button onClick={()=>{setAskClose(false);onSave(ings);}} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"none",background:"#2e7d32",color:"white",fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:6}}>{lang==="he"?"💾 שמור וסגור":"💾 Save & close"}</button>
+          <button onClick={()=>{setAskClose(false);onClose();}} style={{width:"100%",padding:"9px 0",borderRadius:10,border:"1px solid #f0b8ac",background:"#fdecea",color:"#c1440e",fontSize:12,fontWeight:700,cursor:"pointer",marginBottom:6}}>{lang==="he"?"סגור בלי לשמור":"Close without saving"}</button>
+          <button onClick={()=>setAskClose(false)} style={{width:"100%",padding:"8px 0",borderRadius:10,border:"1px solid #E2DED4",background:"transparent",color:"#1E3A2B",fontSize:12,cursor:"pointer"}}>{lang==="he"?"המשך לערוך":"Keep editing"}</button>
+        </div>
+      </div>}
       <div onClick={e=>e.stopPropagation()} style={{background:"#FBF8F3",borderRadius:isDesktop?16:"22px 22px 0 0",width:"100%",maxWidth:isDesktop?640:430,height:"94vh",display:"flex",flexDirection:"column",border:"1px solid #E2DED4",animation:"slideUp .25s ease",direction:tx.dir}}>
         <div style={{padding:"14px 18px 8px",flexShrink:0}}>
           <div style={{width:38,height:4,background:"#E2DED4",borderRadius:99,margin:"0 auto 10px"}}/>
@@ -17359,7 +17406,7 @@ function MealBuilder({mealKey,currentIngs,onClose,onSave,lang,recipes=[],exclude
                 </div>
               }
               <button onClick={()=>setShowSave(s=>!s)} style={{background:"#eef2f7",border:"1px solid #a8cfe0",borderRadius:8,color:"#3a7bc8",padding:"4px 9px",fontSize:11,cursor:"pointer"}}>{tx.saveMeal}</button>
-              <button onClick={onClose} style={{background:"#E8EFE9",border:"none",borderRadius:8,color:"#1E3A2B",width:28,height:28,cursor:"pointer"}}>✕</button>
+              <button onClick={requestClose} style={{background:"#E8EFE9",border:"none",borderRadius:8,color:"#1E3A2B",width:28,height:28,cursor:"pointer"}}>✕</button>
             </div>
           </div>
           {showSave&&<div style={{display:"flex",gap:6,marginBottom:8}}>
