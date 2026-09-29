@@ -17087,8 +17087,8 @@ function courseOf(fk){ const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return "main";
   return "main"; }
 const COURSE_LABELS={starter:{he:"🥗 פתיחה",en:"🥗 Starter"},main:{he:"🍲 עיקרית",en:"🍲 Main"},dessert:{he:"🍎 קינוח",en:"🍎 Dessert"}};
 // מחזיר את רשימת הפריטים מקובצת לפי מנות (אם יש לפחות שתי קבוצות) — render(it, idx המקורי, האחרון-בקבוצה)
-// נבט חיטה מוצג צמוד לסלט, מיד אחריו, עם "(להוספה)" (לבקשת המשתמש) — תצוגה בלבד, הכמויות והתכנון לא משתנים
-const SALAD_ADDON_FKS=new Set(["wheatGerm"]);
+// נבט חיטה ואצות וואקמה מוצגים צמוד לסלט, מיד אחריו, עם "(להוספה)" (לבקשת המשתמש) — תצוגה בלבד, הכמויות והתכנון לא משתנים
+const SALAD_ADDON_FKS=new Set(["wheatGerm","wakame"]);
 function isSaladFk(fk){ if (String(fk).startsWith("autosal_")) return true; const c=recipeCatOfFk(fk); return !!c && (c.startsWith("סלטי")||c==="ארוחות סלט"); }
 function withCourses(mk, items, render, lang, inline){
   let list=(items||[]).map((it,idx)=>({it,idx}));
