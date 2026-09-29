@@ -1830,7 +1830,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
   const kOf=it=>ingNut(it.fk,it.g,it.soaked).kcal;
   const dayK=()=>ALL.flatMap(m=>plan[m]||[]).reduce((a,it)=>a+kOf(it),0);
   const snap=()=>{ const o={}; ALL.forEach(m=>{ o[m]=(plan[m]||[]).map(x=>({...x})); }); return o; };
-  const restore=o=>{ ALL.forEach(m=>{ plan[m]=o[m]; }); };
+  const restore=o=>{ ALL.forEach(m=>{ plan[m]=o[m].map(x=>({...x})); }); }; // עותק חדש — כדי שניסיון הבא לא ישנה את השמירה עצמה
   const okAfter=(v0)=>{ const k=dayK(); return k>=tgt*0.975 && k<=tgt*1.005 && mealShareViolation(plan)<=v0+0.005; };
   const unitG=fk=>{ const u=getServingUnit(fk,FDB[fk],"he"); return u&&u.g?u.g:100; };
   const isLegStew=fk=>stewCatOf(fk)==="תבשילי קטניות", isGrainStew=fk=>stewCatOf(fk)==="תבשילי דגנים";
@@ -1839,9 +1839,9 @@ function tidyMealLogic(plan, tgt, dri, excl){
   const isRawLegume=fk=>{ const fd=FDB[fk]; return !!fd&&!fd._isRecipe&&fd.cat==="קטנית"&&!SOY_FKS_ALL.has(fk); };
   const FLEX_NO=new Set(["פרי","ירק","עלים","תבלינים"]), FLEX_KEEP=new Set(["flaxseed","chiaseeds","wakame","nori","saltIodized",...SOY_FKS_ALL,"tahiniRaw","tahiniFullRaw"]);
   // שינוי קלורי בפריטים גמישים (לא מתכונים): delta<0 מקטין, delta>0 מגדיל — קודם באותה ארוחה
-  const adjust=(delta, prefMk, skip)=>{
+  const adjust=(delta, prefMk, skip, allowFruit)=>{
     let left=Math.abs(delta); const sign=delta<0?-1:1;
-    const cands=[]; ALL.forEach(m=>(plan[m]||[]).forEach(it=>{ const fd=FDB[it.fk]; if(!fd||fd._isRecipe||FLEX_NO.has(fd.cat)||FLEX_KEEP.has(it.fk)||(skip&&skip(it))) return; cands.push({m,it}); }));
+    const cands=[]; ALL.forEach(m=>(plan[m]||[]).forEach(it=>{ const fd=FDB[it.fk]; if(!fd||fd._isRecipe||(FLEX_NO.has(fd.cat)&&!(allowFruit&&fd.cat==="פרי"))||FLEX_KEEP.has(it.fk)||(skip&&skip(it))) return; cands.push({m,it}); }));
     cands.sort((a,b)=>((a.m===prefMk?0:1)-(b.m===prefMk?0:1))||(kOf(b.it)-kOf(a.it)));
     for (const {m,it} of cands){ if(left<=1) break; const k=kOf(it); if(!(k>0)) continue; const arr=plan[m]; const i=arr.indexOf(it); if(i<0) continue;
       const c=sign<0?Math.min(k*0.6,left):Math.min(k*0.6,left); arr[i]={...it,g:Math.round(it.g*(1+sign*c/k)*10)/10}; left-=c; }
@@ -1857,12 +1857,19 @@ function tidyMealLogic(plan, tgt, dri, excl){
       plan[mk].push(plan[other].splice(gi,1)[0]);
       if (okAfter(v0)) { done=true; break; } restore(s0); }
     if (done) continue;
+    // העברת תבשיל הקטניות עצמו לארוחה שכבר יש בה דגן (ואין בה תבשיל קטניות)
+    const li=(plan[mk]||[]).findIndex(it=>isLegStew(it.fk));
+    for (const other of MAIN) { if (other===mk||!(plan[other]||[]).length||!hasGrain(other)||(plan[other]||[]).some(it=>isLegStew(it.fk))) continue;
+      plan[other].push(plan[mk].splice(li,1)[0]);
+      if (okAfter(v0)) { done=true; break; } restore(s0); }
+    if (done) continue;
     const used=new Set(ALL.flatMap(m=>(plan[m]||[]).map(it=>it.fk)));
     const grains=COOKED_GRAIN_FKS.filter(fk=>FDB[fk]&&!(excl&&excl.has(fk)));
     const order=[...grains.filter(fk=>!used.has(fk)),...grains.filter(fk=>used.has(fk))];
-    for (const fk of order) { const g=Math.round(unitG(fk)/2*10)/10; const add={fk,g};
-      plan[mk].push(add); const over=dayK()-tgt; if (over>0) adjust(-over, mk, it=>it===add||isRawLegume(it.fk));
-      if (okAfter(v0)) { done=true; break; } restore(s0); }
+    for (const allowFruit of [false,true]) { if (done) break;
+      for (const fk of order) { const g=Math.round(unitG(fk)/2*10)/10; const add={fk,g};
+        plan[mk].push(add); const over=dayK()-tgt; if (over>0) adjust(-over, mk, it=>it===add||isRawLegume(it.fk), allowFruit);
+        if (okAfter(v0)) { done=true; break; } restore(s0); } }
   }
   // (2) לכל היותר כוס אחת של קטניות מבושלות בארוחה
   for (const mk of MAIN) {
@@ -1872,7 +1879,22 @@ function tidyMealLogic(plan, tgt, dri, excl){
     legs.sort((a,b)=>b.g/unitG(b.fk)-a.g/unitG(a.fk)); const keep=legs[0];
     plan[mk]=(plan[mk]||[]).filter(it=>!isRawLegume(it.fk)||it===keep).map(it=>it===keep?{...it,g:unitG(it.fk)}:it);
     const freed=k0-dayK(); if (freed>0) adjust(freed, mk, it=>isRawLegume(it.fk));
-    if (!okAfter(v0)) restore(s0);
+    if (okAfter(v0)) continue;
+    restore(s0);
+    // חלופה: הכוס העודפת מוחלפת בדגן מבושל באותן קלוריות (בחצאי כוס) באותה ארוחה — מתאים גם לזיווג קטנית–דגן
+    plan[mk]=(plan[mk]||[]).filter(it=>!isRawLegume(it.fk)||it===keep).map(it=>it===keep?{...it,g:unitG(it.fk)}:it);
+    const freed2=k0-dayK(); let fixed=false;
+    if (freed2>0) {
+      const s1=snap(); const inMeal=COOKED_GRAIN_FKS.filter(fk=>(plan[mk]||[]).some(it=>it.fk===fk));
+      const pool=[...inMeal,...COOKED_GRAIN_FKS.filter(fk=>FDB[fk]&&!inMeal.includes(fk)&&!(excl&&excl.has(fk)))];
+      for (const fk of pool) { const half=unitG(fk)/2; const kPerG=ingNut(fk,100).kcal/100; if(!(kPerG>0)) continue;
+        const addG=Math.max(half, Math.round(freed2/kPerG/half)*half);
+        const ex=(plan[mk]||[]).findIndex(it=>it.fk===fk);
+        if (ex>=0) plan[mk][ex]={...plan[mk][ex],g:Math.round((plan[mk][ex].g+addG)*10)/10}; else plan[mk].push({fk,g:Math.round(addG*10)/10});
+        const over=dayK()-tgt; if (over>0) adjust(-over, mk, it=>COOKED_GRAIN_FKS.includes(it.fk)||isRawLegume(it.fk));
+        if (okAfter(v0)) { fixed=true; break; } restore(s1); }
+    }
+    if (!fixed) restore(s0);
   }
   // (3) מלח לא באותה ארוחה עם וואקמה
   if (plan.snack) plan.snack=plan.snack.filter(it=>it.fk!=="saltIodized");
