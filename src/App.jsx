@@ -1837,9 +1837,15 @@ function withoutSpoonRound(fn){ __SPOON_ROUND_OFF++; try{ return fn(); } finally
 const COOKED_GRAIN_FKS=["brownRiceCooked","quinoaCooked","bulgurCooked","buckwheatCooked","pearlBarleyCooked","couscousCooked","freekeh","wholeWPasta","amaranth"];
 const COOKED_LEGUME_FKS=["chickpeas","redLentils","greenLentils","brownLentils","blackLentils","blackBeans","whiteBeans","redKidney","pintoBeans","broadBeans","lupinBeansCooked","mungBeans","splitPeas","blackEyedPeas","pisumPeas"];
 const BREAD_FKS=new Set(["wholeWheatBread","wholePita"]);
-// זרעים כפריט בפני עצמו: לכל היותר מנה קטנה אחת לארוחה (לבקשת המשתמש) — רבע כף חמנייה/דלעת/שומשום, כפית שלמה
-// פשתן/צ'יה (כפיות שלמות — הכמות הקטנה ביותר האפשרית). גרם למנה המרבית לכל סוג. נבט חיטה אינו זרע ולא נכלל. מתכונים לא מושפעים
-const SEED_CAP_G={sunflowerS:2.5,pumpkinS:2.5,sesame:2.25,flaxseed:2.3,chiaseeds:4};
+// זרעים כפריט בפני עצמו (לבקשת המשתמש): רבע כף חמנייה/דלעת/שומשום; פשתן/צ'יה כף אחת עד שתיים. גרם למנה המרבית
+// לארוחה לכל סוג. נבט חיטה אינו זרע ולא נכלל. מתכונים לא מושפעים
+const SEED_CAP_G={sunflowerS:2.5,pumpkinS:2.5,sesame:2.25,flaxseed:14,chiaseeds:24};
+// פשתן/צ'יה: גרם לכף (כף אחת לפחות, עד 2 לארוחה)
+const OMEGA_SEED_TBSP_G={flaxseed:7,chiaseeds:12};
+// "מנה מארחת" לפשתן/צ'יה (לבקשת המשתמש): סלט, פשטידה, מרק, תבשיל, קערה או יוגורט סויה
+const SEED_HOST_CATS=new Set(["פשטידות","מרקים","קערות","תבשילי קטניות","תבשילי דגנים"]);
+const SEED_HOST_FKS=new Set(["soyYogurtPlain","soyYogurtOrgPlain"]);
+function isSeedHostFk(fk){ if (SEED_HOST_FKS.has(fk)||isSaladFk(fk)) return true; const c=recipeCatOfFk(fk); return !!c&&SEED_HOST_CATS.has(c); }
 function snapPieceUnits(plan){
   for (const mk of ["breakfast","snack","lunch","dinner"]) if (plan[mk]) plan[mk]=plan[mk].map(it=>{ if(!it||!it.fk||it._user||!pieceStepG(it.fk)) return it;
     const fd=FDB[it.fk]; if(!fd||fd._isRecipe) return it; const g=snapPieceG(it.fk,it.g); return Math.abs(g-it.g)>0.005?{...it,g}:it; }).filter(it=>!(it&&it.fk&&pieceStepG(it.fk)&&!it._user&&it.g<=0));
@@ -1910,23 +1916,46 @@ function tidyMealLogic(plan, tgt, dri, excl){
     if (!bad.length) continue; const v0=mealShareViolation(plan); const s0=snap(); const k0=dayK();
     plan[mk]=(plan[mk]||[]).filter(it=>!bad.includes(it));
     if (!refill(mk, k0-dayK(), v0)) { restore(s0); plan[mk]=(plan[mk]||[]).filter(it=>{ const fd=FDB[it.fk]; return !(fd&&!fd._isRecipe&&GLOBAL_BANNED_STANDALONE.has(it.fk)&&kOf(it)<60); }); } }
-  // (1ב) זרעים: רבע כף לארוחה. נשאר סוג זרעים אחד (בעדיפות פשתן/צ'יה בגלל אומגה 3) ברבע כף; השאר מוסר.
-  // אם אומגה 3 היומית יורדת מתחת למינימום — מוסיפים אגוזי מלך בארוחה עיקרית אחרת שאין בה אגוזים (גיוון בין הקבוצות)
+  // (1ב) זרעים (לבקשת המשתמש). סוג זרעים אחד לארוחה:
+  // • פשתן/צ'יה — כף אחת לפחות, עד 2 לפי הצורך (אומגה 3), ורק בארוחה שיש בה "מנה מארחת" — סלט, פשטידה, מרק, תבשיל
+  //   או קערה (isSeedHostFk); בתפריט הם מוצגים לידה "(להוספה)". בארוחה בלי מנה כזו — עוברים לארוחה שיש בה, או יורדים.
+  // • חמנייה/דלעת/שומשום — רבע כף.
+  // אם אומגה 3 היומית חסרה: כף שנייה, אחר כך כף פשתן בארוחה מארחת נוספת, ובסוף אגוזי מלך בארוחה עיקרית אחרת
   const seedIt=it=>{ const fd=FDB[it.fk]; return !!fd&&!fd._isRecipe&&SEED_CAP_G[it.fk]!=null; };
+  const isOmega=it=>seedIt(it)&&OMEGA_SEED_TBSP_G[it.fk]!=null;
+  const seedG=it=>{ const t=OMEGA_SEED_TBSP_G[it.fk]; return t?Math.min(2,Math.max(1,Math.round(it.g/t)))*t:SEED_CAP_G[it.fk]; };
+  const hostMeal=mk=>(plan[mk]||[]).some(it=>isSeedHostFk(it.fk));
+  const fitDown=(prefMk,keep)=>{ const over=dayK()-tgt; if (over>0) adjust(-over, prefMk, it=>it===keep||seedIt(it)||isRawLegume(it.fk)||isCookedGrain(it.fk)); };
   let seedsCut=false;
+  // א. סוג אחד לארוחה, בכמות הקבועה
   for (const mk of ALL) { const seeds=(plan[mk]||[]).filter(seedIt); if (!seeds.length) continue;
-    const capOf=fk=>SEED_CAP_G[fk];
-    const total=seeds.reduce((a,it)=>a+it.g/SEED_CAP_G[it.fk],0); if (seeds.length===1&&total<=1.01) continue;
-    seeds.sort((a,b)=>((["flaxseed","chiaseeds"].includes(b.fk)?1:0)-(["flaxseed","chiaseeds"].includes(a.fk)?1:0))||(b.g/SEED_CAP_G[b.fk]-a.g/SEED_CAP_G[a.fk]));
-    const keep=seeds[0]; plan[mk]=(plan[mk]||[]).filter(it=>!seedIt(it)||it===keep).map(it=>it===keep?{...it,g:capOf(it.fk)}:it); seedsCut=true; }
-  if (seedsCut) {
-    const alaMin=alaMinOf(dri); const ala=()=>dayNut().omega3||0;
-    if (ala()<alaMin) { const v0=mealShareViolation(plan); const s0=snap(); let ok=false;
+    seeds.sort((a,b)=>((isOmega(b)?1:0)-(isOmega(a)?1:0))||(b.g/SEED_CAP_G[b.fk]-a.g/SEED_CAP_G[a.fk]));
+    const keep=seeds[0], g=seedG(keep); if (seeds.length===1&&Math.abs(keep.g-g)<0.05) continue;
+    plan[mk]=(plan[mk]||[]).filter(it=>!seedIt(it)||it===keep).map(it=>it===keep?{...it,g}:it); seedsCut=true; }
+  // ב. פשתן/צ'יה רק ליד מנה מארחת
+  for (const mk of ALL) { if (!(plan[mk]||[]).some(isOmega)||hostMeal(mk)) continue;
+    const v0=mealShareViolation(plan); const s0=snap(); let moved=false;
+    for (const m2 of ALL) { if (m2===mk||!hostMeal(m2)||(plan[m2]||[]).some(isOmega)) continue;
+      const it=plan[mk].splice(plan[mk].findIndex(isOmega),1)[0]; plan[m2]=plan[m2].filter(x=>!seedIt(x)); plan[m2].push(it);
+      if (mealShareViolation(plan)<=v0+0.005) { moved=true; break; } restore(s0); }
+    if (!moved) plan[mk]=plan[mk].filter(x=>!isOmega(x)); seedsCut=true; }
+  // ג. אומגה 3
+  const alaMin=alaMinOf(dri); const ala=()=>dayNut().omega3||0;
+  if (seedsCut && dayK()>tgt*1.005) fitDown(null,null);
+  if (ala()<alaMin) { const v0=mealShareViolation(plan);
+    for (const mk of ALL) { if (ala()>=alaMin) break; const i=(plan[mk]||[]).findIndex(isOmega); if (i<0) continue; const it=plan[mk][i]; const t=OMEGA_SEED_TBSP_G[it.fk]; if (it.g>=2*t-0.05) continue;
+      const s0=snap(); plan[mk][i]={...it,g:2*t}; fitDown(mk,plan[mk][i]); if (okAfter(v0)) seedsCut=true; else restore(s0); }
+    for (const mk of ALL) { if (ala()>=alaMin) break; if (!hostMeal(mk)||(plan[mk]||[]).some(isOmega)) continue;
+      const fk=Object.keys(OMEGA_SEED_TBSP_G).find(f=>FDB[f]&&!(excl&&excl.has(f))); if (!fk) break;
+      const s0=snap(); plan[mk]=plan[mk].filter(x=>!seedIt(x)); const add={fk,g:OMEGA_SEED_TBSP_G[fk]}; plan[mk].push(add); fitDown(mk,add);
+      if (okAfter(v0)) seedsCut=true; else restore(s0); }
+    if (ala()<alaMin) { const s0=snap(); let ok=false;
       for (const mk of MAIN) { if (!(plan[mk]||[]).length||(plan[mk]||[]).some(it=>(FDB[it.fk]||{}).cat==="אגוזים")) continue;
-        for (const g of [14,28]) { plan[mk].push({fk:"walnuts",g}); const over=dayK()-tgt; if(over>0) adjust(-over, mk, it=>it.fk==="walnuts"||isRawLegume(it.fk)||isCookedGrain(it.fk));
+        for (const g of [14,28]) { plan[mk].push({fk:"walnuts",g}); const over=dayK()-tgt; if(over>0) adjust(-over, mk, it=>it.fk==="walnuts"||seedIt(it)||isRawLegume(it.fk)||isCookedGrain(it.fk));
           if (okAfter(v0)&&ala()>=alaMin*0.95) { ok=true; break; } restore(s0); }
-        if (ok) break; }
-    }
+        if (ok) break; } }
+  }
+  if (seedsCut) {
     // השלמת הקלוריות שירדו עם הזרעים: קודם אגוזים (סוג שלא הופיע היום) בארוחה עיקרית שאין בה אגוזים — גיוון בין
     // הקבוצות ולאורך היום; אחרת הגדלת פריטים גמישים; ובסוף רצפת הקלוריות הרגילה (והזרעים נחתכים שוב אם נוספו)
     if (dayK()<tgt*0.98) {
@@ -1942,7 +1971,7 @@ function tidyMealLogic(plan, tgt, dri, excl){
       if (!ok) { ensureCalorieFloor(plan, tgt);
         for (const mk of ALL) plan[mk]=(plan[mk]||[]).map(it=>{ const fd=fdOf(it.fk); if(!fd) return it; // יחידות שלמות גם אחרי רצפת הקלוריות
           if (!(fd._isRecipe||BREAD_FKS.has(it.fk)||isCookedGrain(it.fk)||isRawLegume(it.fk))) return it; const u=unitG(it.fk); const n=Math.max(1,Math.round(it.g/u)); return {...it,g:Math.round(n*u*100)/100}; });
-        for (const mk of ALL) { const sd=(plan[mk]||[]).filter(seedIt); if (sd.length>1||sd.some(it=>it.g/SEED_CAP_G[it.fk]>1.01)) { const keep=sd[0]; plan[mk]=(plan[mk]||[]).filter(it=>!seedIt(it)||it===keep).map(it=>it===keep?{...it,g:SEED_CAP_G[it.fk]}:it); } } }
+        for (const mk of ALL) { const sd=(plan[mk]||[]).filter(seedIt); if (sd.length>1||sd.some(it=>Math.abs(it.g-seedG(it))>0.05)) { const keep=sd.find(isOmega)||sd[0]; plan[mk]=(plan[mk]||[]).filter(it=>!seedIt(it)||it===keep).map(it=>it===keep?{...it,g:seedG(it)}:it); } } }
     }
   }
   // (2) לכל היותר מנת קטניות אחת ומנת דגנים אחת בארוחה
@@ -2001,8 +2030,13 @@ function tidyMealLogic(plan, tgt, dri, excl){
     const ng=Math.round((best.it.g-q)*100)/100;
     if (ng<=0.05) plan[best.m].splice(best.i,1); else plan[best.m][best.i]={...best.it,g:ng};
   }
-  // (6) אגוזים וזרעים ביחידות שלמות לפי סוגם: שקדים/לוז/קשיו/פיסטוקים — יחידות, אגוזי מלך — חצאים, בוטנים — כפות,
-  // פשתן/צ'יה — כפיות, חמנייה/דלעת/שומשום — רבעי כף. הפרש הקלוריות זניח (לכל היותר חצי יחידה לפריט)
+  // (6) בדיקה אחרונה: היום מעל היעד (עיגולי יחידות שלמות לאורך השלבים) — כף שנייה של פשתן/צ'יה יורדת אם אומגה 3
+  // נשארת מספקת, ואחר כך איזון בפריטים גמישים (מותר גם פרי)
+  for (const mk of ALL) { if (dayK()<=tgt*1.005) break; const i=(plan[mk]||[]).findIndex(isOmega); if (i<0) continue; const it=plan[mk][i]; const t=OMEGA_SEED_TBSP_G[it.fk];
+    if (it.g<2*t-0.05) continue; plan[mk][i]={...it,g:t}; if (ala()<alaMin) plan[mk][i]=it; }
+  if (dayK()>tgt*1.005) adjust(-(dayK()-tgt), null, it=>seedIt(it)||isRawLegume(it.fk)||isCookedGrain(it.fk), true);
+  // (7) אגוזים וזרעים ביחידות שלמות לפי סוגם: שקדים/לוז/קשיו/פיסטוקים — יחידות, אגוזי מלך — חצאים, בוטנים — כפות,
+  // פשתן/צ'יה — כפות, חמנייה/דלעת/שומשום — רבעי כף. הפרש הקלוריות זניח (לכל היותר חצי יחידה לפריט)
   snapPieceUnits(plan);
   return plan;
 }
@@ -14778,7 +14812,7 @@ const __SU_DEFAULTS={
     מעובד:{he:"מנה",en:"serving",g:100},
   };
 // יחידות הצגה לאגוזים וזרעים (לבקשת המשתמש): שקדים/לוז/קשיו/פיסטוקים — יחידות שלמות; אגוזי מלך — חצאים;
-// בוטנים — כפות; פשתן וצ'יה — כפיות שלמות; חמנייה, דלעת ושומשום — רבעי כף (grid). מנוע התכנון ממשיך לעבוד במנות
+// בוטנים — כפות; פשתן וצ'יה — כפות שלמות; חמנייה, דלעת ושומשום — רבעי כף (grid). מנוע התכנון ממשיך לעבוד במנות
 // הרגילות (חופן/כף), ורק בסוף הכמות מיושרת לרשת היחידות האלה (snapPieceUnits) ומוצגת בהן
 const PIECE_UNITS={
   almonds:{he:"שקד",hePl:"שקדים",en:"almond",enPl:"almonds",g:1.2,min:5},
@@ -14788,8 +14822,8 @@ const PIECE_UNITS={
   brazilNuts:{he:"אגוז ברזיל",hePl:"אגוזי ברזיל",en:"Brazil nut",enPl:"Brazil nuts",g:7},
   walnuts:{he:"חצי",hePl:"חצאים",en:"half",enPl:"halves",g:2,nameHe:"חצי אגוז מלך",nameHePl:"חצאי אגוזי מלך",nameEn:"walnut half",nameEnPl:"walnut halves",min:4},
   peanuts:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:9},
-  flaxseed:{he:"כפית",hePl:"כפיות",en:"tsp",enPl:"tsp",g:2.3},
-  chiaseeds:{he:"כפית",hePl:"כפיות",en:"tsp",enPl:"tsp",g:4},
+  flaxseed:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:7},
+  chiaseeds:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:12},
   sunflowerS:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:10,grid:0.25},
   pumpkinS:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:10,grid:0.25},
   sesame:{he:"כף",hePl:"כפות",en:"tbsp",enPl:"tbsp",g:9,grid:0.25},
@@ -17364,9 +17398,12 @@ function isSaladFk(fk){ if (String(fk).startsWith("autosal_")) return true; cons
 function withCourses(mk, items, render, lang, inline){
   let list=(items||[]).map((it,idx)=>({it,idx}));
   const salad=list.find(x=>isSaladFk(x.it.fk));
-  const addons=salad?list.filter(x=>SALAD_ADDON_FKS.has(x.it.fk)):[];
-  if (addons.length) { const rest=list.filter(x=>!SALAD_ADDON_FKS.has(x.it.fk)); const at=rest.indexOf(salad)+1; list=[...rest.slice(0,at),...addons.map(x=>({...x,addon:true})),...rest.slice(at)]; }
-  const courseOfRow=x=>x.addon?courseOf(salad.it.fk):courseOf(x.it.fk);
+  // פשתן/צ'יה מוצגים "(להוספה)" ליד הסלט, ואם אין — ליד פשטידה/מרק/תבשיל/קערה (isSeedHostFk)
+  const anchor=salad||list.find(x=>isSeedHostFk(x.it.fk));
+  const isAddon=x=>!!anchor&&((salad&&SALAD_ADDON_FKS.has(x.it.fk))||OMEGA_SEED_TBSP_G[x.it.fk]!=null);
+  const addons=list.filter(isAddon);
+  if (addons.length) { const rest=list.filter(x=>!isAddon(x)); const at=rest.indexOf(anchor)+1; list=[...rest.slice(0,at),...addons.map(x=>({...x,addon:true})),...rest.slice(at)]; }
+  const courseOfRow=x=>x.addon?courseOf(anchor.it.fk):courseOf(x.it.fk);
   const flat=()=>list.map((x,i)=>render(x.it,x.idx,i===list.length-1,!!x.addon));
   if (!(mk==="lunch"||mk==="dinner")) return flat();
   const groups=["starter","main","dessert"].map(c=>({c,rows:list.filter(x=>courseOfRow(x)===c)})).filter(g=>g.rows.length);
