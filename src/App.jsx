@@ -1920,7 +1920,23 @@ function tidyMealLogic(plan, tgt, dri, excl){
           if (okAfter(v0)&&ala()>=alaMin*0.95) { ok=true; break; } restore(s0); }
         if (ok) break; }
     }
-    const under=tgt*0.98-dayK(); if (under>15) { const s2=snap(); const v2=mealShareViolation(plan); adjust(under, null, it=>seedIt(it)||isRawLegume(it.fk)||isCookedGrain(it.fk)); if(!okAfter(v2)) restore(s2); }
+    // השלמת הקלוריות שירדו עם הזרעים: קודם אגוזים (סוג שלא הופיע היום) בארוחה עיקרית שאין בה אגוזים — גיוון בין
+    // הקבוצות ולאורך היום; אחרת הגדלת פריטים גמישים; ובסוף רצפת הקלוריות הרגילה (והזרעים נחתכים שוב אם נוספו)
+    if (dayK()<tgt*0.98) {
+      const v2=mealShareViolation(plan); const s2=snap(); let ok=false;
+      const usedFks=new Set(ALL.flatMap(m=>(plan[m]||[]).map(it=>it.fk)));
+      const NUTS=["almonds","walnuts","cashews","pistachio","hazelnuts"].filter(fk=>FDB[fk]&&!(excl&&excl.has(fk)));
+      const nutOrder=[...NUTS.filter(fk=>!usedFks.has(fk)),...NUTS.filter(fk=>usedFks.has(fk))];
+      const mealOrder=[...MAIN].sort((a,b)=>mealShareViolation(plan)-mealShareViolation(plan)||0);
+      outer: for (const g of [14,28]) for (const fk of nutOrder) for (const mk of mealOrder) {
+        if (!(plan[mk]||[]).length||(plan[mk]||[]).some(it=>(FDB[it.fk]||{}).cat==="אגוזים")) continue;
+        plan[mk].push({fk,g}); if (okAfter(v2)) { ok=true; break outer; } restore(s2); }
+      if (!ok) { adjust(tgt*0.99-dayK(), null, it=>seedIt(it)||isRawLegume(it.fk)||isCookedGrain(it.fk)); if (okAfter(v2)) ok=true; else restore(s2); }
+      if (!ok) { ensureCalorieFloor(plan, tgt);
+        for (const mk of ALL) plan[mk]=(plan[mk]||[]).map(it=>{ const fd=fdOf(it.fk); if(!fd) return it; // יחידות שלמות גם אחרי רצפת הקלוריות
+          if (!(fd._isRecipe||BREAD_FKS.has(it.fk)||isCookedGrain(it.fk)||isRawLegume(it.fk))) return it; const u=unitG(it.fk); const n=Math.max(1,Math.round(it.g/u)); return {...it,g:Math.round(n*u*100)/100}; });
+        for (const mk of ALL) { const sd=(plan[mk]||[]).filter(seedIt); if (sd.length>1||sd.some(it=>it.g/SEED_TBSP_G[it.fk]>SEED_CAP_TBSP+0.01)) { const keep=sd[0]; plan[mk]=(plan[mk]||[]).filter(it=>!seedIt(it)||it===keep).map(it=>it===keep?{...it,g:Math.round(SEED_TBSP_G[it.fk]*SEED_CAP_TBSP*100)/100}:it); } } }
+    }
   }
   // (2) לכל היותר מנת קטניות אחת ומנת דגנים אחת בארוחה
   for (const mk of MAIN) for (const kind of ["leg","grain"]) {
