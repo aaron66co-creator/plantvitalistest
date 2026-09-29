@@ -324,10 +324,14 @@ function fmtQty(v){
   const fracStr={0:"",0.25:"¼",0.5:"½",0.75:"¾"}[frac];
   if (fracStr!==undefined) {
     if (!whole && !frac) return "0";
+    // שבר מעורב (כמו 2¾) מוצג כעשרוני — בעברית ה-¾ קופץ לצד השני ("¾2") ונקרא כ"פעמיים ¾" (לבקשת המשתמש)
+    if (whole && frac) return String(whole+frac);
     return `${whole||""}${fracStr}`;
   }
   return fmtN(v,2).toString();
 }
+// כמות + יחידה, בלי "1" מיותר לפני יחידה בודדת (לבקשת המשתמש): "כוס עדשים" במקום "1 כוס עדשים"
+function qtyWithUnit(su,v,lang){ const q=fmtQty(v); const w=unitWord(su,v,lang); return q==="1"?w:`${q} ${w}`; }
 // שים לב: nut.kcal מיושר תמיד לאותה נוסחת Atwater (netCarbs×4 + סיבים×2 + חלבון×4 + שומן×9) שמוצגת בכל מקום
 // באפליקציה (כרטיס ארוחה, סיכום יומי, אחוז מהיעד) — ראה calcKcalActual למטה. בלי היישור הזה, מנוע היצירה האוטומטי
 // היה אוכף תקרת קלוריות מול ערך ה-kcal הגולמי מבסיס הנתונים, בעוד המשתמש רואה על המסך מספר אחר (מחושב מחדש
@@ -767,7 +771,7 @@ function formatShoppingQty(fk,g,fd,lang){
       const approxG=wholeCount*(su.g/(su.count||1));
       return `${wholeCount} ${unitWord(su,wholeCount,lang)} (~${weightStr(approxG)})`;
     }
-    if(rawCount>=0.4) return `${fmtQty(rawCount)} ${unitWord(su,rawCount,lang)} (${weightStr(g)})`;
+    if(rawCount>=0.4) return `${qtyWithUnit(su,rawCount,lang)} (${weightStr(g)})`;
   }
   return weightStr(g);
 }
@@ -15500,7 +15504,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
               const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return null;
               const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
               const kcal=Math.round(ingNut(it.fk,it.g).kcal);
-              const qty = su ? (su.weightOnly ? fmtWeightG(it.g,lang) : `${fmtQty((it.g/su.g)*(su.count||1))} ${unitWord(su,(it.g/su.g)*(su.count||1),lang)}`) : "";
+              const qty = su ? (su.weightOnly ? fmtWeightG(it.g,lang) : `${qtyWithUnit(su,(it.g/su.g)*(su.count||1),lang)}`) : "";
               return(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,color:"#1E3A2B",padding:"3px 0",gap:8}}>
                   <span style={{display:"flex",alignItems:"center",gap:4,unicodeBidi:"plaintext"}}>
@@ -15884,7 +15888,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
                     const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return null;
                     const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
                     const kcal=Math.round(ingNut(it.fk,it.g).kcal);
-                    const qty = su ? (su.weightOnly ? fmtWeightG(it.g,lang) : `${fmtQty((it.g/su.g)*(su.count||1))} ${unitWord(su,(it.g/su.g)*(su.count||1),lang)}`) : "";
+                    const qty = su ? (su.weightOnly ? fmtWeightG(it.g,lang) : `${qtyWithUnit(su,(it.g/su.g)*(su.count||1),lang)}`) : "";
                     return(
                       <div key={idx} style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:600,color:"#1E3A2B",padding:"3px 0",gap:8}}>
                         <span style={{display:"flex",alignItems:"center",gap:4,unicodeBidi:"plaintext"}}>
@@ -17119,7 +17123,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
               const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(fk,fd,lang);
               let qty="";
               if(su){
-                qty = su.weightOnly ? fmtWeightG(g,lang) : `${fmtQty((g/su.g)*(su.count||1))} ${unitWord(su,(g/su.g)*(su.count||1),lang)}`;
+                qty = su.weightOnly ? fmtWeightG(g,lang) : `${qtyWithUnit(su,(g/su.g)*(su.count||1),lang)}`;
               } else {
                 qty=`${g}${lang==="he"?"גר׳":"g"}`;
               }
@@ -17210,7 +17214,7 @@ function QuickAddInline({onAdd,onClose,lang}){
           {results.map(([fk,fd])=>{
             const g=wholeUnitStepG(fk)||100;
             const su=getServingUnit(fk,fd,lang);
-            const qtyLabel=su?(su.weightOnly?`${Math.round(g)}${lang==="he"?"גר׳":"g"}`:`${fmtQty((g/su.g)*(su.count||1))} ${unitWord(su,(g/su.g)*(su.count||1),lang)}`):`${g}${lang==="he"?"גר׳":"g"}`;
+            const qtyLabel=su?(su.weightOnly?`${Math.round(g)}${lang==="he"?"גר׳":"g"}`:`${qtyWithUnit(su,(g/su.g)*(su.count||1),lang)}`):`${g}${lang==="he"?"גר׳":"g"}`;
             return(
               <button key={fk} onClick={()=>onAdd(fk,g)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"#FFFFFF",border:"1px solid #E2DED4",borderRadius:8,padding:"8px 10px",marginBottom:3,cursor:"pointer",textAlign:lang==="he"?"right":"left"}}>
                 <span style={{fontSize:12,color:"#1E3A2B"}}>{fd.emoji} {lang==="he"?fd.he:fd.en}</span>
@@ -17302,7 +17306,7 @@ function FoodLogMealRow({mealKey,status,items,plannedItems,onMarkPlanned,onFree,
               {items.map((it,i)=>{
                 const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd)return null;
                 const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(it.fk,fd,lang);
-                const qty=su?(su.weightOnly?`${Math.round(it.g)}${lang==="he"?"גר׳":"g"}`:`${fmtQty((it.g/su.g)*(su.count||1))} ${unitWord(su,(it.g/su.g)*(su.count||1),lang)}`):`${it.g}${lang==="he"?"גר׳":"g"}`;
+                const qty=su?(su.weightOnly?`${Math.round(it.g)}${lang==="he"?"גר׳":"g"}`:`${qtyWithUnit(su,(it.g/su.g)*(su.count||1),lang)}`):`${it.g}${lang==="he"?"גר׳":"g"}`;
                 return(
                   <div key={i} style={{padding:"6px 2px",borderBottom:i<items.length-1?"1px solid #E2DED4":"none"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
