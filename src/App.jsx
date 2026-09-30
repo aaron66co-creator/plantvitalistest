@@ -5266,7 +5266,7 @@ function enforceCalorieCeilingAndFloor(plan, tgt){
 // ensureCalciumAdequacyFinal (שרץ אחרי applyMealHygieneFinalRules) בונה לעצמו רשימת-מועמדים נפרדת, בלי
 // לבדוק מול הרשימה הזו בכלל. הועברה לקבוע גלובלי, כדי שגם מנגנונים אחרים (לא רק applyMealHygieneFinalRules
 // עצמה) יוכלו להימנע מהצעת הפריטים האלה כעצמאיים. נוסף גם "leek" (כרישה) לפי הבקשה החדשה
-const GLOBAL_BANNED_STANDALONE = new Set(["canolaOil","ryeBread","pineNuts","redLentils","greenLentils","brownLentils","blackLentils","pumpkin","peanuts","vinegar","appleCiderVinegar","oliveOil","brusselsSp","turnip","zucchini","cauliflower","broccoli","kale","asparagus","nori","cabbageWhite","cabbageRed","bokChoy","tahiniFullRaw","tahiniRaw","tofu","tempeh","onion","leek","dateSilan","mushroom"]);
+const GLOBAL_BANNED_STANDALONE = new Set(["kohlrabi","canolaOil","ryeBread","pineNuts","redLentils","greenLentils","brownLentils","blackLentils","pumpkin","peanuts","vinegar","appleCiderVinegar","oliveOil","brusselsSp","turnip","zucchini","cauliflower","broccoli","kale","asparagus","nori","cabbageWhite","cabbageRed","bokChoy","tahiniFullRaw","tahiniRaw","tofu","tempeh","onion","leek","dateSilan","mushroom"]);
 function applyMealHygieneFinalRules(plan, tgt){
   const BREAD_FKS = new Set(["wholeWheatBread","wholePita"]);
   const LENTIL_FKS = new Set(["redLentils","greenLentils","brownLentils","blackLentils"]);
@@ -9238,7 +9238,10 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   const PROT=()=>{ const fk=(caHigh&&P.prot.includes("soymilkFortified"))?"soymilkFortified":(pick(P.prot)||P.caDrink[0]); return fk?it(fk,fk==="soyYogurtPlain"?170:250):null; };
   const bread=(n=1)=>{ const fk=pick(P.bread); return fk?it(fk,fk==="wholePita"?60:32*Math.max(1,Math.min(2,n))):null; };
   // ארוחת בוקר מלוחה (חביתה, טופו מקושקש): תמיד עם לחם, ירק, וממרח או יוגורט (לבקשת המשתמש)
-  const VEG=()=>{ const fk=pick(["tomato","cucumber","redPepper","yellowPepper","carrot","kohlrabi"].filter(P.ok)); return fk?it(fk,unitG(fk)):null; };
+  // ירקות טריים לבוקר — שנאכלים חיים בפני עצמם (לא קולרבי / ברוקולי — אלה רק במתכון, לבקשת המשתמש)
+  const VEG_FRESH=["tomato","cucumber","redPepper","yellowPepper","carrot"];
+  const VEG=(not)=>{ const fk=pick(VEG_FRESH.filter(f=>P.ok(f)&&f!==not)); return fk?it(fk,unitG(fk)):null; };
+  const VEG2=()=>{ const a=VEG(); const b=a?VEG(a.fk):null; return [a,b]; }; // שני ירקות שונים (לבקשת המשתמש: "חסר ירקות בבוקר")
   const SAVORY=/חבית|מקושקש|שקשוק|פריטט/; const isSavory=id=>SAVORY.test(TEMP_FDB[id]?.he||"");
   const SPR=P.spread.filter(id=>svG(id)<=130); // ממרח לפרוסה — לא דיפ או מחית בגודל מנה
   const spreadOrYog=(soy)=>(SPR.length&&(soy||rnd()<0.6))?rec(pick(lim(SPR))):(P.ok("soyYogurtPlain")?it("soyYogurtPlain",170):null);
@@ -9254,7 +9257,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   const lim=a=>{ const b=(a||[]).filter(reUsedOk); return b.length?b:a; }; // כל מתכון (גם סלט, ממרח, עוגייה) — עד פעמיים בשבוע
   function breakfast(){ const r=rnd();
     // בכל ארוחת בוקר יש ירק (לבקשת המשתמש) — אלא אם המנה כבר כוללת ירקות
-    const sweet=id=>clean([rec(id), hasSoy(id)?null:PROT(), hasVeg(id)?null:VEG(), FR()]);
+    const sweet=id=>clean([rec(id), hasSoy(id)?null:PROT(), ...(hasVeg(id)?[]:(hasSoy(id)?VEG2():[VEG()])), FR()]); // מקום פנוי במכסה — שני ירקות
     const salty=id=>clean([rec(id), bread(small?1:2), VEG(), spreadOrYog(hasSoy(id))]); // חביתה — תמיד עם ירק טרי בצד
     if (newBOk && P.oneB.length && r<0.35) { const id=pick(P.oneB); return clean([rec(id,pick(small?[0.5,0.75]:[0.75,1,1])), hasVeg(id)?null:VEG(), rnd()<0.5?FR():null]); }
     const bf=P.bfast.filter(reUsedOk);
@@ -9262,7 +9265,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     if (SPR.length) return clean([rec(pick(lim(SPR))), bread(small?1:2), VEG(), PROT()]);
     { const id=pick(bf.length?bf:P.bfast); return isSavory(id)?salty(id):sweet(id); } }
   function lunch(np){ if (!np) return dinner(true);
-    const m=pick(small?[0.5,0.75,0.75,1]:[0.75,1,1,1.25]); const out=[rec(np,m)];
+    const m=small?pick([0.75,1]):1; const out=[rec(np,m)]; // מנה אחת (ביעד נמוך — ¾): שתי מנות המתכון מספיקות ליומיים
     if (P.vegSal.length) out.push(rec(pick(lim(P.vegSal)))); if ((caHigh||rnd()<0.6)&&!hasSoy(np)) out.push(PROT()); // יעד סידן גבוה — תמיד משקה סויה מועשר (אם אין סויה במנה)
     return [...clean(out).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="dinner"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   function dinner(){ const r=rnd(); const st=P.stew.filter(reUsedOk), so=P.soup.filter(reUsedOk), ls=P.legSal.filter(reUsedOk); let m;
@@ -15412,8 +15415,13 @@ const RECIPE_DEFAULTS_MIGRATION={key:"wfpb_recipes_migr_3", ids:["sk23rsp","l76q
 // עיגול ליחידה שלמה היה משנה את הקלוריות למנה ביותר מ-10% (בעיקר סלטים אישיים — חצי בצל, חצי פלפל) — חצאי יחידות.
 // עותקים שמורים במכשיר מתעדכנים רק ברכיב שהכמות שלו עדיין זהה לישנה — רכיב שהמשתמש שינה בעצמו לא נוגעים בו
 const RECIPE_UNITS_MIGRATION={key:"wfpb_recipes_units_v1",changes:{"2o0zv3b":[["zucchini",300,392],["oliveOil",20,22.5]],"359s51w":[["sweetPotatoCooked",445,480]],"b9kx6w8":[["banana",356,360]],"2ii5ngy":[["apple",208,240]],"wj3zbb8":[["almondbutter",64,67.5]],"odvsoil":[["redPepper",62,100]],"6mkc8r2":[["onion",55,110]],"ww7kwdm":[["onion",55,110]],"cn3jw7r":[["onion",55,110]],"giy9uyc":[["lemon",13,25]],"xmjhtcx":[["onion",55,110],["almondbutter",16,15]],"lbt379z":[["redPepper",62,100]],"5s5kcor":[["mintLeaf",8,7.5],["oliveOil",10,7.5]],"gjtodny":[["tahiniFullRaw",64,67.5]],"zm66rfq":[["lemon",38,50]],"atmeemk":[["tahiniFullRaw",128,127.5]],"6b9g0gx":[["tahiniFullRaw",48,45],["oliveOil",10,7.5]],"dnn3qrx":[["almondbutter",128,127.5]],"tsj80e5":[["sweetPotatoRaw",195,260]],"wz9m1v9":[["tomatoSauce",60,59.5]],"zg4j6d4":[["flaxseed",20,21]],"5c1acio":[["avocado",25,50]],"ylrg98s":[["onion",50,110]],"uvf15s5":[["sweetPotatoRaw",195,260]],"140vb9y":[["onion",50,110]],"sademr0":[["onion",55,110]],"1a7it9b":[["broccoli",200,170],["redPepper",130,100],["sesame",10,9]],"0emyftf":[["hotPepperRed",10,15],["redPepper",130,100]],"ij2d3f8":[["parsley",15,16]],"dicpivj":[["redPepper",260,300]],"z7qb3ct":[["redPepper",130,100]],"kckkups":[["broccoli",350,340],["tahiniFullRaw",20,22.5]],"ogi4ai9":[["oliveOil",12,15]],"3jjdjar":[["apple",130,120]],"ydaikpz":[["tomato",150,200],["cucumber",150,119],["onion",50,110],["lemon",15,25]],"tqxdmp3":[["avocado",150,200],["hotPepperGreen",10,15],["lemon",20,25],["oliveOil",10,7.5]],"toqhtp1":[["broccoli",250,255]],"9x46ocg":[["onion",80,110]],"ter5mvd":[["leek",200,180]],"tpp6veh":[["banana",356,360]],"03i2jtb":[["medjoolDate",200,192]],"sqgm3sw":[["onion",60,110]],"p5x9678":[["redPepper",260,300],["lemon",20,25],["oliveOil",10,7.5]],"5ft7qei":[["lemon",15,25]],"dpbhsah":[["tomato",150,200]],"xthv3a3":[["sweetPotatoCooked",356,360]],"t3w5uzb":[["redPepper",62,100]],"nnhj7xv":[["tahiniFullRaw",32,30]],"g0fn9xu":[["oliveOil",8,7.5]],"qjiujv6":[["chiaseeds",7,8]],"sg65kxv":[["cucumber",200,238]],"rtj5pht":[["cilantroLeaf",8,7.5]],"0hl9xps":[["zucchini",300,294]],"eimvihc":[["cucumber",200,238],["tomato",150,200]],"wi64ciy":[["zucchini",250,196],["lemon",20,25]],"he7ur23":[["tomato",150,200]],"9dom5ig":[["cucumber",200,238]],"tb94874":[["zucchini",250,196]],"zfk8ut0":[["redPepper",119,100],["tomato",150,200],["lemon",20,25]],"cvs4f8c":[["cucumber",300,357]],"gvyie6i":[["zucchini",150,196],["onion",55,110]],"zioykl1":[["onion",55,110]],"7eedtjv":[["broccoli",300,297.5]],"zhwjr64":[["cauliflower",350,400],["lemon",15,25]],"dpja1wj":[["onion",55,110]],"0tpac56":[["broccoli",250,255],["tahiniFullRaw",20,22.5],["lemon",20,25]],"cbk01ss":[["carrot",30,61],["sesame",6,4.5]],"cbk02th":[["parsley",15,16]],"kle03th":[["cucumber",150,119]],"cbw04kl":[["parsley",15,16]],"wkm05cu":[["cucumber",400,357],["springOnion",20,15]],"lup10sl":[["cucumber",300,357]],"pnt12pp":[["redPepper",150,200],["greenPepper",120,119]],"nto15bk":[["gingerRoot",8,7.5],["springOnion",20,15]],"tmp16br":[["broccoli",250,255],["oliveOil",10,7.5],["springOnion",20,15]],"grn05cc":[["zucchini",200,196]],"grn06fk":[["parsley",15,16]],"grn07ps":[["eggplant",300,400]],"sal01vg":[["redPepper",124,100],["oliveOil",5,7.5]],"sal02sp":[["oliveOil",5,7.5]],"sal03ch":[["redPepper",124,100]],"sal04kb":[["sweetPotatoCooked",150,180],["pumpkinS",16,15]],"sal09rm":[["romaine",150,140],["cucumber",150,119],["lemon",15,25]],"veg01gb":[["oliveOil",10,7.5]],"veg02bn":[["tahiniFullRaw",20,22.5],["lemon",15,25]],"sal06bb":[["broccoli",150,170]],"sal07gt":[["tahiniFullRaw",20,22.5]]}};
+const ONEPLATE_MIGRATION_KEY="wfpb_recipes_oneplate_v1"; // עותקים שמורים של ארוחות בצלחת אחת — מוחלפים בגרסה המוקטנת
 function mergeRecipesWithDefaults(saved0){
   let saved=(saved0||[]).filter(r=>r&&!REMOVED_RECIPE_IDS.has(r.id));
+  if (!load(ONEPLATE_MIGRATION_KEY,false)) {
+    saved=saved.map(r=>{ if(!r.onePlate) return r; const d=DEF_RECIPES.find(x=>x.id===r.id); return d?{...r,servings:d.servings,ings:d.ings}:r; });
+    save(ONEPLATE_MIGRATION_KEY,true); save(RECIPE_STORAGE,saved);
+  }
   if (!load(RECIPE_DEFAULTS_MIGRATION.key,false)) {
     saved=saved.map(r=>{ if(!RECIPE_DEFAULTS_MIGRATION.ids.includes(r.id)) return r; const d=DEF_RECIPES.find(x=>x.id===r.id); return d?{...r,...d}:r; });
     save(RECIPE_DEFAULTS_MIGRATION.key,true); save(RECIPE_STORAGE,saved);
@@ -15714,6 +15722,15 @@ const DEF_RECIPES=[
 {id:"wg03lat",name:"לביבות עדשים ונבט חיטה",servings:4,type:"חביתה",preferredMeal:"any",foodGroup:"קטנית",ings:[{fk:"redLentils",g:330},{fk:"oatFlour",g:46},{fk:"wheatGerm",g:28},{fk:"onion",g:110},{fk:"garlic",g:6},{fk:"parsley",g:16},{fk:"oliveOil",g:15},{fk:"turmericGround",g:2},{fk:"blackPepperGround",g:1}],instructions:"מועכים עדשים אדומות מבושלות. מוסיפים בצל ושום קצוצים דק, פטרוזיליה, קמח שיבולת שועל, נבט חיטה, כורכום ופלפל, ולשים לעיסה אחידה. יוצרים 8 לביבות ומטגנים במחבת מוברשת בשמן זית, 3–4 דקות מכל צד."},
 {id:"wg04bwl",name:"קערת יוגורט סויה, פירות יער ונבט חיטה",servings:1,type:"קערה",preferredMeal:"breakfast",foodGroup:"חלבון",ings:[{fk:"soyYogurtPlain",g:250},{fk:"blueberry",g:74},{fk:"banana",g:60},{fk:"wheatGerm",g:7},{fk:"flaxseed",g:7},{fk:"pumpkinS",g:15}],instructions:"שמים יוגורט סויה בקערה. מוסיפים אוכמניות וחצי בננה פרוסה. מפזרים מעל נבט חיטה וזרעי פשתן טחונים. מפזרים מעל כף גרעיני דלעת."},
 ];
+// ארוחות בצלחת אחת (לבקשת המשתמש): עד 400 קק"ל למנה, ולכל היותר 2 מנות (אוכלים אותן לכל היותר יומיים ברצף) —
+// הכמויות מוקטנות באופן יחסי ומעוגלות (5 גר' מעל 20 גר', גרם שלם מתחת; תבלינים — חצאי גרם)
+const ONEPLATE_KCAL_MAX=400;
+function normalizeOnePlateRecipe(r){ if(!r||!r.onePlate) return r; const srv=r.servings>=2?2:1;
+  const tot=(r.ings||[]).reduce((a,i)=>a+(FDB[i.fk]?(FDB[i.fk].per100.kcal||0)*(i.g||0)/100:0),0); if(!(tot>0)) return {...r,servings:srv};
+  const per=tot/Math.max(1,r.servings); const scale=Math.min(1,ONEPLATE_KCAL_MAX*0.98/per)*(srv/Math.max(1,r.servings)); // 2% מרווח לעיגול // מנה ≤400, ומספר מנות srv
+  const rnd=g=>g>=20?Math.round(g/5)*5:g>=5?Math.round(g):Math.max(0.5,Math.round(g*2)/2);
+  return {...r,servings:srv,ings:r.ings.map(i=>({...i,g:rnd((i.g||0)*scale)}))}; }
+for (let k=0;k<DEF_RECIPES.length;k++) if (DEF_RECIPES[k].onePlate) DEF_RECIPES[k]=normalizeOnePlateRecipe(DEF_RECIPES[k]);
 // חבילת 50 מתכוני WFPB מוכנים מראש (תבשילים/מרקים/פשטידות/מאפים/סלטים/ממרחים) — לבקשת המשתמש, כפתרון
 // לבעיית הדבקה שנכשלה בסביבות מובייל מסוימות (clipboard read חסום בתוך ה-iframe המוגבל של הארטיפקט). כל
 // מתכון כאן כבר עבר אימות ידני שכל fk קיים במאגר FDB בפועל, כך שהייבוא שלהם תמיד עובר בהצלחה בלי תלות בהעתקה-הדבקה
@@ -15890,7 +15907,7 @@ function RecipeViewModal({recipe,lang,onClose}){
         {(recipe.ings||[]).map((ing,i)=>(
           <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#1E3A2B",padding:"4px 0",borderBottom:"1px solid #E2DED4"}}>
             <span>{foodName(ing.fk,lang)}</span>
-            <bdi style={{color:"#6B7C72",whiteSpace:"nowrap"}}>{Math.round(ing.g)}{tx.grams}</bdi>
+            <bdi style={{color:"#6B7C72",whiteSpace:"nowrap"}}>{Math.round(ing.g)}{tx.grams}{householdQty(ing.fk,ing.g,lang)?` · ${householdQty(ing.fk,ing.g,lang)}`:""}</bdi>
           </div>
         ))}
         {recipe.instructions ? (
@@ -16251,7 +16268,7 @@ function RecipeBookModal({recipes,lang,onClose,profile}){
           {(r.ings||[]).map((ing,i)=>{
             const fd=FDB[ing.fk]; if(!fd) return null;
             const su=getServingUnit(ing.fk,fd,lang);
-            const qty=su?fmtN(ing.g/su.g,1)+" "+(lang==="he"?su.he:su.en)+" ("+ing.g+(lang==="he"?"גר'":"g")+")":ing.g+(lang==="he"?"גר'":"g");
+            const hq=householdQty(ing.fk,ing.g,lang); const qty=Math.round(ing.g)+(lang==="he"?" גר'":" g")+(hq?" · "+hq:""); void su;
             return(<div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 0",borderBottom:"1px dotted #3a2f2222"}}>
               <span style={{fontSize:14}}>{fd.emoji}</span>
               <span style={{flex:1,fontSize:12}}>{lang==="he"?fd.he:fd.en}</span>
@@ -18031,6 +18048,12 @@ function cookNoteOf(week, dayIdx, lang){
   if (dayIdx>0 && op(dayIdx-1)===cur) return he?"♻️ מאתמול":"♻️ From yesterday";
   return null; }
 // ===== הדפסה / PDF של מתכונים ושל תפריט השבוע (לבקשת המשתמש) =====
+// יחידת מידה ביתית לרכיב במתכון (לבקשת המשתמש): "2¾ כוסות", "2 כפות", "½ כפית" — לצד הגרמים. null כשאין יחידה מתאימה
+const HE_UNIT_PL={"כוס":"כוסות","כף":"כפות","כפית":"כפיות","חופן":"חופנים","יחידה בינונית":"יחידות בינוניות","יחידה":"יחידות","עלה גדול":"עלים גדולים","פרוסה":"פרוסות","כוס קצוץ":"כוסות קצוץ","כף קצוץ":"כפות קצוץ"};
+function householdQty(fk,g,lang){ const fd=FDB[fk]; if(!fd) return null; const su=getServingUnit(fk,fd,lang); if(!su||su.weightOnly||!su.g||/מיץ|juice/.test(su.he||"")) return null;
+  const q=Math.round(g/su.g*(su.count||1)*4)/4; if (q<0.25) return null; const w=Math.floor(q), fr=q-w; const frS=fr===0.25?"¼":fr===0.5?"½":fr===0.75?"¾":"";
+  const num=(w?String(w):"")+frS; const he=lang==="he"; const word=he?(q>1?(su.hePl||HE_UNIT_PL[su.he]||su.he):su.he):(q>1?(su.enPl||su.en):su.en);
+  return `${num} ${word}`; }
 function itemTextOf(fk,g,lang){ const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return fk;
   const su=fd._isRecipe?recipeServingUnit(fd):displayUnit(fk,fd,lang); if(!su) return `${Math.round(g)} ${lang==="he"?"גר'":"g"} ${foodName(fk,lang)}`;
   if (su.weightOnly) return `${fmtWeightG(g,lang)} ${foodName(fk,lang)}`;
@@ -20815,7 +20838,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
             <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B",marginBottom:6}}>{lang==="he"?"🧾 רכיבים":"🧾 Ingredients"}</div>
             <div style={{marginBottom:16}}>
               {(r.ings||[]).map((ing,i)=>{ const fd=FDB[ing.fk]; if(!fd) return null; const su=getServingUnit(ing.fk,fd,lang);
-                const qty=su&&!su.weightOnly&&su.g?fmtN(ing.g/su.g,1)+" "+(lang==="he"?su.he:su.en)+" ("+ing.g+(lang==="he"?" גר'":" g")+")":ing.g+(lang==="he"?" גר'":" g");
+                const hq=householdQty(ing.fk,ing.g,lang); const qty=Math.round(ing.g)+(lang==="he"?" גר'":" g")+(hq?" · "+hq:""); void su;
                 return(<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px dotted #d9cdee"}}>
                   <span style={{fontSize:17}}>{fd.emoji}</span>
                   <span style={{flex:1,fontSize:15,color:"#1E3A2B",fontWeight:600}}>{lang==="he"?fd.he:fd.en}{ing.soaked?(lang==="he"?" (מושרה)":" (soaked)"):""}</span>
@@ -21094,7 +21117,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
               {(r.ings||[]).map((ing,i)=>{
                 const fd=FDB[ing.fk];if(!fd)return null;
                 const su=getServingUnit(ing.fk,fd,lang);
-                const qty=su?fmtN(ing.g/su.g,1)+" "+(lang==="he"?su.he:su.en)+" ("+ing.g+(lang==="he"?"גר'":"g")+")":ing.g+(lang==="he"?"גר'":"g");
+                const hq=householdQty(ing.fk,ing.g,lang); const qty=Math.round(ing.g)+(lang==="he"?" גר'":" g")+(hq?" · "+hq:""); void su;
                 return(<div key={i} style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
                   <span style={{fontSize:15}}>{fd.emoji}</span>
                   <span style={{flex:1,fontSize:11,color:"#5c3d99"}}>{lang==="he"?fd.he:fd.en}</span>
