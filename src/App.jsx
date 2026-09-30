@@ -9260,10 +9260,13 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     return [...clean(m).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="lunch"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   // ביניים: יש כבר פרי בצהריים ובערב — לכן בעיקר משקה/יוגורט סויה או אגוזים (חלבון, לאוצין וסידן), ופרי רק לפעמים
   function snack(){ const r=rnd(); const nut=pick(P.nuts);
-    if (r<(caHigh?0.45:0.3) && P.caDrink.length) return clean([it(P.caDrink[0],250)]);
-    if (r<0.6 && nut) return clean([it(nut,NUT_MAX_G[nut]||14)]); // עד כ-12 שקדים (לבקשת המשתמש)
-    if (r<0.85) return clean([PROT()]);
-    return clean([FR()]); }
+    const NUT=()=>nut?it(nut,NUT_MAX_G[nut]||14):null; // עד כ-12 שקדים (לבקשת המשתמש)
+    // ביניים כ-10% מהיום: ביעד רגיל — שני פריטים, ביעד נמוך — לרוב אחד
+    const two=!small;
+    if (r<(caHigh?0.45:0.3) && P.caDrink.length) return clean([it(P.caDrink[0],250), two?NUT():null]);
+    if (r<0.6 && nut) return clean([NUT(), two?FR():null]);
+    if (r<0.85) return clean([PROT(), two?(rnd()<0.5?NUT():FR()):null]);
+    return clean([FR(), two?NUT():null]); }
   const KEYS=["protein","fiber","calcium","iron","zinc","magnesium","potassium","vitA","vitC","vitE","vitK","vitB1","vitB2","vitB3","vitB6","vitB9","selenium","iodine","choline","copper","vitB5"];
   const caW=caHigh?2:1; const naCap=dri._naCap||hp?.sodiumMax||2300;
   const nutOf=items=>sumNuts((items||[]).map(x=>ingNut(x.fk,x.g,x.soaked)));
@@ -9276,8 +9279,9 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     const v=mealShareViolation(plan); if (v>0.03) return null; sc-=v*25;
     // חלוקה מאוזנת בין הארוחות (לבקשת המשתמש: "מעט קלוריות בבוקר, הרבה מאוד בצהריים ובערב"): בוקר לפחות 24%,
     // צהריים עד 36% וערב עד 34% — לפני התוספות (זרעים, טחינה), שמוסיפות לצהריים ולערב עוד כ-2%
+    // תמהיל (לבקשת המשתמש): כ-30% בכל ארוחה עיקרית — טווח 26%–34% לפני התוספות, ועונש על כל סטייה מ-30%
     const sh=mk=>nutOf(plan[mk]).kcal/k;
-    if ((!isFixed("breakfast")&&sh("breakfast")<0.24)||(!isFixed("lunch")&&sh("lunch")>0.36)||(!isFixed("dinner")&&sh("dinner")>0.34)) return null;
+    for (const mk of ["breakfast","lunch","dinner"]) { if (isFixed(mk)) continue; const x=sh(mk); if (x<0.25||x>0.35) return null; sc-=Math.abs(x-0.30)*40; }
     return sc; }
   const tries=opts.tries||700; let best=null, bestSc=-1e9;
   for (let i=0;i<tries;i++){ const np=npChoices.length?npChoices[i%npChoices.length]:null;
@@ -9325,6 +9329,15 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     for (const mk of ["dinner","lunch","breakfast"]) { if (isFixed(mk)) continue; const i=(plan[mk]||[]).findIndex(x=>x.fk===fk); if (i<0) continue;
       const x=plan[mk][i]; const minG=OMEGA_SEED_TBSP_G[fk]||0; const step=minG||(fk==="tahiniFullRaw"?15:2.5); while (x.g>minG && dayK()>target*1.05) x.g=Math.round((x.g-step)*10)/10;
       if (x.g<=0.01) plan[mk].splice(i,1); if (dayK()<=target*1.05) break; } }
+  // איזון תמהיל אחרון: התוספות (זרעים, יוגורט ללאוצין) הזיזו ארוחה אל מחוץ ל-25%–35% — מגדילים/מקטינים את המנה
+  // העיקרית ברבע מנה, כל עוד היום נשאר בטווח 95%–105%
+  for (let g=0; g<6; g++) { const tot=dayK(); const shr=mk=>nutOf(plan[mk]).kcal/tot;
+    const hi=["breakfast","lunch","dinner"].filter(mk=>!isFixed(mk)&&shr(mk)>0.35).sort((a,b)=>shr(b)-shr(a))[0];
+    const lo=["breakfast","lunch","dinner"].filter(mk=>!isFixed(mk)&&shr(mk)<0.25).sort((a,b)=>shr(a)-shr(b))[0]; if (!hi&&!lo) break;
+    let moved=false;
+    if (hi) { const m=plan[hi].find(x=>TEMP_FDB[x.fk]?._isRecipe); const q=m?svG(m.fk)*0.25:0; if (m&&m.g-q>=svG(m.fk)*0.5-0.01&&dayK()-ingNut(m.fk,q).kcal>=target*0.95) { const g0=m.g, l0=leuOf(plan[hi]); m.g=Math.round((m.g-q)*10)/10; if (l0>=2&&leuOf(plan[hi])<2) m.g=g0; else moved=true; } } // לא מורידים ארוחה מתחת ל-2 גר' לאוצין
+    if (lo) { const m=plan[lo].find(x=>TEMP_FDB[x.fk]?._isRecipe); const q=m?svG(m.fk)*0.25:0; if (m&&m.g+q<=svG(m.fk)*1.5+0.01&&dayK()+ingNut(m.fk,q).kcal<=target*1.05) { m.g=Math.round((m.g+q)*10)/10; moved=true; } }
+    if (!moved) break; }
   plan.__onePlate=best.np; return plan;
 }
 // שבוע במצב פשוט: הארוחה בצלחת אחת של הצהריים חוזרת יומיים ברצף (בישול אחד), כל מתכון עד פעמיים בשבוע;
