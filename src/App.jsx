@@ -17206,16 +17206,17 @@ const PIN_PROTECTED_INFO_KEYS = new Set(["userGuide","disclaimer"]);
 function WelcomeModal({lang,onClose,onStartTour}){
   const isDesktop=useIsDesktop();
   const isHe = lang==="he";
+  // ניסוח פשוט (לבקשת המשתמש: בלי מונחים מקצועיים במסך הראשון)
   const features = isHe ? [
-    ["🎯","תפריט שבועי מלא, אוטומטית","תוך שניות — לא ספריית-מתכונים סטטית, אלא יצירה-דינמית שמתאימה את עצמה ליעדים שלך בכל פעם מחדש."],
-    ["💊","עומק מיקרו-נוטריאנטים נדיר","כ-21 ויטמינים/מינרלים, יחסי אומגה 6:3, נתרן:אשלגן וסידן:זרחן — לא רק קלוריות ומאקרו כמו רוב הכלים."],
-    ["🌿","גישת WFPB מתונה ומנומקת","לא הקיצוניות של תוכניות-ריפוי — שמן זית ומלח מיודד במידה, בהתאם לספרות-המדעית העדכנית."],
-    ["📝","תכנון מול בפועל","יומן-אכילה נפרד מהתפריט המתוכנן, כדי לראות בדיוק כמה אתה/את עומד/ת ביעדים לאורך זמן."],
+    ["🎯","תפריט לשבוע שלם — בלחיצה","ארוחות בוקר, צהריים, ערב וביניים, מותאמות לגובה, למשקל, לגיל ולמטרה שלך."],
+    ["💊","ויטמינים ומינרלים — לא רק קלוריות","האפליקציה בודקת שהתפריט מספק חלבון, סידן, ברזל, B12, יוד ועוד, ומציעה מה לחזק."],
+    ["🌿","צמחוני או טבעוני, בריא ומאוזן","מבוסס על נתוני משרד הבריאות ועל ההמלצות העדכניות — בלי קיצוניות."],
+    ["📝","מתכנן — ואחר כך בודק","יומן של מה שאכלת בפועל, כדי לראות איך את/ה עומד/ת ביעדים לאורך זמן."],
   ] : [
-    ["🎯","A full weekly menu, automatically","In seconds — not a static recipe library, but dynamic generation that adapts to your targets every time."],
-    ["💊","Rare micronutrient depth","About 21 vitamins/minerals, omega-6:3, sodium:potassium and calcium:phosphorus ratios — not just calories and macros like most tools."],
-    ["🌿","A moderate, evidence-informed WFPB approach","Not the extremes of reversal-therapy programs — a moderate amount of olive oil and iodized salt, per current nutrition science."],
-    ["📝","Plan vs. actual","A food log kept separate from your planned menu, so you can see exactly how well you're meeting your targets over time."],
+    ["🎯","A whole week's menu — in one tap","Breakfast, lunch, dinner and snacks, matched to your height, weight, age and goal."],
+    ["💊","Vitamins and minerals — not just calories","The app checks that the menu provides protein, calcium, iron, B12, iodine and more, and suggests what to boost."],
+    ["🌿","Vegetarian or vegan, healthy and balanced","Based on Ministry of Health food data and current recommendations — no extremes."],
+    ["📝","Plan — then check","A log of what you actually ate, so you can see how you're meeting your targets over time."],
   ];
   return(
     <div style={{position:"fixed",inset:0,zIndex:400,background:"#000c",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -17223,7 +17224,7 @@ function WelcomeModal({lang,onClose,onStartTour}){
         <div style={{textAlign:"center",marginBottom:20}}>
           <div style={{fontSize:36,marginBottom:6}}>🌱</div>
           <div style={{fontSize:20,fontWeight:800,color:"#1E3A2B"}}>PlantVitalis Veg</div>
-          <div style={{fontSize:12,color:"#6B7C72",marginTop:4}}>{isHe?"תכנון ארוחות ומעקב ל-WFPB Vegetarian":"Meal planning & tracking for WFPB Vegetarian"}</div>
+          <div style={{fontSize:12,color:"#6B7C72",marginTop:4}}>{isHe?"תכנון ארוחות צמחוני ומעקב תזונתי":"Vegetarian meal planning & nutrition tracking"}</div>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:14,marginBottom:22}}>
           {features.map(([icon,title,desc])=>(
@@ -17288,6 +17289,7 @@ const ONBOARD_STEPS = [
 // סיור קצר לכניסה הראשונה (לבקשת המשתמש): 5 שלבים עיקריים — פרופיל, תכנון אוטומטי, כרטיס הארוחה, מתכונים, יומן
 const ONBOARD_STEPS_SHORT=[0,2,4,6,9].map(i=>ONBOARD_STEPS[i]);
 function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen,setInfoMenuOpen,steps:STEPS=ONBOARD_STEPS}){
+  useEffect(()=>{ window.__pvTour=true; return ()=>{ window.__pvTour=false; }; },[]);
   const [step,setStep]=useState(0);
   const [rect,setRect]=useState(null);
   const tourElRef=useRef(null);
@@ -17506,7 +17508,9 @@ function InfoModal({infoKey,lang,onClose}){
               : <div style={{fontSize:15,fontWeight:700,color}}>{INFO_ICONS[infoKey]} {INFO_TITLES[lang][infoKey]}</div>
             }
             <div style={{display:"flex",gap:8}}>
-              {!editing&&!pinPrompting&&<button onClick={requestEdit} style={{background:color+"18",border:`1px solid ${color}44`,borderRadius:8,color,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>{tx.infoEdit}</button>}
+              {!editing&&!pinPrompting&&(PIN_PROTECTED_INFO_KEYS.has(infoKey)
+                ?<button onClick={requestEdit} title={tx.infoEdit} aria-label={tx.infoEdit} style={{background:"transparent",border:"none",color:"#B8B0A0",padding:"4px 6px",fontSize:12,cursor:"pointer"}}>✎</button> /* עריכה לבעלים בלבד (קוד) — סמל שקט */
+                :<button onClick={requestEdit} style={{background:color+"18",border:`1px solid ${color}44`,borderRadius:8,color,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>{tx.infoEdit}</button>)}
               {editing&&<><button onClick={saveText} style={{background:"#2e7d32",border:"none",borderRadius:8,color:"white",padding:"5px 10px",fontSize:11,cursor:"pointer",fontWeight:700}}>{tx.infoSave}</button><button onClick={()=>setEditing(false)} style={{background:"#F5F2EB",border:"1px solid #E2DED4",borderRadius:8,color:"#6B7C72",padding:"5px 10px",fontSize:11,cursor:"pointer"}}>{tx.infoCancel}</button></>}
               <button onClick={onClose} style={{background:"#F5F2EB",border:"none",borderRadius:8,color:"#6B7C72",width:28,height:28,cursor:"pointer"}}>✕</button>
             </div>
@@ -20766,7 +20770,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
     setRecipes(next);save(RECIPE_STORAGE,next);
   }
   const filtered=Object.entries(FDB).filter(([,f])=>{const n=lang==="he"?f.he:f.en;const matchesSearch=!search||n.toLowerCase().includes(search.toLowerCase());const matchesCat=catFilter==="הכל"||f.cat===catFilter||(f.tags&&f.tags.includes(catFilter));return matchesSearch&&matchesCat;}).slice(0,40);
-  const[bookOpen,setBookOpen]=useState(()=>recipes.length>0);
+  const[bookOpen,setBookOpen]=useState(()=>recipes.length>0&&!window.__pvTour); // בזמן הסיור — בלי לפתוח את הספר מעל בועת ההסבר
   // צפייה במתכון בלי עריכה (לבקשת המשתמש) + חזרה למקום ברשימה אחרי יציאה מעריכה (לא לקפוץ לראש הרשימה)
   const[viewId,setViewId]=useState(null);
   const lastRecIdRef=useRef(null);
@@ -22538,7 +22542,7 @@ function AppInner(){
             <div style={{display:"flex",gap:6,alignItems:"center",justifySelf:"start"}}>
               <button id="detail-toggle" onClick={toggleDetail} title={lang==="he"?"מעבר בין תצוגה פשוטה למפורטת":"Switch between simple and detailed view"} style={{background:detailView?"#1E3A2B":"#FFFFFF",border:"1px solid #1E3A2B",borderRadius:8,color:detailView?"#fff":"#1E3A2B",padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:700}}>{detailView?(lang==="he"?"✨ תצוגה פשוטה":"✨ Simple view"):(lang==="he"?"🔍 פירוט מלא":"🔍 Full details")}</button>
               <button onClick={()=>setLang(l=>{const n=l==="he"?"en":"he";save("wfpb_lang",n);return n;})} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:700}}>{lang==="he"?"EN":"עב"}</button>
-              <button id="onboard-disclaimer" onClick={()=>setInfoOpen("disclaimer")} title={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} aria-label={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} style={{background:"#c62828",border:"1px solid #c62828",borderRadius:8,color:"#fff",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+              <button id="onboard-disclaimer" onClick={()=>setInfoOpen("disclaimer")} title={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} aria-label={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} style={{background:"#FFF6E5",border:"1px solid #ecc98a",borderRadius:8,color:"#8a5a00",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
                 <span style={{fontSize:15}}>⚠</span> {lang==="he"?"אזהרה":"Warning"}
               </button>
               {detailView?<><button onClick={()=>setInfoOpen("userGuide")} title={lang==="he"?"מדריך למשתמש באפליקציה":"App user guide"} aria-label={lang==="he"?"מדריך למשתמש באפליקציה":"App user guide"} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
@@ -22581,7 +22585,7 @@ function AppInner(){
             <div style={{display:"flex",gap:6,alignItems:"center"}}>
               <button id="detail-toggle" onClick={toggleDetail} title={lang==="he"?"מעבר בין תצוגה פשוטה למפורטת":"Switch between simple and detailed view"} style={{background:detailView?"#1E3A2B":"#FFFFFF",border:"1px solid #1E3A2B",borderRadius:8,color:detailView?"#fff":"#1E3A2B",padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:700}}>{detailView?(lang==="he"?"✨ תצוגה פשוטה":"✨ Simple view"):(lang==="he"?"🔍 פירוט מלא":"🔍 Full details")}</button>
               <button onClick={()=>setLang(l=>{const n=l==="he"?"en":"he";save("wfpb_lang",n);return n;})} style={{background:"#E8EFE9",border:"1px solid #E2DED4",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:700}}>{lang==="he"?"EN":"עב"}</button>
-              <button id="onboard-disclaimer-mobile" onClick={()=>setInfoOpen("disclaimer")} title={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} aria-label={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} style={{background:"#c62828",border:"1px solid #c62828",borderRadius:8,color:"#fff",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+              <button id="onboard-disclaimer-mobile" onClick={()=>setInfoOpen("disclaimer")} title={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} aria-label={lang==="he"?"אזהרת שימוש והבהרה רפואית":"Usage & medical disclaimer"} style={{background:"#FFF6E5",border:"1px solid #ecc98a",borderRadius:8,color:"#8a5a00",padding:"4px 10px",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
                 <span style={{fontSize:15}}>⚠</span> {lang==="he"?"אזהרה":"Warning"}
               </button>
             </div>
@@ -22840,7 +22844,7 @@ function AppInner(){
       <div style={{position:"fixed",bottom:0,insetInlineStart:0,insetInlineEnd:0,width:"100%",boxSizing:"border-box",maxWidth:contentMaxWidth,margin:"0 auto",background:"#FFFFFF",borderTop:"1px solid #E2DED4",display:"flex",padding:"6px 6px calc(6px + env(safe-area-inset-bottom))",zIndex:60,gap:2,boxShadow:"0 -4px 12px rgba(30, 58, 43, 0.05)"}}>
         {[{k:"meals",l:tx.meals},{k:"macros",l:tx.macrosTab},{k:"micro",l:tx.micro},{k:"log",l:logTabLabel},{k:"recipes",l:tx.recipes}].map(({k,l})=>(
           <button key={k} id={`onboard-tab-${k}`} onClick={()=>setTab(k)}
-            style={{flex:1,minWidth:0,padding:"7px 1px",borderRadius:10,border:"none",background:tab===k?"#1E3A2B":"transparent",color:tab===k?"white":"#6B7C72",fontSize:10.5,cursor:"pointer",fontWeight:tab===k?700:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",letterSpacing:-0.3}}>
+            style={{flex:1,minWidth:0,padding:"7px 1px",borderRadius:10,border:"none",background:tab===k?"#1E3A2B":"transparent",color:tab===k?"white":"#6B7C72",fontSize:10.5,cursor:"pointer",fontWeight:tab===k?700:600,whiteSpace:"normal",lineHeight:1.15,overflow:"hidden",textOverflow:"ellipsis",letterSpacing:-0.3}}>
             {l}
           </button>
         ))}
