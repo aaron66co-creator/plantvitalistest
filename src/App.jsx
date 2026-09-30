@@ -1921,9 +1921,12 @@ function tidyMealLogic(plan, tgt, dri, excl){
       if (step&&step>0) { const units=Math.round(it.g/step); const kU=k/Math.max(1,units);
         let n=Math.round(left/kU); if(sign<0) n=Math.min(n,units-1); else n=Math.min(n,Math.max(1,units));
         if (sign>0&&BREAD_FKS.has(it.fk)) n=Math.min(n,(it.fk==="wholePita"?1:2)-units); // לחם: עד 2 פרוסות / פיתה אחת בארוחה
+        if (sign>0&&BIG_FRUIT_FKS.includes(it.fk)) n=Math.min(n,1-units); if (sign>0&&SMALL_FRUIT_FKS.includes(it.fk)) n=Math.min(n,2-units); if (sign>0&&NUT_MAX_G[it.fk]) n=Math.min(n,Math.floor(NUT_MAX_G[it.fk]/step+1e-6)-units); // פרי גדול: יחידה אחת בארוחה (לבקשת המשתמש — לא שתי בננות)
         if(n<=0) continue;
         arr[i]={...it,g:Math.round((units+sign*n)*step*100)/100}; left-=n*kU; }
-      else { const c=Math.min(k*0.6,left); arr[i]={...it,g:Math.round(it.g*(1+sign*c/k)*10)/10}; left-=c; } }
+      else { const c=Math.min(k*0.6,left); arr[i]={...it,g:Math.round(it.g*(1+sign*c/k)*10)/10}; left-=c; }
+      if (sign>0&&NUT_MAX_G[it.fk]&&arr[i].g>NUT_MAX_G[it.fk]) { const cap=Math.max(it.g,NUT_MAX_G[it.fk]); left+=(arr[i].g-cap)*k/it.g; arr[i]={...arr[i],g:cap}; }
+      if (sign>0&&DRINK_CAP_FKS.includes(it.fk)) { const cap=Math.max(it.g,250-arr.reduce((a,x,j)=>a+(j!==i&&DRINK_CAP_FKS.includes(x.fk)?x.g:0),0)); if (arr[i].g>cap) { left+=(arr[i].g-cap)*k/it.g; arr[i]={...arr[i],g:cap}; } } }
     return left<=15;
   };
   // מוסיף מנה שלמה של אחד מהמזונות (לפי הסדר) לארוחה ומאזן; מחזיר true אם הצליח בלי לשבור את הכללים
@@ -2216,6 +2219,81 @@ function tidyMealLogic(plan, tgt, dri, excl){
     if (!best) break; const k0=dayK(); const st=pieceStepG(best.it.fk)||wholeUnitStepG(best.it.fk)||best.it.g; const ng=Math.round((best.it.g-st)*100)/100;
     if (ng<=0.05) plan[best.m].splice(best.i,1); else plan[best.m][best.i]={...best.it,g:ng};
     fillDay(k0-dayK(), null); }
+  // (6ג) כללי הגשה (לבקשת המשתמש, מצילום תפריט): משקה סויה/שיבולת שועל — עד כוס בארוחה; פטריות — עד חצי כוס;
+  // פרי — לא שתי יחידות מאותו פרי באותה ארוחה אלא שני פירות שונים; לחם — תמיד עם ממרח; תבשיל קטניות — תמיד עם דגן.
+  // אלה כללים קשיחים: מתקנים גם במחיר סטייה קטנה בתמהיל, ומאזנים קלוריות: קודם בתוך הארוחה, ואז ביום כולו
+  { const added=new Set(); const DRINK_FKS=["soymilkFortified","soymilkOrgPlain","oatMilk"];
+    const SPREAD_RAW=["tahiniRaw","tahiniFullRaw","peanutButter","almondbutter","avocado"];
+    const isSpread=it=>SPREAD_RAW.includes(it.fk)||catOf(it.fk)==="ממרחים";
+    const isBread=it=>BREAD_FKS.has(it.fk)||it.fk==="ryeBread"||(catOf(it.fk)==="מאפים"&&/לחם|פיתה|טורטי|לחמני/.test(fdOf(it.fk)?.he||""));
+    const FRESH=BIG_FRUIT_FKS.filter(fk=>FDB[fk]&&!(excl&&excl.has(fk)));
+    const mealK=m=>(plan[m]||[]).reduce((a,it)=>a+kOf(it),0); const before=JSON.stringify(plan); const k0s={};
+    for (const mk of ALL) k0s[mk]=mealK(mk);
+    // עלים טריים (תרד/כייל/מנגולד) כפריט עצמאי: עד חצי כוס; בארוחה שכבר יש בה עלים — עוברים לארוחה עיקרית בלי עלים, ואם אין — יורדים
+    const leafy=(fk)=>{ const fd=fdOf(fk); if (!fd) return false; if (!fd._isRecipe) return fd.cat==="עלים"&&!HERB_FKS.has(fk);
+      return (fd._ings||[]).some(i=>FDB[i.fk]?.cat==="עלים"&&!HERB_FKS.has(i.fk)&&i.g>=20); };
+    const hasLeaves=(mk,except)=>(plan[mk]||[]).some(x=>x!==except&&leafy(x.fk));
+    for (const mk of ALL) for (const it of [...(plan[mk]||[])]) { if (it._user||!RAW_LEAF_CUP_FKS.includes(it.fk)) continue;
+      const half=Math.round(unitG(it.fk)/2*100)/100; const i=plan[mk].indexOf(it); const nu={...it,g:Math.min(it.g,half)};
+      if (!hasLeaves(mk,it)) { plan[mk][i]=nu; continue; }
+      plan[mk].splice(i,1); const to=MAIN.find(m=>m!==mk&&(plan[m]||[]).length&&!hasLeaves(m)&&!(plan[m]||[]).some(x=>x.fk===it.fk)); if (to) plan[to].push(nu); }
+    // פטריות — רק בתוך מתכון, לא כפריט בפני עצמו: במקומן ירק אחר
+    const VEG_SWAP=["cucumber","tomato","redPepper","yellowPepper","carrot","radish","kohlrabi"].filter(fk=>FDB[fk]&&!(excl&&excl.has(fk)));
+    for (const mk of ALL) { const i=(plan[mk]||[]).findIndex(it=>!it._user&&it.fk==="mushroom"); if (i<0) continue;
+      const v=VEG_SWAP.find(fk=>!plan[mk].some(x=>x.fk===fk)); if (v) plan[mk].splice(i,1,{fk:v,g:unitG(v)}); else plan[mk].splice(i,1); }
+    // אגוזים: עד NUT_MAX_G לפריט; מה שירד — סוג אגוז אחר שעוד לא הופיע היום; ואותו סוג לא ביותר מארוחה אחת
+    const NUTS=Object.keys(NUT_MAX_G).filter(fk=>FDB[fk]&&!(excl&&excl.has(fk))&&!GLOBAL_BANNED_STANDALONE.has(fk));
+    const nutUsed=()=>new Set(ALL.flatMap(m=>(plan[m]||[]).map(x=>x.fk)).filter(fk=>NUT_MAX_G[fk]));
+    const seenNut=new Set();
+    for (const mk of ALL) for (const it of [...(plan[mk]||[])]) { if (it._user||!NUT_MAX_G[it.fk]) continue; let i=plan[mk].indexOf(it); let cur=it;
+      if (seenNut.has(it.fk)) { const alt=NUTS.find(fk=>!nutUsed().has(fk)); if (alt) { cur={fk:alt,g:Math.round(it.g*(FDB[it.fk].per100.kcal||1)/(FDB[alt].per100.kcal||1)*10)/10}; plan[mk][i]=cur; } }
+      seenNut.add(cur.fk); const cap=NUT_MAX_G[cur.fk]; if (cur.g<=cap+0.01) continue;
+      const lostK=kOf({fk:cur.fk,g:cur.g-cap}); plan[mk][i]={...cur,g:cap};
+      if (lostK>30) { const alt=NUTS.find(fk=>!nutUsed().has(fk)); if (alt) { const g=Math.min(NUT_MAX_G[alt],Math.round(lostK/((FDB[alt].per100.kcal||600)/100)*10)/10); const a={fk:alt,g}; plan[mk].push(a); added.add(a); seenNut.add(alt); } } }
+    for (const mk of ALL) { const arr=plan[mk]||[]; if (!arr.length) continue;
+      // משקה: עד 250 מ"ל בארוחה
+      let dr=0; plan[mk]=arr.map(it=>{ if (it._user||!DRINK_FKS.includes(it.fk)) return it; const g=Math.max(0,Math.min(it.g,250-dr)); dr+=g; return g>0?{...it,g}:null; }).filter(Boolean);
+      // פטריות: עד חצי כוס (35 גר')
+      plan[mk]=plan[mk].map(it=>(!it._user&&it.fk==="mushroom"&&it.g>35)?{...it,g:35}:it);
+      // פרי קטן (שזיף, משמש, תאנה, קלמנטינה): עד 2 יחידות בארוחה
+      plan[mk]=plan[mk].map(it=>{ if (it._user||!SMALL_FRUIT_FKS.includes(it.fk)) return it; const u=unitG(it.fk); return it.g>u*2.2?{...it,g:Math.round(u*2*100)/100}:it; });
+      // פרי כפול: יחידה אחת, ופרי שני שונה
+      for (const it of [...plan[mk]]) { const fd=FDB[it.fk]; if (it._user||!fd||fd.cat!=="פרי"||it.fk==="lemon"||!FRESH.includes(it.fk)) continue;
+        const u=unitG(it.fk); const n=Math.round(it.g/u); if (n<2) continue;
+        const i=plan[mk].indexOf(it); plan[mk][i]={...it,g:Math.round(u*100)/100};
+        const hasOther=plan[mk].some((x,j)=>j!==i&&FDB[x.fk]?.cat==="פרי"&&x.fk!=="lemon"); // כבר יש פרי אחר בארוחה — לא מוסיפים שלישי
+        const other=hasOther?null:FRESH.find(fk=>!plan[mk].some(x=>x.fk===fk)); if (other){ const a={fk:other,g:unitG(other)}; plan[mk].push(a); added.add(a); } }
+      if (mk==="snack") continue;
+      // לחם בלי ממרח — מוסיפים ממרח (מתכון ממרח, ואם אין — טחינה)
+      if (plan[mk].some(isBread)&&!plan[mk].some(isSpread)) {
+        // ממרח קל לפרוסה (מנה עד כ-85 גר' ועד כ-110 קק"ל — חציל קלוי, עדשים, פלפל קלוי, אבוקדו, פטריות), מתחלף באקראי
+        const sp=Object.keys(TEMP_FDB).filter(fk=>{ const f=TEMP_FDB[fk]; if (!(f&&f._isRecipe&&!f._onePlate&&catOf(fk)==="ממרחים"&&!(f._ings||[]).some(i=>excl&&excl.has(i.fk)))) return false;
+          const g=unitG(fk); return g<=85&&kOf({fk,g})<=110; });
+        const used=new Set(ALL.flatMap(m=>(plan[m]||[]).map(x=>x.fk))); const free=sp.filter(fk=>!used.has(fk)); const pool=free.length?free:sp; const pick=pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
+        const a=pick?{fk:pick,g:unitG(pick)}:(FDB.tahiniRaw&&!(excl&&excl.has("tahiniRaw"))?{fk:"tahiniRaw",g:15}:null);
+        if (a){ plan[mk].push(a); added.add(a); } }
+      // תבשיל קטניות בלי דגן — כוס דגן מבושל (במקום פרי / משקה / יוגורט שבארוחה, אם יש)
+      if (plan[mk].some(it=>isLegStew(it.fk))&&!hasGrain(mk)&&!plan[mk].some(isBread)) {
+        const gl=unused(COOKED_GRAIN_FKS).filter(fk=>FDB[fk]&&!(excl&&excl.has(fk))&&fk!=="wholeWPasta"); const gfk=gl.length?gl[Math.floor(Math.random()*gl.length)]:null; // דגן מתחלף
+        if (gfk){ const a={fk:gfk,g:unitG(gfk)}; const rm=plan[mk].findIndex(it=>!it._user&&!added.has(it)&&(FDB[it.fk]?.cat==="פרי"||DRINK_FKS.includes(it.fk)||COURSE_YOG.has(it.fk)));
+          if (rm>=0) plan[mk].splice(rm,1,a); else plan[mk].push(a); added.add(a); } } }
+    // איזון קלוריות: לא נוגעים במה שנוסף עכשיו, בלחם, בדגנים ובתבשילים
+    const keep=it=>added.has(it)||isBread(it)||isSpread(it)||isCookedGrain(it.fk)||!!stewCatOf(it.fk);
+    if (JSON.stringify(plan)!==before||dayK()>tgt*1.005||dayK()<tgt*0.975) {
+    // קודם מקזזים בתוך אותה ארוחה — כדי לשמור על חלוקת הקלוריות בין הארוחות
+    for (const mk of Object.keys(k0s)) { const d=mealK(mk)-k0s[mk]; if (d>15) adjust(-d, mk, keep, true); }
+    const trim=()=>{
+    if (dayK()>tgt*1.005) adjust(-(dayK()-tgt*0.99), null, keep, true);
+    if (dayK()>tgt*1.005) adjust(-(dayK()-tgt*0.99), null, it=>added.has(it)||isSpread(it)||!!stewCatOf(it.fk), true); // שלב שני: גם דגן/לחם שלא נוספו עכשיו
+    // שלב אחרון: מורידים פרי / אגוזים / משקה / יוגורט שלא נוספו עכשיו — כל פעם את הפריט שמביא הכי קרוב ל-99%,
+    // בלי לרדת מתחת ל-97.5% (ואם אין כזה ויום מעל 104% — את הגדול)
+    for (let guard=0; guard<6&&dayK()>tgt*1.005; guard++) { const cands=ALL.flatMap(m=>(plan[m]||[]).filter(it=>!it._user&&!added.has(it)&&!isSpread(it)&&(plan[m]||[]).length>1&&(["פרי","אגוזים"].includes(FDB[it.fk]?.cat)||DRINK_FKS.includes(it.fk)||COURSE_YOG.has(it.fk))).map(it=>({m,it})));
+      const K=dayK(); const ok=cands.filter(c=>K-kOf(c.it)>=tgt*0.975).sort((x,y)=>Math.abs(K-kOf(x.it)-tgt*0.99)-Math.abs(K-kOf(y.it)-tgt*0.99));
+      const c=ok[0]||(K>tgt*1.04?cands.sort((x,y)=>kOf(y.it)-kOf(x.it))[0]:null); if (!c) break;
+      plan[c.m].splice(plan[c.m].indexOf(c.it),1); }
+    };
+    // מקצצים, משלימים אם ירד מתחת ל-97%, ומקצצים שוב אם ההשלמה עברה את הטווח
+    trim(); if (dayK()<tgt*0.975) { fillDay(tgt*0.99-dayK(), null); trim(); } } }
   // (7) אגוזים וזרעים ביחידות שלמות לפי סוגם: שקדים/לוז/קשיו/פיסטוקים — יחידות, אגוזי מלך — חצאים, בוטנים — כפות,
   // פשתן/צ'יה — כפות, חמנייה/דלעת/שומשום — רבעי כף. הפרש הקלוריות זניח (לכל היותר חצי יחידה לפריט)
   snapPieceUnits(plan);
@@ -2224,6 +2302,15 @@ function tidyMealLogic(plan, tgt, dri, excl){
 // איזון תמהיל אחרון (לבקשת המשתמש: "לשמור על כללי התמהיל"): אם ארוחה חורגת מגבולות החלק שלה ביום, מעבירים פריט
 // "נייד" (פרי, אגוזים, זרעים, יוגורט) לארוחה אחרת שיש בה מקום. סך היום לא משתנה, והתבשילים והמתכונים לא זזים.
 // מתקבל רק אם החריגה הכוללת קטנה. עובד גם על חריגות שהיו קיימות לפני התבשיל היומי
+// פירות "גדולים" — יחידה אחת בארוחה; במקום שתיים — שני פירות שונים (לבקשת המשתמש). פירות קטנים (משמש, תאנה, שזיף) — כרגיל
+const BIG_FRUIT_FKS=["apple","orange","pear","kiwi","peach","nectarine","persimmon","banana","mango","grapefruit","pineapple","watermelon","melon","guava","papaya","quince"];
+const SMALL_FRUIT_FKS=["plum","apricot","fig","clementine","sabra"];
+const DRINK_CAP_FKS=["soymilkFortified","soymilkOrgPlain","oatMilk"];
+// אגוזים (לבקשת המשתמש): עד כ-12 שקדים — ובהתאם לשאר הסוגים (כ-15 גר') לפריט בארוחה; במקום כמות גדולה מסוג אחד — גיוון
+const NUT_MAX_G={almonds:14.4,hazelnuts:16,cashews:15.5,pistachio:14.25,walnuts:14,pecans:15,peanuts:18};
+// עלים טריים שנמדדים בכוס (תרד, כייל, מנגולד): עד חצי כוס, ורק בארוחה שאין בה כבר עלים
+const RAW_LEAF_CUP_FKS=["spinach","kale","swisschard"];
+const HERB_FKS=new Set(["parsley","dill","basil","mintLeaf","cilantroLeaf"]); // משקה: עד כוס (250 מ"ל) בארוחה
 const SHARE_MOVABLE_CATS=new Set(["פרי","אגוזים"]); // זרעים לא זזים — כדי לא לצבור יותר מרבע כף בארוחה
 function rebalanceMealShares(plan){
   if (!plan || __SPOON_ROUND_OFF>0) return plan;
@@ -2235,7 +2322,7 @@ function rebalanceMealShares(plan){
       const it=plan[from][idx]; const fd=FDB[it.fk]; if (!fd||fd._isRecipe) continue;
       if (!(SHARE_MOVABLE_CATS.has(fd.cat)||COURSE_YOG.has(it.fk))) continue;
       if ((plan[from]||[]).length<=1) continue;
-      for (const to of mk3) { if (to===from||!(plan[to]||[]).length) continue;
+      for (const to of mk3) { if (to===from||!(plan[to]||[]).length||(plan[to]||[]).some(x=>x.fk===it.fk)) continue;
         plan[from].splice(idx,1); plan[to].push(it); const v1=mealShareViolation(plan); plan[to].pop(); plan[from].splice(idx,0,it);
         if (v1<v0-0.0005 && (!best||v1<best.v)) best={from,idx,to,v:v1}; }
     }
@@ -4657,7 +4744,7 @@ function recipeServingUnit(fd){
     if (/עוגי/.test(n)) return U("עוגייה","עוגיות","cookie","cookies");
     if (/לחמני/.test(n)) return U("לחמנייה","לחמניות","roll","rolls");
     if (/טורטי/.test(n)) return U("טורטייה","טורטיות","tortilla","tortillas");
-    if (/קרקר/.test(n)) return U("מנת קרקרים","מנות קרקרים","serving of crackers","servings of crackers");
+    if (/קרקר/.test(n)) return {...U("קרקר","קרקרים","cracker","crackers"),g:g/3}; // מנה ≈ 3 קרקרים (כ-6 גר' לקרקר)
     if (/לחם/.test(n)) return U("פרוסה","פרוסות","slice","slices");
   }
   return U("מנה","מנות","serving","servings");
@@ -5179,7 +5266,7 @@ function enforceCalorieCeilingAndFloor(plan, tgt){
 // ensureCalciumAdequacyFinal (שרץ אחרי applyMealHygieneFinalRules) בונה לעצמו רשימת-מועמדים נפרדת, בלי
 // לבדוק מול הרשימה הזו בכלל. הועברה לקבוע גלובלי, כדי שגם מנגנונים אחרים (לא רק applyMealHygieneFinalRules
 // עצמה) יוכלו להימנע מהצעת הפריטים האלה כעצמאיים. נוסף גם "leek" (כרישה) לפי הבקשה החדשה
-const GLOBAL_BANNED_STANDALONE = new Set(["canolaOil","ryeBread","pineNuts","redLentils","greenLentils","brownLentils","blackLentils","pumpkin","peanuts","vinegar","appleCiderVinegar","oliveOil","brusselsSp","turnip","zucchini","cauliflower","broccoli","kale","asparagus","nori","cabbageWhite","cabbageRed","bokChoy","tahiniFullRaw","tahiniRaw","tofu","tempeh","onion","leek","dateSilan"]);
+const GLOBAL_BANNED_STANDALONE = new Set(["canolaOil","ryeBread","pineNuts","redLentils","greenLentils","brownLentils","blackLentils","pumpkin","peanuts","vinegar","appleCiderVinegar","oliveOil","brusselsSp","turnip","zucchini","cauliflower","broccoli","kale","asparagus","nori","cabbageWhite","cabbageRed","bokChoy","tahiniFullRaw","tahiniRaw","tofu","tempeh","onion","leek","dateSilan","mushroom"]);
 function applyMealHygieneFinalRules(plan, tgt){
   const BREAD_FKS = new Set(["wholeWheatBread","wholePita"]);
   const LENTIL_FKS = new Set(["redLentils","greenLentils","brownLentils","blackLentils"]);
@@ -15412,7 +15499,7 @@ const DEF_RECIPES=[
 {id:"5yxrdcg",name:"פשטידת פטריות וקינואה",servings:6,type:"פשטידה",preferredMeal:"any",foodGroup:"דגן",ings:[{fk:"quinoaCooked",g:280},{fk:"mushroom",g:280},{fk:"onion",g:110},{fk:"chickpeaFlour",g:80},{fk:"oliveOil",g:15},{fk:"rosemaryDried",g:2}],instructions:"מטגנים בצל ופטריות עד ריכוך. מערבבים עם קינואה מבושלת, קמח חומוס ורוזמרין. יוצקים לתבנית ואופים ב-190°C כ-30 דק'."},
 {id:"b9kx6w8",name:"לחם בננה טבעוני",servings:8,type:"מאפה",preferredMeal:"any",foodGroup:"דגן",ings:[{fk:"banana",g:360},{fk:"oatFlour",g:180},{fk:"flaxseed",g:21},{fk:"walnuts",g:60},{fk:"cinnamon",g:2}],instructions:"מועכים בננות, מערבבים עם קמח שיבולת שועל, פשתן טחון (עם מעט מים כתחליף ביצה) וקינמון. מקפלים אגוזי מלך גרוסים. אופים בתבנית אנגלית ב-175°C כ-45 דק'."},
 {id:"2ii5ngy",name:"מאפינס שיבולת שועל ותפוח",servings:10,type:"מאפה",preferredMeal:"any",foodGroup:"דגן",ings:[{fk:"oatsMedRaw",g:240},{fk:"apple",g:240},{fk:"flaxseed",g:14},{fk:"dateSilan",g:60},{fk:"cinnamon",g:2}],instructions:"מגררים תפוח, מערבבים עם שיבולת שועל, פשתן טחון, סילאן וקינמון לבלילה אחידה. יוצקים לתבניות מאפינס ואופים ב-190°C כ-20 דק'."},
-{id:"3c0xd04",name:"קרקרים מזרעי פשתן וחמנייה",servings:10,type:"מאפה",preferredMeal:"any",foodGroup:"זרעים",ings:[{fk:"flaxseed",g:70},{fk:"sunflowerS",g:80},{fk:"sesame",g:27},{fk:"saltIodized",g:3}],instructions:"מערבבים את כל הזרעים עם מים (עד קבלת בלילה סמיכה) ומלח. פורסים דק על נייר אפייה ואופים ב-160°C כ-25 דק' עד פריכות, הופכים באמצע."},
+{id:"3c0xd04",name:"קרקרים מזרעי פשתן וחמנייה",servings:10,type:"מאפה",preferredMeal:"any",foodGroup:"זרעים",ings:[{fk:"flaxseed",g:70},{fk:"sunflowerS",g:80},{fk:"sesame",g:27},{fk:"saltIodized",g:3}],instructions:"מערבבים את כל הזרעים עם מים (עד קבלת בלילה סמיכה) ומלח. פורסים דק על נייר אפייה ואופים ב-160°C כ-25 דק' עד פריכות, הופכים באמצע. חותכים לכ-30 קרקרים (מנה — כ-3 קרקרים)."},
 {id:"ezl1ym4",name:"לחמניות קינואה",servings:8,type:"מאפה",preferredMeal:"any",foodGroup:"דגן",ings:[{fk:"quinoaCooked",g:280},{fk:"oatFlour",g:150},{fk:"flaxseed",g:21},{fk:"oliveOil",g:15}],instructions:"מערבבים קינואה מבושלת, קמח שיבולת שועל, פשתן טחון עם מים ושמן זית לבצק סמיך. מעצבים לכדורים שטוחים ואופים ב-190°C כ-25 דק'."},
 {id:"wj3zbb8",name:"עוגיות שיבולת שועל ותמרים",servings:24,type:"מאפה",preferredMeal:"any",foodGroup:"דגן",ings:[{fk:"oatsMedRaw",g:280},{fk:"medjoolDate",g:240},{fk:"almondbutter",g:67.5},{fk:"cinnamon",g:2}],instructions:"מרסקים תמרים למחית. מערבבים עם שיבולת שועל, חמאת שקדים וקינמון. מעצבים כדורים שטוחים ואופים ב-175°C כ-15 דק'."},
 {id:"odvsoil",name:"סלט קינואה וירקות",servings:4,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_ארוחה",ings:[{fk:"quinoaCooked",g:280},{fk:"cucumber",g:238},{fk:"tomato",g:200},{fk:"redPepper",g:100},{fk:"oliveOil",g:15},{fk:"lemon",g:25}],instructions:"מערבבים קינואה מבושלת וקרה עם ירקות קצוצים דק. מתבלים בשמן זית ומיץ לימון."},
@@ -17826,18 +17913,19 @@ function withCourses(mk, items, render, lang, inline){
   const addons=list.filter(isAddon);
   if (addons.length) { let rest=list.filter(x=>!isAddon(x));
     for (const a of new Set([anchor,saltAnchor])) { if (!a) continue; const mine=addons.filter(x=>addonAnchorOf(x)===a); if (!mine.length) continue;
-      const at=rest.indexOf(a)+1; rest=[...rest.slice(0,at),...mine.map(x=>({...x,addon:true,anchor:a})),...rest.slice(at)]; }
+      const INL=new Set(["saltIodized","wakame"]); mine.sort((p,q)=>(INL.has(q.it.fk)?1:0)-(INL.has(p.it.fk)?1:0)); // מלח/וואקמה צמודים לעוגן — ראשונים
+      const at=rest.indexOf(a)+1; rest=[...rest.slice(0,at),...mine.map(x=>({...x,addon:true,anchor:a,inline:INL.has(x.it.fk)})),...rest.slice(at)]; }
     list=rest; }
   // יוגורט עם חביתה או עם לחם — במנה העיקרית, לא בקינוח (לבקשת המשתמש)
   const yogMain=list.some(x=>{ const fk=x.it.fk; const fd=FDB[fk]||TEMP_FDB[fk]; return BREAD_FKS.has(fk)||fk==="ryeBread"||!!(fd&&fd._isRecipe&&String(fd.he||"").startsWith("חביתת")); });
   const courseOfRow=x=>x.addon?courseOfRow(x.anchor):(yogMain&&COURSE_YOG.has(x.it.fk)?"main":courseOf(x.it.fk));
-  const flat=()=>list.map((x,i)=>render(x.it,x.idx,i===list.length-1,!!x.addon));
+  const flat=()=>list.map((x,i)=>render(x.it,x.idx,i===list.length-1,!!x.addon,!!x.inline,!!list[i+1]?.inline));
   if (!(mk==="breakfast"||mk==="lunch"||mk==="dinner")) return flat(); // גם בבוקר (לבקשת המשתמש)
   const groups=["starter","main","dessert"].map(c=>({c,rows:list.filter(x=>courseOfRow(x)===c)})).filter(g=>g.rows.length);
   if (groups.length<2) return flat();
   return groups.map(g=>(<div key={g.c} style={inline?{display:"flex",flexWrap:"wrap",gap:"2px 0",width:"100%",alignItems:"center"}:{}}>
     <div style={{width:"100%",fontSize:14,fontWeight:800,color:"#2F3B34",letterSpacing:.2,marginTop:6,marginBottom:2}}>{COURSE_LABELS[g.c][lang==="he"?"he":"en"]}</div>
-    {g.rows.map((x,i)=>render(x.it,x.idx,i===g.rows.length-1,!!x.addon))}</div>));
+    {g.rows.map((x,i)=>render(x.it,x.idx,i===g.rows.length-1,!!x.addon,!!x.inline,!!g.rows[i+1]?.inline))}</div>));
 }
 // מסגרת "מפת שולחן" משובצת לכרטיסי ארוחה (לבקשת המשתמש — אפשרות ב): המשבצות במסגרת, התוכן על משטח בהיר
 // צבע ייחודי לכל ארוחה (לבקשת המשתמש): בוקר ירוק, ביניים אדום, צהריים כחול, ערב צהוב
@@ -17846,6 +17934,9 @@ const MEAL_FRAME_BORDER={breakfast:"#9fc9a2",snack:"#e3a3a3",lunch:"#9dbfe6",din
 const ginghamBg=mk=>{ const c=`rgba(${MEAL_FRAME_RGB[mk]||MEAL_FRAME_RGB.breakfast},${mk==="dinner"?.34:.26})`; return {backgroundColor:"#FFFFFF",backgroundImage:`linear-gradient(90deg,${c} 50%,transparent 50%),linear-gradient(${c} 50%,transparent 50%)`,backgroundSize:"20px 20px"}; };
 // ===== הערת בישול לצהריים במצב פשוט (לבקשת המשתמש): ארוחה בצלחת אחת שחוזרת יומיים ברצף —
 // ביום הראשון "מבשלים היום — גם למחר", ביום השני "מאתמול". week = אובייקט ימים d0..d6
+// תווית מתכון בלי מילה כפולה (לבקשת המשתמש): כשהשם מתחיל באותה מילה כמו היחידה — "2 עוגיות שיבולת שועל ותמרים"
+function recipeLabelOf(qty, fk, lang){ const name=foodName(fk,lang); const w=name.split(" "); const q=String(qty).trim().split(" "); const last=q[q.length-1]||"";
+  const root=t=>t.replace(/^[והב]/,"").slice(0,3); if (w.length>1 && last && root(w[0])===root(last)) return `${qty} ${w.slice(1).join(" ")}`; return `${qty} ${name}`; }
 function cookNoteOf(week, dayIdx, lang){
   const op=d=>((week&&week[`d${d}`]?.lunch)||[]).find(x=>TEMP_FDB[x.fk]?._onePlate)?.fk||null;
   const cur=op(dayIdx); if (!cur) return null; const he=lang==="he";
@@ -17857,7 +17948,7 @@ function itemTextOf(fk,g,lang){ const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return f
   const su=fd._isRecipe?recipeServingUnit(fd):displayUnit(fk,fd,lang); if(!su) return `${Math.round(g)} ${lang==="he"?"גר'":"g"} ${foodName(fk,lang)}`;
   if (su.weightOnly) return `${fmtWeightG(g,lang)} ${foodName(fk,lang)}`;
   const v=(displayQtyG(fk,fd,g)/su.g)*(su.count||1);
-  return (!fd._isRecipe&&itemLabel(fk,su,v,lang))||`${qtyWithUnit(su,v,lang)} ${foodName(fk,lang)}`; }
+  return (!fd._isRecipe&&itemLabel(fk,su,v,lang))||(fd._isRecipe?recipeLabelOf(qtyWithUnit(su,v,lang),fk,lang):`${qtyWithUnit(su,v,lang)} ${foodName(fk,lang)}`); }
 const PRINT_CSS=`body{font-family:Arial,Helvetica,sans-serif;color:#1E3A2B;margin:24px;line-height:1.5}h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:18px 0 6px;border-bottom:2px solid #E2DED4;padding-bottom:3px}h3{font-size:14px;margin:10px 0 3px}ul{margin:4px 0 8px;padding-inline-start:20px}li{margin:1px 0}.muted{color:#6B7C72;font-size:12px}.box{page-break-inside:avoid;margin-bottom:14px}@media print{body{margin:10mm}}`;
 const escH=t=>String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function buildRecipesPrintHTML(list, lang){ const he=lang==="he";
@@ -17927,7 +18018,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
           {/* רשימת רכיבים כ"צ'יפים" נפרדים (במקום שורת טקסט מאוחדת אחת) — נחוץ כדי לאפשר מתג "מושרה" בודד
               לכל קטנית/דגן בנפרד, בלי לפגוע בקומפקטיות עבור שאר הרכיבים שמוצגים בדיוק כמו קודם */}
           <div style={{display:"flex",flexWrap:"wrap",gap:"2px 0",fontSize:11,color:"#1E3A2B",lineHeight:1.9,fontWeight:500}}>
-            {withCourses(mealKey, ings, ({fk,g,soaked},idx,lastInGroup,addon)=>{
+            {withCourses(mealKey, ings, ({fk,g,soaked},idx,lastInGroup,addon,inl,nextInl)=>{
               const fd=FDB[fk]||TEMP_FDB[fk];if(!fd)return null;
               // חשוב: למתכון יש גודל-מנה משלו (fd._servingG) שמחושב מתוך המרכיבים בפועל — לא ברירת המחדל הגנרית של הקטגוריה
               // (שרק במקרה תואמת לפעמים). בלי זה, "1 מנה שלמה" מוצגת בטעות כ"¾ מנה" או "0.96 מנה" למרות שהכמות נכונה ושלמה.
@@ -17946,7 +18037,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                 <span key={idx} draggable={!!onMoveItem}
                   onDragStart={onMoveItem?(e=>{e.dataTransfer.setData("text/plain",JSON.stringify({mealKey,idx}));e.dataTransfer.effectAllowed="move";}):undefined}
                   title={onMoveItem?(lang==="he"?"גרור לארוחה אחרת כדי להעביר":"Drag to another meal to move it"):undefined}
-                  style={{display:"inline-flex",alignItems:"center",cursor:onMoveItem?"grab":"default"}}>
+                  style={{display:"inline-flex",alignItems:"center",cursor:onMoveItem?"grab":"default",width:(inl||nextInl)?"auto":"100%"}}>
                   {/* לבקשת המשתמש: סימון עקבי (🥚 כתום) לפריטים מן החי בכל מקום שהם מוצגים באפליקציה, לא רק
                       בפאנלים ייעודיים — כך שהמודעות לתוספת מן החי נשארת רציפה, לא מרוכזת ברגעים בודדים */}
                   <span style={{unicodeBidi:"plaintext",color:isAnimal?"#b06a1a":"inherit",fontWeight:isAnimal?700:"inherit"}}>{isAnimal?"🥚 ":""}
@@ -17955,7 +18046,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                         מתצוגות אחרות באפליקציה (חלון-הצעת-שבוע/יום, תצוגת-מתכון) שכן מציגות "kcal · gr'" לכל שורה.
                         נבדק חישובית (סימולציה, 140 ארוחות): סכום-קלוריות-לפי-פריט תמיד תואם בדיוק לסך-הארוחה
                         המוצג (0 אי-התאמות) — אין באג בחישוב עצמו, רק חוסר-תצוגה. נוסף כאן */}
-                    {(su&&!fd._isRecipe&&itemLabel(fk,su,(gD/su.g)*(su.count||1),lang))||<>{qty} {foodName(fk,lang)}</>}{addon&&(lang==="he"?" (להוספה)":" (to add)")}{!simple&&!__ED_MODE&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
+                    {(su&&!fd._isRecipe&&itemLabel(fk,su,(gD/su.g)*(su.count||1),lang))||(fd._isRecipe?recipeLabelOf(qty,fk,lang):<>{qty} {foodName(fk,lang)}</>)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}{!simple&&!__ED_MODE&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
                   {fd._isRecipe && (
                     <button onClick={()=>setViewRecipeId(fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                       style={{marginInlineStart:3,marginInlineEnd:isLast?0:3,background:"#F7EFE3",border:"1px solid #d9c2a3",borderRadius:6,color:"#8C6D53",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
@@ -17969,7 +18060,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                       💧{soaked?(lang==="he"?" מושרה":" soaked"):""}
                     </button>
                   )}
-                  {!soakable && !fd._isRecipe && !isLast && <span>{"  ·  "}</span>}
+                  {nextInl && <span>{"  ·  "}</span>}
                 </span>
               );
             }, lang, true)}
@@ -19595,7 +19686,7 @@ function WeeklyOmegaModal({plannedTotals,actualTotals,lang,onClose}){
 // מרוכזים עכשיו מאחורי כפתור-מניפה אחד ליד בורר הימים. סדר מכוון: קודם "השלם יום"+"נקה" (למי שכבר בנה חלק
 // מהארוחות ידנית ורוצה רק להשלים את החסר), אחר-כך שני כפתורי המתכונים (יום/שבוע), אחר-כך המנגנון הכללי
 // (עדיין מאחורי אישור נפרד, כמו קודם), ולבסוף אופטימיזציה — שמטבעה משנה ארוחות קיימות, לא בונה חדשות
-function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,onSuggestRecipesNSFWeekPlan,onSuggestWeekPlan,onSuggestMixedDayPlan,onSuggestMixedWeekPlan,alwaysOpen}){
+function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,onSuggestRecipesNSFWeekPlan,onSuggestWeekPlan,onSuggestMixedDayPlan,onSuggestMixedWeekPlan,alwaysOpen,mealStyle,onMealStyle}){
   const tx=T[lang];
   const [open,setOpen]=useState(false);
   const [generalConfirming, setGeneralConfirming] = useState(false);
@@ -19614,6 +19705,13 @@ function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,o
       )}
       {isOpen && (
         <div style={alwaysOpen?{width:"100%"}:{marginTop:8,background:"#FFFFFF",borderRadius:14,padding:10,border:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.08)"}}>
+          {onMealStyle&&<div style={{marginBottom:6}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#6B7C72",marginBottom:4}}>{lang==="he"?"סגנון ארוחות:":"Meal style:"}</div>
+            <div style={{display:"flex",gap:6}}>
+              {[["simple",lang==="he"?"🍽 פשוט — עד 4 רכיבים":"🍽 Simple — up to 4 items"],["full",lang==="he"?"📊 מלא — דיוק מרבי":"📊 Full — max precision"]].map(([k,l])=>{ const on=(mealStyle||"full")===k; return (
+                <button key={k} onClick={()=>onMealStyle(k)} style={{flex:1,padding:"7px 4px",borderRadius:10,border:on?"2px solid #2e7d32":"1px solid #D9D3C5",background:on?"#E8F5E9":"#FFFFFF",color:"#1E3A2B",fontSize:12,fontWeight:on?800:500,cursor:"pointer"}}>{on?"✓ ":""}{l}</button>); })}
+            </div>
+          </div>}
           <button onClick={()=>{onSuggestRecipesNSFDayPlan();setOpen(false);}}
             style={{width:"100%",marginTop:alwaysOpen?0:6,padding:"10px 0",borderRadius:12,border:"1px solid #e3b8c9",background:"#FBEFF3",color:"#a1477a",fontSize:13,fontWeight:700,cursor:"pointer"}}>
             {tx.recipesNSFDayPlanBtn}
@@ -21833,7 +21931,7 @@ function AppInner(){
     </div>
   );
   const autoPlanNode=(
-    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ document.getElementById("onboard-profile")?.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} }}/>:<AutoPlanMenu lang={lang} onSwap={()=>setSwapOpen(true)}
+    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ document.getElementById("onboard-profile")?.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} }}/>:<AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
       onSuggestDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("full");setDayPlanOpen(true);})}
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
@@ -21844,7 +21942,7 @@ function AppInner(){
   // גרסה ייעודית לסרגל הצד ב-Desktop (לבקשת המשתמש): האופציות מוצגות ישירות בסרגל עצמו (alwaysOpen), לא בחלון
   // נפתח בלחיצה. "השלם יום" ו"נקה" הוסרו מכאן והועברו לתוך לוח הארוחות עצמו (בין קוביית בוקר לצהריים)
   const autoPlanNodeSidebar=(
-    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ document.getElementById("onboard-profile")?.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} }}/>:<AutoPlanMenu lang={lang} onSwap={()=>setSwapOpen(true)} alwaysOpen
+    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ document.getElementById("onboard-profile")?.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} }}/>:<AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)} alwaysOpen
       onSuggestDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("full");setDayPlanOpen(true);})}
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
@@ -21864,7 +21962,7 @@ function AppInner(){
         {confirmClearWeekMain?(lang==="he"?"⚠️ שוב לאישור":"⚠️ Tap again"):(lang==="he"?"🗑 נקה שבוע":"🗑 Clear Week")}
       </button>
       <button onClick={()=>setPrintWeekHtml(buildWeekMenuPrintHTML(meals,lang))} title={lang==="he"?"הדפסה / PDF של תפריט השבוע":"Print / PDF of this week's menu"}
-        style={{padding:"6px 8px",borderRadius:8,border:"1px solid #bcd4bf",background:"#E8EFE9",color:"#1E3A2B",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>🖨️</button>
+        style={{padding:"6px 8px",borderRadius:8,border:"1px solid #bcd4bf",background:"#E8EFE9",color:"#1E3A2B",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>🖨️ {lang==="he"?"הדפסה":"Print"}</button>
       <div style={{display:"flex",flex:1,background:"#E8EFE9",borderRadius:10,padding:3,border:"1px solid #E2DED4"}}>
         <button onClick={()=>setDashSource("planned")}
           style={{flex:1,padding:"6px 4px",borderRadius:8,border:"none",background:dashSource==="planned"?"#1E3A2B":"transparent",color:dashSource==="planned"?"white":"#6B7C72",fontSize:11,cursor:"pointer",fontWeight:dashSource==="planned"?700:500,whiteSpace:"nowrap"}}>
