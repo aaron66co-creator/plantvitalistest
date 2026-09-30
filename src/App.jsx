@@ -9302,8 +9302,9 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     // בכל ארוחת בוקר יש ירק (לבקשת המשתמש) — אלא אם המנה כבר כוללת ירקות
     const sweet=id=>clean([rec(id), hasSoy(id)?null:PROT(), ...(hasVeg(id)?[]:VEG2()), FR()]); // שני ירקות טריים (רכיב חמישי כשצריך)
     const salty=id=>clean([rec(id), bread(small?1:2), ...VEG2(), spreadOrYog(hasSoy(id))]); // חביתה — תמיד עם ירק טרי בצד
-    // מגיל 65 — ארוחת בוקר חדשה בסיכוי גבוה יותר, עד 3 בשבוע (לבקשת המשתמש)
-    if (newBOk && P.oneB.length && r<(LEU>=2.5?0.45:0.35)) { const id=pick(topLeu(P.oneB)); return clean([rec(id,pick(small?[0.5,0.75]:[0.75,1,1])), hasVeg(id)?null:VEG(), rnd()<0.5?FR():null]); }
+    // מגיל 65, מ-1,800 קק"ל — ארוחת בוקר חדשה בסיכוי גבוה יותר, עד 3 בשבוע (לבקשת המשתמש; ביעד נמוך יותר היא לוקחת
+    // מקום קלורי מהצהריים והערב, ולכן שם נשארות פעמיים)
+    if (newBOk && P.oneB.length && r<(LEU>=2.5&&target>=1800?0.45:0.35)) { const id=pick(topLeu(P.oneB)); return clean([rec(id,pick(small?[0.5,0.75]:[0.75,1,1])), hasVeg(id)?null:VEG(), rnd()<0.5?FR():null]); }
     const bf=topLeu(P.bfast.filter(reUsedOk));
     if (bf.length && (r<0.8||LEU>=2.5)) { const id=pick(bf); return isSavory(id)?salty(id):sweet(id); }
     if (SPR.length) return clean([rec(pick(lim(SPR))), bread(small?1:2), ...VEG2(), PROT()]);
@@ -9425,12 +9426,12 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   plan.__onePlate=best.np; return plan;
 }
 // שבוע במצב פשוט: הארוחה בצלחת אחת של הצהריים חוזרת יומיים ברצף (בישול אחד), כל מתכון עד פעמיים בשבוע;
-// ארוחות בוקר חדשות עד פעמיים בשבוע (מגיל 65 — עד 3) (השאר — ארוחות הבוקר הקיימות, לבקשת המשתמש: 70% מהמנות ממתכונים קיימים)
+// ארוחות בוקר חדשות עד פעמיים בשבוע (מגיל 65 ומ-1,800 קק"ל — עד 3) (השאר — ארוחות הבוקר הקיימות, לבקשת המשתמש: 70% מהמנות ממתכונים קיימים)
 function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, excludedFks=new Set(), opts={}){
   const P=simplePools(recipes,excludedFks); const used={}; let newB=0; const week={}; let prevNp=null;
   for (let d=0; d<7; d++){
     const pairDay=d%2===1&&prevNp;
-    const day=generateSimpleDayPlan(target,recipes,dri,wKg,hp,excludedFks,{...opts,pools:P,used,newBreakfastOk:newB<(((dri&&dri._age)||35)>=65?3:2),onePlate:pairDay?prevNp:null});
+    const day=generateSimpleDayPlan(target,recipes,dri,wKg,hp,excludedFks,{...opts,pools:P,used,newBreakfastOk:newB<(((dri&&dri._age)||35)>=65&&target>=1800?3:2),onePlate:pairDay?prevNp:null});
     const np=day.__onePlate; delete day.__onePlate; prevNp=pairDay?null:np;
     Object.values(day).flat().forEach(x=>{ if (TEMP_FDB[x.fk]?._isRecipe) used[x.fk]=(used[x.fk]||0)+1; });
     if ((day.breakfast||[]).some(x=>P.oneB.includes(x.fk))) newB++;
