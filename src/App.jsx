@@ -1921,10 +1921,11 @@ function tidyMealLogic(plan, tgt, dri, excl){
       if (step&&step>0) { const units=Math.round(it.g/step); const kU=k/Math.max(1,units);
         let n=Math.round(left/kU); if(sign<0) n=Math.min(n,units-1); else n=Math.min(n,Math.max(1,units));
         if (sign>0&&BREAD_FKS.has(it.fk)) n=Math.min(n,(it.fk==="wholePita"?1:2)-units); // לחם: עד 2 פרוסות / פיתה אחת בארוחה
-        if (sign>0&&BIG_FRUIT_FKS.includes(it.fk)) n=Math.min(n,1-units); if (sign>0&&SMALL_FRUIT_FKS.includes(it.fk)) n=Math.min(n,2-units); // פרי גדול: יחידה אחת בארוחה (לבקשת המשתמש — לא שתי בננות)
+        if (sign>0&&BIG_FRUIT_FKS.includes(it.fk)) n=Math.min(n,1-units); if (sign>0&&SMALL_FRUIT_FKS.includes(it.fk)) n=Math.min(n,2-units); if (sign>0&&NUT_MAX_G[it.fk]) n=Math.min(n,Math.floor(NUT_MAX_G[it.fk]/step+1e-6)-units); // פרי גדול: יחידה אחת בארוחה (לבקשת המשתמש — לא שתי בננות)
         if(n<=0) continue;
         arr[i]={...it,g:Math.round((units+sign*n)*step*100)/100}; left-=n*kU; }
       else { const c=Math.min(k*0.6,left); arr[i]={...it,g:Math.round(it.g*(1+sign*c/k)*10)/10}; left-=c; }
+      if (sign>0&&NUT_MAX_G[it.fk]&&arr[i].g>NUT_MAX_G[it.fk]) { const cap=Math.max(it.g,NUT_MAX_G[it.fk]); left+=(arr[i].g-cap)*k/it.g; arr[i]={...arr[i],g:cap}; }
       if (sign>0&&DRINK_CAP_FKS.includes(it.fk)) { const cap=Math.max(it.g,250-arr.reduce((a,x,j)=>a+(j!==i&&DRINK_CAP_FKS.includes(x.fk)?x.g:0),0)); if (arr[i].g>cap) { left+=(arr[i].g-cap)*k/it.g; arr[i]={...arr[i],g:cap}; } } }
     return left<=15;
   };
@@ -2227,7 +2228,29 @@ function tidyMealLogic(plan, tgt, dri, excl){
     const isBread=it=>BREAD_FKS.has(it.fk)||it.fk==="ryeBread"||(catOf(it.fk)==="מאפים"&&/לחם|פיתה|טורטי|לחמני/.test(fdOf(it.fk)?.he||""));
     const FRESH=BIG_FRUIT_FKS.filter(fk=>FDB[fk]&&!(excl&&excl.has(fk)));
     const mealK=m=>(plan[m]||[]).reduce((a,it)=>a+kOf(it),0); const before=JSON.stringify(plan); const k0s={};
-    for (const mk of ALL) { const arr=plan[mk]||[]; if (!arr.length) continue; k0s[mk]=mealK(mk);
+    for (const mk of ALL) k0s[mk]=mealK(mk);
+    // עלים טריים (תרד/כייל/מנגולד) כפריט עצמאי: עד חצי כוס; בארוחה שכבר יש בה עלים — עוברים לארוחה עיקרית בלי עלים, ואם אין — יורדים
+    const leafy=(fk)=>{ const fd=fdOf(fk); if (!fd) return false; if (!fd._isRecipe) return fd.cat==="עלים"&&!HERB_FKS.has(fk);
+      return (fd._ings||[]).some(i=>FDB[i.fk]?.cat==="עלים"&&!HERB_FKS.has(i.fk)&&i.g>=20); };
+    const hasLeaves=(mk,except)=>(plan[mk]||[]).some(x=>x!==except&&leafy(x.fk));
+    for (const mk of ALL) for (const it of [...(plan[mk]||[])]) { if (it._user||!RAW_LEAF_CUP_FKS.includes(it.fk)) continue;
+      const half=Math.round(unitG(it.fk)/2*100)/100; const i=plan[mk].indexOf(it); const nu={...it,g:Math.min(it.g,half)};
+      if (!hasLeaves(mk,it)) { plan[mk][i]=nu; continue; }
+      plan[mk].splice(i,1); const to=MAIN.find(m=>m!==mk&&(plan[m]||[]).length&&!hasLeaves(m)&&!(plan[m]||[]).some(x=>x.fk===it.fk)); if (to) plan[to].push(nu); }
+    // פטריות — רק בתוך מתכון, לא כפריט בפני עצמו: במקומן ירק אחר
+    const VEG_SWAP=["cucumber","tomato","redPepper","yellowPepper","carrot","radish","kohlrabi"].filter(fk=>FDB[fk]&&!(excl&&excl.has(fk)));
+    for (const mk of ALL) { const i=(plan[mk]||[]).findIndex(it=>!it._user&&it.fk==="mushroom"); if (i<0) continue;
+      const v=VEG_SWAP.find(fk=>!plan[mk].some(x=>x.fk===fk)); if (v) plan[mk].splice(i,1,{fk:v,g:unitG(v)}); else plan[mk].splice(i,1); }
+    // אגוזים: עד NUT_MAX_G לפריט; מה שירד — סוג אגוז אחר שעוד לא הופיע היום; ואותו סוג לא ביותר מארוחה אחת
+    const NUTS=Object.keys(NUT_MAX_G).filter(fk=>FDB[fk]&&!(excl&&excl.has(fk))&&!GLOBAL_BANNED_STANDALONE.has(fk));
+    const nutUsed=()=>new Set(ALL.flatMap(m=>(plan[m]||[]).map(x=>x.fk)).filter(fk=>NUT_MAX_G[fk]));
+    const seenNut=new Set();
+    for (const mk of ALL) for (const it of [...(plan[mk]||[])]) { if (it._user||!NUT_MAX_G[it.fk]) continue; let i=plan[mk].indexOf(it); let cur=it;
+      if (seenNut.has(it.fk)) { const alt=NUTS.find(fk=>!nutUsed().has(fk)); if (alt) { cur={fk:alt,g:Math.round(it.g*(FDB[it.fk].per100.kcal||1)/(FDB[alt].per100.kcal||1)*10)/10}; plan[mk][i]=cur; } }
+      seenNut.add(cur.fk); const cap=NUT_MAX_G[cur.fk]; if (cur.g<=cap+0.01) continue;
+      const lostK=kOf({fk:cur.fk,g:cur.g-cap}); plan[mk][i]={...cur,g:cap};
+      if (lostK>30) { const alt=NUTS.find(fk=>!nutUsed().has(fk)); if (alt) { const g=Math.min(NUT_MAX_G[alt],Math.round(lostK/((FDB[alt].per100.kcal||600)/100)*10)/10); const a={fk:alt,g}; plan[mk].push(a); added.add(a); seenNut.add(alt); } } }
+    for (const mk of ALL) { const arr=plan[mk]||[]; if (!arr.length) continue;
       // משקה: עד 250 מ"ל בארוחה
       let dr=0; plan[mk]=arr.map(it=>{ if (it._user||!DRINK_FKS.includes(it.fk)) return it; const g=Math.max(0,Math.min(it.g,250-dr)); dr+=g; return g>0?{...it,g}:null; }).filter(Boolean);
       // פטריות: עד חצי כוס (35 גר')
@@ -2282,7 +2305,12 @@ function tidyMealLogic(plan, tgt, dri, excl){
 // פירות "גדולים" — יחידה אחת בארוחה; במקום שתיים — שני פירות שונים (לבקשת המשתמש). פירות קטנים (משמש, תאנה, שזיף) — כרגיל
 const BIG_FRUIT_FKS=["apple","orange","pear","kiwi","peach","nectarine","persimmon","banana","mango","grapefruit","pineapple","watermelon","melon","guava","papaya","quince"];
 const SMALL_FRUIT_FKS=["plum","apricot","fig","clementine","sabra"];
-const DRINK_CAP_FKS=["soymilkFortified","soymilkOrgPlain","oatMilk"]; // משקה: עד כוס (250 מ"ל) בארוחה
+const DRINK_CAP_FKS=["soymilkFortified","soymilkOrgPlain","oatMilk"];
+// אגוזים (לבקשת המשתמש): עד כ-12 שקדים — ובהתאם לשאר הסוגים (כ-15 גר') לפריט בארוחה; במקום כמות גדולה מסוג אחד — גיוון
+const NUT_MAX_G={almonds:14.4,hazelnuts:16,cashews:15.5,pistachio:14.25,walnuts:14,pecans:15,peanuts:18};
+// עלים טריים שנמדדים בכוס (תרד, כייל, מנגולד): עד חצי כוס, ורק בארוחה שאין בה כבר עלים
+const RAW_LEAF_CUP_FKS=["spinach","kale","swisschard"];
+const HERB_FKS=new Set(["parsley","dill","basil","mintLeaf","cilantroLeaf"]); // משקה: עד כוס (250 מ"ל) בארוחה
 const SHARE_MOVABLE_CATS=new Set(["פרי","אגוזים"]); // זרעים לא זזים — כדי לא לצבור יותר מרבע כף בארוחה
 function rebalanceMealShares(plan){
   if (!plan || __SPOON_ROUND_OFF>0) return plan;
@@ -5238,7 +5266,7 @@ function enforceCalorieCeilingAndFloor(plan, tgt){
 // ensureCalciumAdequacyFinal (שרץ אחרי applyMealHygieneFinalRules) בונה לעצמו רשימת-מועמדים נפרדת, בלי
 // לבדוק מול הרשימה הזו בכלל. הועברה לקבוע גלובלי, כדי שגם מנגנונים אחרים (לא רק applyMealHygieneFinalRules
 // עצמה) יוכלו להימנע מהצעת הפריטים האלה כעצמאיים. נוסף גם "leek" (כרישה) לפי הבקשה החדשה
-const GLOBAL_BANNED_STANDALONE = new Set(["canolaOil","ryeBread","pineNuts","redLentils","greenLentils","brownLentils","blackLentils","pumpkin","peanuts","vinegar","appleCiderVinegar","oliveOil","brusselsSp","turnip","zucchini","cauliflower","broccoli","kale","asparagus","nori","cabbageWhite","cabbageRed","bokChoy","tahiniFullRaw","tahiniRaw","tofu","tempeh","onion","leek","dateSilan"]);
+const GLOBAL_BANNED_STANDALONE = new Set(["canolaOil","ryeBread","pineNuts","redLentils","greenLentils","brownLentils","blackLentils","pumpkin","peanuts","vinegar","appleCiderVinegar","oliveOil","brusselsSp","turnip","zucchini","cauliflower","broccoli","kale","asparagus","nori","cabbageWhite","cabbageRed","bokChoy","tahiniFullRaw","tahiniRaw","tofu","tempeh","onion","leek","dateSilan","mushroom"]);
 function applyMealHygieneFinalRules(plan, tgt){
   const BREAD_FKS = new Set(["wholeWheatBread","wholePita"]);
   const LENTIL_FKS = new Set(["redLentils","greenLentils","brownLentils","blackLentils"]);
