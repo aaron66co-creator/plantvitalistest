@@ -16195,6 +16195,8 @@ function RecipeBookModal({recipes,lang,onClose,profile}){
       return (
         <div style={paperStyle}>
           <div style={{fontSize:16,fontWeight:800,marginBottom:14,textAlign:"center",borderBottom:"2px solid #3a2f2233",paddingBottom:8}}>{lang==="he"?"תוכן עניינים":"Table of Contents"}</div>
+          {/* הסבר על מועדפים בפתח הספר (לבקשת המשתמש) */}
+          <div style={{fontSize:12,lineHeight:1.6,color:"#5a4a30",background:"#f1e6b855",border:"1px solid #d8c68a",borderRadius:8,padding:"7px 9px",marginBottom:12}}>{lang==="he"?"⭐ מועדפים: בתצוגת הניהול (הכפתור ״📋 עבור לתצוגת הניהול״ למטה) לוחצים על ☆ ליד מתכון כדי לסמן אותו כמועדף. אחר כך הכפתור ״☆ מועדפים״ ליד החיפוש מציג רק אותם, וכפתור ״🖨️ הדפסה״ מדפיס או שומר אותם כ-PDF. הסימון הוא לנוחות בלבד — הוא לא משנה את הצעות התפריט.":"⭐ Favorites: in the management view (the \"📋 Switch to management view\" button below), tap ☆ next to a recipe to mark it as a favorite. Then the \"☆ Favorites\" button next to the search shows only those, and \"🖨️ Print\" prints or saves them as PDF. Marking is for convenience only — it does not change the menu suggestions."}</div>
           {tocEntries.length===0 && <div style={{textAlign:"center",fontSize:12,opacity:.6,marginTop:20}}>{lang==="he"?"אין עדיין מתכונים":"No recipes yet"}</div>}
           {tocEntries.map(({cat,entries})=>(
             <div key={cat} style={{marginBottom:14}}>
@@ -20745,6 +20747,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
         </button>
       )}
       {bookOpen&&<RecipeBookModal recipes={recipes} lang={lang} profile={profile} onClose={()=>setBookOpen(false)}/>}
+      {recipes.length>0&&<div style={{fontSize:12,color:"#5a4a30",background:"#f1e6b833",border:"1px solid #e8d9a0",borderRadius:9,padding:"6px 9px",marginBottom:8,lineHeight:1.5}}>{lang==="he"?"⭐ לוחצים על ☆ ליד מתכון כדי לסמן אותו כמועדף — ״☆ מועדפים״ מציג רק אותם, ו״🖨️ הדפסה״ מדפיס אותם. לא משנה את הצעות התפריט.":"⭐ Tap ☆ next to a recipe to mark it as a favorite — \"☆ Favorites\" shows only those, and \"🖨️ Print\" prints them. It does not change the menu suggestions."}</div>}
       {viewId&&(()=>{ const r=recipes.find(x=>x.id===viewId); if(!r) return null;
         const entry=recipeToFdbEntry(r); const sg=entry._servingG||100; const kcal=Math.round(calcKcalActual(ALL_KEYS.reduce((a,k)=>{a[k]=(entry.per100[k]||0)*sg/100;return a;},{})));
         const closeView=()=>{ setViewId(null); scrollBackToRecipe(); };
