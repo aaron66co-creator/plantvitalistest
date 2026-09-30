@@ -9189,7 +9189,7 @@ function* generateMixedWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=
 // שחסר, ומלח מיודד ליוד (אלא אם מסומן תוסף יוד) — כולם בתוך תקרת הנתרן והקלוריות. ההתאמה נבדקה בסימולציה לפני הבנייה
 const SIMPLE_MAIN_CAP=4, SIMPLE_SNACK_CAP=2;
 const SIMPLE_ADDON_FKS=new Set(["flaxseed","chiaseeds","pumpkinS","sunflowerS","saltIodized","wakame","tahiniFullRaw"]);
-const simpleCount=items=>(items||[]).filter(it=>!SIMPLE_ADDON_FKS.has(it.fk)).length;
+const simpleCount=items=>(items||[]).filter(it=>!SIMPLE_ADDON_FKS.has(it.fk)&&FDB[it.fk]?.cat!=="פרי").length; // פרי לא נספר (לבקשת המשתמש)
 function simplePools(recipes, excl){
   const ok=fk=>!!FDB[fk]&&!(excl&&excl.has(fk));
   const rs=(recipes||[]).filter(r=>r&&r.ings&&!r.ings.some(i=>excl&&excl.has(i.fk)));
@@ -9220,7 +9220,8 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   const rnd=opts.rnd||Math.random; const pick=a=>a&&a.length?a[Math.floor(rnd()*a.length)]:null;
   const svG=id=>TEMP_FDB[id]?._servingG||200; const rec=(id,m=1)=>id?{fk:id,g:Math.round(svG(id)*m*10)/10}:null;
   const unitG=fk=>{ const su=getServingUnit(fk,FDB[fk],"he"); return su?.g||100; };
-  const it=(fk,g)=>fk?{fk,g}:null; const FR=()=>{ const fk=pick(P.fruit); return fk?it(fk,unitG(fk)):null; };
+  // פרי: שונה בכל ארוחה של אותו יום; לא נספר במכסת 4 הרכיבים (לבקשת המשתמש)
+  let dayFr=new Set(), frMk="both"; const it=(fk,g)=>fk?{fk,g}:null; const FR=()=>{ const fk=pick(P.fruit.filter(f=>!dayFr.has(f)))||pick(P.fruit); if (fk) dayFr.add(fk); return fk?it(fk,unitG(fk)):null; };
   const caHigh=(dri.calcium?.dri||1000)>=1200; const small=target<1900;
   const PROT=()=>{ const fk=(caHigh&&P.prot.includes("soymilkFortified")&&rnd()<0.7)?"soymilkFortified":(pick(P.prot)||P.caDrink[0]); return fk?it(fk,fk==="soyYogurtPlain"?170:250):null; };
   const bread=(n=1)=>{ const fk=pick(P.bread); return fk?it(fk,fk==="wholePita"?60:32*Math.max(1,Math.min(2,n))):null; };
@@ -9228,34 +9229,41 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   const VEG=()=>{ const fk=pick(["tomato","cucumber","redPepper","yellowPepper","carrot","kohlrabi"].filter(P.ok)); return fk?it(fk,unitG(fk)):null; };
   const SAVORY=/חבית|מקושקש|שקשוק|פריטט/; const isSavory=id=>SAVORY.test(TEMP_FDB[id]?.he||"");
   const SPR=P.spread.filter(id=>svG(id)<=130); // ממרח לפרוסה — לא דיפ או מחית בגודל מנה
-  const spreadOrYog=()=>(SPR.length&&rnd()<0.6)?rec(pick(SPR)):(P.ok("soyYogurtPlain")?it("soyYogurtPlain",170):null);
+  const spreadOrYog=(soy)=>(SPR.length&&(soy||rnd()<0.6))?rec(pick(SPR)):(P.ok("soyYogurtPlain")?it("soyYogurtPlain",170):null);
   const clean=a=>a.filter(Boolean);
+  // מתכון שכבר יש בו סויה (משקה, יוגורט, טופו) — בלי משקה/יוגורט סויה לידו; מתכון שיש בו ירק — בלי ירק נוסף
+  const ingsOf=id=>TEMP_FDB[id]?._ings||[]; const perSv=(id,f)=>{ const I=ingsOf(id); const tot=I.reduce((a,i)=>a+(i.g||0),0)||1; return I.filter(f).reduce((a,i)=>a+(i.g||0),0)/tot*svG(id); };
+  const hasSoy=id=>ingsOf(id).some(i=>SOY_FKS_ALL.has(i.fk)); const hasVeg=id=>perSv(id,i=>["ירק","עלים"].includes(FDB[i.fk]?.cat))>=40;
   const used=opts.used||{}; const newBOk=opts.newBreakfastOk!==false;
   const fixed=opts.existing||{}; const isFixed=mk=>(fixed[mk]||[]).length>0;
   const npChoices=opts.onePlate?[opts.onePlate]:(P.oneL.filter(id=>(used[id]||0)<2).length?P.oneL.filter(id=>(used[id]||0)<2):P.oneL);
   const reUsedOk=id=>(used[id]||0)<2;
   function breakfast(){ const r=rnd();
-    if (newBOk && P.oneB.length && r<0.35) return clean([rec(pick(P.oneB),pick(small?[0.5,0.75]:[0.75,1,1])), rnd()<0.5?FR():null]);
+    // בכל ארוחת בוקר יש ירק (לבקשת המשתמש) — אלא אם המנה כבר כוללת ירקות
+    const sweet=id=>clean([rec(id), hasSoy(id)?null:PROT(), hasVeg(id)?null:VEG(), FR()]);
+    const salty=id=>clean([rec(id), bread(small?1:2), VEG(), spreadOrYog(hasSoy(id))]); // חביתה — תמיד עם ירק טרי בצד
+    if (newBOk && P.oneB.length && r<0.35) { const id=pick(P.oneB); return clean([rec(id,pick(small?[0.5,0.75]:[0.75,1,1])), hasVeg(id)?null:VEG(), rnd()<0.5?FR():null]); }
     const bf=P.bfast.filter(reUsedOk);
-    if (bf.length && r<0.8) { const id=pick(bf); if (isSavory(id)) return clean([rec(id), bread(small?1:2), VEG(), spreadOrYog()]); return clean([rec(id), PROT(), FR()]); }
+    if (bf.length && r<0.8) { const id=pick(bf); return isSavory(id)?salty(id):sweet(id); }
     if (SPR.length) return clean([rec(pick(SPR)), bread(small?1:2), VEG(), PROT()]);
-    { const id=pick(bf.length?bf:P.bfast); return isSavory(id)?clean([rec(id), bread(small?1:2), VEG(), spreadOrYog()]):clean([rec(id), PROT(), FR()]); } }
+    { const id=pick(bf.length?bf:P.bfast); return isSavory(id)?salty(id):sweet(id); } }
   function lunch(np){ if (!np) return dinner(true);
     const m=pick(small?[0.5,0.75,0.75,1]:[0.75,1,1,1.25]); const out=[rec(np,m)];
-    if (P.vegSal.length) out.push(rec(pick(P.vegSal))); if (rnd()<0.7) out.push(FR()); if (rnd()<0.35) out.push(PROT());
-    return clean(out).slice(0,SIMPLE_MAIN_CAP); }
+    if (P.vegSal.length) out.push(rec(pick(P.vegSal))); if (rnd()<0.6&&!hasSoy(np)) out.push(PROT());
+    return [...clean(out).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="dinner"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   function dinner(){ const r=rnd(); const st=P.stew.filter(reUsedOk), so=P.soup.filter(reUsedOk), ls=P.legSal.filter(reUsedOk); let m;
     if (st.length && r<0.45) m=[rec(pick(st)), (()=>{ const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); })(), rec(pick(P.vegSal))];
     else if (so.length && r<0.7) m=[rec(pick(so)), bread(), rec(pick(P.vegSal))];
     else if (ls.length) m=[rec(pick(ls)), bread(), rec(pick(P.vegSal))];
     else m=[rec(pick(st.length?st:P.stew)), (()=>{ const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); })(), rec(pick(P.vegSal))];
-    if (rnd()<0.5) m.push(rnd()<0.5?FR():PROT());
-    return clean(m).slice(0,SIMPLE_MAIN_CAP); }
+    if (rnd()<0.6&&!(m[0]&&hasSoy(m[0].fk))) m.push(PROT());
+    return [...clean(m).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="lunch"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
+  // ביניים: יש כבר פרי בצהריים ובערב — לכן בעיקר משקה/יוגורט סויה או אגוזים (חלבון, לאוצין וסידן), ופרי רק לפעמים
   function snack(){ const r=rnd(); const nut=pick(P.nuts);
-    if (r<(caHigh?0.5:0.3) && P.caDrink.length) return clean([it(P.caDrink[0],250), FR()]);
-    if (r<0.55 && nut) return clean([FR(), it(nut,25)]);
-    if (r<0.8) return clean([FR()]);
-    return clean([PROT(), FR()]).slice(0,SIMPLE_SNACK_CAP); }
+    if (r<(caHigh?0.45:0.3) && P.caDrink.length) return clean([it(P.caDrink[0],250)]);
+    if (r<0.6 && nut) return clean([it(nut,NUT_MAX_G[nut]||14)]); // עד כ-12 שקדים (לבקשת המשתמש)
+    if (r<0.85) return clean([PROT()]);
+    return clean([FR()]); }
   const KEYS=["protein","fiber","calcium","iron","zinc","magnesium","potassium","vitA","vitC","vitE","vitK","vitB1","vitB2","vitB3","vitB6","vitB9","selenium","iodine","choline","copper","vitB5"];
   const caW=caHigh?2:1; const naCap=dri._naCap||hp?.sodiumMax||2300;
   const nutOf=items=>sumNuts((items||[]).map(x=>ingNut(x.fk,x.g,x.soaked)));
@@ -9264,7 +9272,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     // הבסיס נבחר ב-93%–101% מהיעד — משאיר מקום לתוספות (פשתן, גרעינים) שמתווספות אחר כך
     if (k<target*0.93||k>target*1.01) return null; if ((t.sodium||0)>naCap) return null;
     let sc=0; for (const key of KEYS){ const tg=key==="protein"?(wKg||70)*0.9:key==="fiber"?14*target/1000:dri[key]?.dri; if(!tg) continue; sc+=Math.min(1,(t[key]||0)/tg)*(key==="calcium"?caW:key==="vitE"?1.5:1); }
-    ["breakfast","lunch","dinner"].forEach(mk=>{ if (!isFixed(mk) && leuOf(plan[mk])>=2) sc+=3; });
+    ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)) return; const l=leuOf(plan[mk]); sc+=l>=2?3:l+0.45>=2?2:-3; }); // לאוצין: ביעד, או בהישג יד עם גרעיני דלעת (עד 2 כפות)
     const v=mealShareViolation(plan); if (v>0.03) return null; sc-=v*25;
     // חלוקה מאוזנת בין הארוחות (לבקשת המשתמש: "מעט קלוריות בבוקר, הרבה מאוד בצהריים ובערב"): בוקר לפחות 24%,
     // צהריים עד 36% וערב עד 34% — לפני התוספות (זרעים, טחינה), שמוסיפות לצהריים ולערב עוד כ-2%
@@ -9273,11 +9281,11 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     return sc; }
   const tries=opts.tries||700; let best=null, bestSc=-1e9;
   for (let i=0;i<tries;i++){ const np=npChoices.length?npChoices[i%npChoices.length]:null;
-    const plan={ breakfast:isFixed("breakfast")?fixed.breakfast:breakfast(), snack:isFixed("snack")?fixed.snack:snack(), lunch:isFixed("lunch")?fixed.lunch:lunch(np), dinner:isFixed("dinner")?fixed.dinner:dinner() };
+    dayFr=new Set(); frMk=small?(rnd()<0.5?"lunch":"dinner"):"both"; const plan={ breakfast:isFixed("breakfast")?fixed.breakfast:breakfast(), snack:isFixed("snack")?fixed.snack:snack(), lunch:isFixed("lunch")?fixed.lunch:lunch(np), dinner:isFixed("dinner")?fixed.dinner:dinner() };
     const sc=score(plan); if (sc!=null&&sc>bestSc){ bestSc=sc; best={plan,np}; } }
   if (!best) { // אין צירוף בטווח — לוקחים את הקרוב ביותר ליעד הקלורי
     let bd=1e9; for (let i=0;i<tries;i++){ const np=npChoices.length?npChoices[i%npChoices.length]:null;
-      const plan={ breakfast:isFixed("breakfast")?fixed.breakfast:breakfast(), snack:isFixed("snack")?fixed.snack:snack(), lunch:isFixed("lunch")?fixed.lunch:lunch(np), dinner:isFixed("dinner")?fixed.dinner:dinner() };
+      dayFr=new Set(); frMk=small?(rnd()<0.5?"lunch":"dinner"):"both"; const plan={ breakfast:isFixed("breakfast")?fixed.breakfast:breakfast(), snack:isFixed("snack")?fixed.snack:snack(), lunch:isFixed("lunch")?fixed.lunch:lunch(np), dinner:isFixed("dinner")?fixed.dinner:dinner() };
       const k=nutOf(Object.values(plan).flat()).kcal; if (Math.abs(k-target)<bd){ bd=Math.abs(k-target); best={plan,np}; } } }
   const plan=Object.fromEntries(Object.entries(best.plan).map(([mk,a])=>[mk,(a||[]).map(x=>({...x}))]));
   const dayK=()=>nutOf(Object.values(plan).flat()).kcal; const dayN=()=>nutOf(Object.values(plan).flat());
@@ -9289,6 +9297,16 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   // לאוצין: גרעיני דלעת (רבעי כף, עד כף) בארוחה עיקרית שמתחת ל-2 גר'
   if (P.ok("pumpkinS")) ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)||!(plan[mk]||[]).length) return; let q=0;
     while (leuOf(plan[mk])<2 && q<4 && dayK()<target*1.05){ q++; const ex=plan[mk].find(x=>x.fk==="pumpkinS"); if (ex) ex.g=Math.round((ex.g+2.5)*10)/10; else plan[mk].push({fk:"pumpkinS",g:2.5}); } });
+  // השלמת לאוצין (לבקשת המשתמש): ארוחה עיקרית שעדיין מתחת ל-2 גר' — מורידים ממנה את הפרי, מוסיפים יוגורט סויה אם אין בה
+  // סויה (ולא עוברים 4 רכיבים), ואחר כך גרעיני דלעת עד 2 כפות (למשל ליד דייסה שיש בה כבר משקה סויה)
+  ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)||!(plan[mk]||[]).length||leuOf(plan[mk])>=2) return;
+    plan[mk]=plan[mk].filter(x=>FDB[x.fk]?.cat!=="פרי");
+    const soyIn=plan[mk].some(x=>SOY_FKS_ALL.has(x.fk)||hasSoy(x.fk));
+    if (leuOf(plan[mk])<2 && !soyIn && P.ok("soyYogurtPlain") && simpleCount(plan[mk])<SIMPLE_MAIN_CAP && dayK()+ingNut("soyYogurtPlain",170).kcal<=target*1.05) plan[mk].push({fk:"soyYogurtPlain",g:170});
+    if (P.ok("pumpkinS")) { let ex=plan[mk].find(x=>x.fk==="pumpkinS"); while (leuOf(plan[mk])<2 && (ex?ex.g:0)<20 && dayK()<target*1.05){ if (ex) ex.g=Math.round((ex.g+2.5)*10)/10; else { ex={fk:"pumpkinS",g:2.5}; plan[mk].push(ex); } } }
+    // עדיין חסר — "מנה גדולה" (1.25) של המנה העיקרית, אם יש מקום קלורי
+    const main=plan[mk].find(x=>TEMP_FDB[x.fk]?._isRecipe); if (main && leuOf(plan[mk])<2 && main.g<=svG(main.fk)*1.01) { const add=svG(main.fk)*0.25;
+      if (dayK()+ingNut(main.fk,add).kcal<=target*1.05) main.g=Math.round((main.g+add)*10)/10; } });
   // יוד: מלח מיודד ברבעי כפית (1.5 גר') ליד הסלט של ארוחת הערב, עד שהיוד ביעד — בתוך תקרת הנתרן, עד 3 גר' ביום
   if (!opts.iodineSupp && P.ok("saltIodized")){ const mk=["dinner","lunch"].find(m=>!isFixed(m)&&(plan[m]||[]).length); let added=0;
     while (mk && (dayN().iodine||0)<(dri.iodine?.dri||150) && added<3){ const n=dayN(); if ((n.sodium||0)+ingNut("saltIodized",1.5).sodium>naCap) break;
