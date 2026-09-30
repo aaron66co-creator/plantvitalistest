@@ -22623,6 +22623,11 @@ function AppInner(){
         <div style={{marginTop:8,display:"flex",gap:8,alignItems:"flex-start",flexWrap:"wrap"}}>
           <div id="onboard-dayselector-mobile">{daySelectorNode}</div>
           {(tab==="meals"||tab==="micro")&&<div id="onboard-autoplan-mobile">{autoPlanNode}</div>}
+          {/* סגנון ארוחות גלוי במסך הראשי (לבקשת המשתמש) — פשוט / מלא בלחיצה, בלי לפתוח את "תכנון אוטומטי" */}
+          {tab==="meals"&&!planBlock&&<div style={{display:"flex",border:"1px solid #D9D3C5",borderRadius:20,overflow:"hidden",background:"#FFFFFF"}} title={lang==="he"?"סגנון ארוחות":"Meal style"}>
+            {[["simple",lang==="he"?"🍽 פשוט":"🍽 Simple"],["full",lang==="he"?"📊 מלא":"📊 Full"]].map(([k,l])=>{ const on=(profile.mealStyle||"full")===k; return (
+              <button key={k} onClick={()=>setProfile(p=>({...p,mealStyle:k}))} style={{padding:"7px 12px",border:"none",background:on?"#2e7d32":"transparent",color:on?"#FFFFFF":"#1E3A2B",fontSize:13,fontWeight:on?800:600,cursor:"pointer"}}>{l}</button>); })}
+          </div>}
         </div>
         )}
         {!desktopSidebarTab&&tab==="meals"&&weekEmptyCta&&<div style={{marginTop:8}}>{weekEmptyCta}</div>}
