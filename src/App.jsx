@@ -9232,8 +9232,10 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   const unitG=fk=>{ const su=getServingUnit(fk,FDB[fk],"he"); return su?.g||100; };
   // פרי: שונה בכל ארוחה של אותו יום; לא נספר במכסת 4 הרכיבים (לבקשת המשתמש)
   let dayFr=new Set(), frMk="both"; const it=(fk,g)=>fk?{fk,g}:null; const FR=()=>{ const fk=pick(P.fruit.filter(f=>!dayFr.has(f)))||pick(P.fruit); if (fk) dayFr.add(fk); return fk?it(fk,unitG(fk)):null; };
-  const caHigh=(dri.calcium?.dri||1000)>=1200; const small=target<1900;
-  const PROT=()=>{ const fk=(caHigh&&P.prot.includes("soymilkFortified")&&rnd()<0.7)?"soymilkFortified":(pick(P.prot)||P.caDrink[0]); return fk?it(fk,fk==="soyYogurtPlain"?170:250):null; };
+  // יעד סידן גבוה (1,200 מ"ג — נשים מ-51, גברים מ-71). planDRI מקטין את היעד היומי לתכנון, ולכן משווים ליעד המקורי (weekDri)
+  const caHigh=(dri.calcium?.weekDri||dri.calcium?.dri||1000)>=1200; const small=target<1900;
+  const LEU=((dri&&dri._age)||35)>=65?2.5:2; // לאוצין לארוחה: 2 גר', מגיל 65 — 2.5 (כמו במצב המלא)
+  const PROT=()=>{ const fk=(caHigh&&P.prot.includes("soymilkFortified"))?"soymilkFortified":(pick(P.prot)||P.caDrink[0]); return fk?it(fk,fk==="soyYogurtPlain"?170:250):null; };
   const bread=(n=1)=>{ const fk=pick(P.bread); return fk?it(fk,fk==="wholePita"?60:32*Math.max(1,Math.min(2,n))):null; };
   // ארוחת בוקר מלוחה (חביתה, טופו מקושקש): תמיד עם לחם, ירק, וממרח או יוגורט (לבקשת המשתמש)
   const VEG=()=>{ const fk=pick(["tomato","cucumber","redPepper","yellowPepper","carrot","kohlrabi"].filter(P.ok)); return fk?it(fk,unitG(fk)):null; };
@@ -9261,7 +9263,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     { const id=pick(bf.length?bf:P.bfast); return isSavory(id)?salty(id):sweet(id); } }
   function lunch(np){ if (!np) return dinner(true);
     const m=pick(small?[0.5,0.75,0.75,1]:[0.75,1,1,1.25]); const out=[rec(np,m)];
-    if (P.vegSal.length) out.push(rec(pick(lim(P.vegSal)))); if (rnd()<0.6&&!hasSoy(np)) out.push(PROT());
+    if (P.vegSal.length) out.push(rec(pick(lim(P.vegSal)))); if ((caHigh||rnd()<0.6)&&!hasSoy(np)) out.push(PROT()); // יעד סידן גבוה — תמיד משקה סויה מועשר (אם אין סויה במנה)
     return [...clean(out).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="dinner"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   function dinner(){ const r=rnd(); const st=P.stew.filter(reUsedOk), so=P.soup.filter(reUsedOk), ls=P.legSal.filter(reUsedOk); let m;
     // תבשיל דגנים (לבקשת המשתמש: "גדוש דגנים") — בלי דגן נוסף לידו; במקומו פשטידה או מרק עשיר בחלבון. תבשיל קטניות — עם דגן
@@ -9270,7 +9272,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     else if (so.length && r<0.7) m=[rec(pick(so)), bread(), rec(pick(lim(P.vegSal)))];
     else if (ls.length) m=[rec(pick(ls)), bread(), rec(pick(lim(P.vegSal)))];
     else { const id=pick(st.length?st:P.stew); m=[rec(id), side(id), rec(pick(lim(P.vegSal)))]; }
-    if (rnd()<0.6&&!(m[0]&&hasSoy(m[0].fk))) m.push(PROT());
+    if ((caHigh||rnd()<0.6)&&!(m[0]&&hasSoy(m[0].fk))) m.push(PROT());
     return [...clean(m).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="lunch"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   // ביניים (לבקשת המשתמש): כ-6% מהיום — פרי ועוגייה, או שני פירות שונים; נבחר הצירוף הקרוב ביותר ל-6%
   const __kc=new Map(); const kOfC=x=>{ const key=x.fk+"|"+x.g; let v=__kc.get(key); if (v==null){ v=ingNut(x.fk,x.g).kcal; __kc.set(key,v); } return v; };
@@ -9283,14 +9285,14 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     const best=cands.map(c=>clean(c)).sort((x,y)=>Math.abs(x.reduce((q,z)=>q+kOf(z),0)-goal)-Math.abs(y.reduce((q,z)=>q+kOf(z),0)-goal))[0];
     best.forEach(x=>{ if (FDB[x.fk]?.cat==="פרי") dayFr.add(x.fk); }); return best; }
   const KEYS=["protein","fiber","calcium","iron","zinc","magnesium","potassium","vitA","vitC","vitE","vitK","vitB1","vitB2","vitB3","vitB6","vitB9","selenium","iodine","choline","copper","vitB5"];
-  const caW=caHigh?2:1; const naCap=dri._naCap||hp?.sodiumMax||2300;
+  const caW=caHigh?2:1; /* יעד סידן גבוה — משקל כפול בבחירת היום */ const naCap=dri._naCap||hp?.sodiumMax||2300;
   const nutOf=items=>sumNuts((items||[]).map(x=>ingNut(x.fk,x.g,x.soaked)));
   const leuOf=items=>nutOf(items).leucine||0;
   function score(plan){ const all=["breakfast","snack","lunch","dinner"].flatMap(mk=>plan[mk]||[]); const t=nutOf(all); const k=t.kcal||0;
     // הבסיס נבחר ב-93%–101% מהיעד — משאיר מקום לתוספות (פשתן, גרעינים) שמתווספות אחר כך
     if (k<target*0.93||k>target*1.01) return null; if ((t.sodium||0)>naCap) return null;
     let sc=0; for (const key of KEYS){ const tg=key==="protein"?(wKg||70)*0.9:key==="fiber"?14*target/1000:dri[key]?.dri; if(!tg) continue; sc+=Math.min(1,(t[key]||0)/tg)*(key==="calcium"?caW:key==="vitE"?1.5:1); }
-    ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)) return; const l=leuOf(plan[mk]); sc+=l>=2?3:l+0.45>=2?2:-3; }); // לאוצין: ביעד, או בהישג יד עם גרעיני דלעת (עד 2 כפות)
+    ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)) return; const l=leuOf(plan[mk]); sc+=l>=LEU?3:l+0.45>=LEU?2:l>=2?1:-3; }); // לאוצין: ביעד, או בהישג יד עם גרעיני דלעת (עד 2 כפות)
     const v=mealShareViolation(plan); if (v>0.03) return null; sc-=v*25;
     // חלוקה מאוזנת בין הארוחות (לבקשת המשתמש: "מעט קלוריות בבוקר, הרבה מאוד בצהריים ובערב"): בוקר לפחות 24%,
     // צהריים עד 36% וערב עד 34% — לפני התוספות (זרעים, טחינה), שמוסיפות לצהריים ולערב עוד כ-2%
@@ -9317,16 +9319,20 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
       const alaMin=opts.alaMin||1.6; if ((dayN().omega3||0)<alaMin && dayK()<=target*1.02) plan[host][plan[host].length-1].g=tb*2; } }
   // לאוצין: גרעיני דלעת (רבעי כף, עד כף) בארוחה עיקרית שמתחת ל-2 גר'
   if (P.ok("pumpkinS")) ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)||!(plan[mk]||[]).length) return; let q=0;
-    while (leuOf(plan[mk])<2 && q<4 && dayK()<target*1.05){ q++; const ex=plan[mk].find(x=>x.fk==="pumpkinS"); if (ex) ex.g=Math.round((ex.g+2.5)*10)/10; else plan[mk].push({fk:"pumpkinS",g:2.5}); } });
+    while (leuOf(plan[mk])<LEU && q<4 && dayK()<target*1.05){ q++; const ex=plan[mk].find(x=>x.fk==="pumpkinS"); if (ex) ex.g=Math.round((ex.g+2.5)*10)/10; else plan[mk].push({fk:"pumpkinS",g:2.5}); } });
   // השלמת לאוצין (לבקשת המשתמש): ארוחה עיקרית שעדיין מתחת ל-2 גר' — מורידים ממנה את הפרי, מוסיפים יוגורט סויה אם אין בה
   // סויה (ולא עוברים 4 רכיבים), ואחר כך גרעיני דלעת עד 2 כפות (למשל ליד דייסה שיש בה כבר משקה סויה)
-  ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)||!(plan[mk]||[]).length||leuOf(plan[mk])>=2) return;
+  ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)||!(plan[mk]||[]).length||leuOf(plan[mk])>=LEU) return;
     plan[mk]=plan[mk].filter(x=>FDB[x.fk]?.cat!=="פרי");
     const soyIn=plan[mk].some(x=>SOY_FKS_ALL.has(x.fk)||hasSoy(x.fk));
-    if (leuOf(plan[mk])<2 && !soyIn && P.ok("soyYogurtPlain") && simpleCount(plan[mk])<SIMPLE_MAIN_CAP && dayK()+ingNut("soyYogurtPlain",170).kcal<=target*1.05) plan[mk].push({fk:"soyYogurtPlain",g:170});
-    if (P.ok("pumpkinS")) { let ex=plan[mk].find(x=>x.fk==="pumpkinS"); while (leuOf(plan[mk])<2 && (ex?ex.g:0)<20 && dayK()<target*1.05){ if (ex) ex.g=Math.round((ex.g+2.5)*10)/10; else { ex={fk:"pumpkinS",g:2.5}; plan[mk].push(ex); } } }
+    // יעד סידן גבוה (נשים מ-51, גברים מ-71) — משקה סויה מועשר (300 מ"ג סידן) במקום יוגורט סויה ביתי (כ-40 מ"ג)
+    const sp=(caHigh&&P.ok("soymilkFortified"))?{fk:"soymilkFortified",g:250}:P.ok("soyYogurtPlain")?{fk:"soyYogurtPlain",g:170}:null;
+    if (sp && leuOf(plan[mk])<LEU && !soyIn && simpleCount(plan[mk])<SIMPLE_MAIN_CAP && dayK()+ingNut(sp.fk,sp.g).kcal<=target*1.05) plan[mk].push(sp);
+    // תורמוס (חצי כוס — הכי הרבה לאוצין לקלוריה) בצהריים/ערב, כשעדיין חסר
+    if (mk!=="breakfast" && leuOf(plan[mk])<LEU && P.ok("lupinBeansCooked") && !plan[mk].some(x=>x.fk==="lupinBeansCooked") && simpleCount(plan[mk])<SIMPLE_MAIN_CAP && dayK()+ingNut("lupinBeansCooked",60).kcal<=target*1.05) plan[mk].push({fk:"lupinBeansCooked",g:60});
+    if (P.ok("pumpkinS")) { let ex=plan[mk].find(x=>x.fk==="pumpkinS"); while (leuOf(plan[mk])<LEU && (ex?ex.g:0)<20 && dayK()<target*1.05){ if (ex) ex.g=Math.round((ex.g+2.5)*10)/10; else { ex={fk:"pumpkinS",g:2.5}; plan[mk].push(ex); } } }
     // עדיין חסר — "מנה גדולה" (1.25) של המנה העיקרית, אם יש מקום קלורי
-    const main=plan[mk].find(x=>TEMP_FDB[x.fk]?._isRecipe); if (main && leuOf(plan[mk])<2 && main.g<=svG(main.fk)*1.01) { const add=svG(main.fk)*0.25;
+    const main=plan[mk].find(x=>TEMP_FDB[x.fk]?._isRecipe); if (main && leuOf(plan[mk])<LEU && main.g<=svG(main.fk)*1.01) { const add=svG(main.fk)*0.25;
       if (dayK()+ingNut(main.fk,add).kcal<=target*1.05) main.g=Math.round((main.g+add)*10)/10; } });
   // יוד: מלח מיודד ברבעי כפית (1.5 גר') ליד הסלט של ארוחת הערב, עד שהיוד ביעד — בתוך תקרת הנתרן, עד 3 גר' ביום
   if (!opts.iodineSupp && P.ok("saltIodized")){ const mk=["dinner","lunch"].find(m=>!isFixed(m)&&(plan[m]||[]).length); let added=0;
@@ -9337,7 +9343,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     if (wk && P.ok("wakame")){ let w=0; while ((dayN().iodine||0)<(dri.iodine?.dri||150)*0.95 && w<1 && (dayN().sodium||0)+ingNut("wakame",0.5).sodium<=naCap){ const ex=plan[wk].find(x=>x.fk==="wakame"); if (ex) ex.g+=0.5; else plan[wk].push({fk:"wakame",g:0.5}); w+=0.5; } } }
   // סידן: טחינה מלאה (עשירה בסידן) "להוספה" ליד הסלט של הערב, כשהסידן עדיין מתחת ל-95% מהיעד — עד 2 כפות
   if (P.ok("tahiniFullRaw")&&dri.calcium?.dri){ const mk=["dinner","lunch"].find(m=>!isFixed(m)&&(plan[m]||[]).length); let q=0;
-    while (mk && (dayN().calcium||0)<dri.calcium.dri*0.95 && q<2 && dayK()<target*1.04){ q++; const ex=plan[mk].find(x=>x.fk==="tahiniFullRaw"); if (ex) ex.g+=15; else plan[mk].push({fk:"tahiniFullRaw",g:15}); } }
+    while (mk && (dayN().calcium||0)<dri.calcium.dri*0.95 && q<2 && dayK()<target*1.05){ q++; const ex=plan[mk].find(x=>x.fk==="tahiniFullRaw"); if (ex) ex.g+=15; else plan[mk].push({fk:"tahiniFullRaw",g:15}); } }
   // ויטמין E: גרעיני חמנייה (רבעי כף, עד כף) ליד הסלט של הצהריים, כשחסר ויש מקום קלורי
   if (P.ok("sunflowerS")&&dri.vitE?.dri){ const mk=["lunch","dinner"].find(m=>!isFixed(m)&&(plan[m]||[]).length); let q=0;
     while (mk && (dayN().vitE||0)<dri.vitE.dri*0.9 && q<4 && dayK()<target*1.045){ q++; const ex=plan[mk].find(x=>x.fk==="sunflowerS"); if (ex) ex.g=Math.round((ex.g+2.5)*10)/10; else plan[mk].push({fk:"sunflowerS",g:2.5}); } }
@@ -9352,7 +9358,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     const hi=["breakfast","lunch","dinner"].filter(mk=>!isFixed(mk)&&shr(mk)>0.36).sort((a,b)=>shr(b)-shr(a))[0];
     const lo=["breakfast","lunch","dinner"].filter(mk=>!isFixed(mk)&&shr(mk)<0.25).sort((a,b)=>shr(a)-shr(b))[0]; if (!hi&&!lo) break;
     let moved=false;
-    if (hi) { const m=plan[hi].find(x=>TEMP_FDB[x.fk]?._isRecipe); const q=m?svG(m.fk)*0.25:0; if (m&&m.g-q>=svG(m.fk)*0.5-0.01&&dayK()-ingNut(m.fk,q).kcal>=target*0.95) { const g0=m.g, l0=leuOf(plan[hi]); m.g=Math.round((m.g-q)*10)/10; if (l0>=2&&leuOf(plan[hi])<2) m.g=g0; else moved=true; } } // לא מורידים ארוחה מתחת ל-2 גר' לאוצין
+    if (hi) { const m=plan[hi].find(x=>TEMP_FDB[x.fk]?._isRecipe); const q=m?svG(m.fk)*0.25:0; if (m&&m.g-q>=svG(m.fk)*0.5-0.01&&dayK()-ingNut(m.fk,q).kcal>=target*0.95) { const g0=m.g, l0=leuOf(plan[hi]); m.g=Math.round((m.g-q)*10)/10; if (l0>=LEU&&leuOf(plan[hi])<LEU) m.g=g0; else moved=true; } } // לא מורידים ארוחה מתחת ל-2 גר' לאוצין
     if (lo) { const m=plan[lo].find(x=>TEMP_FDB[x.fk]?._isRecipe); const q=m?svG(m.fk)*0.25:0; if (m&&m.g+q<=svG(m.fk)*1.5+0.01&&dayK()+ingNut(m.fk,q).kcal<=target*1.05) { m.g=Math.round((m.g+q)*10)/10; moved=true; } }
     if (!moved) break; }
   plan.__onePlate=best.np; return plan;
@@ -17233,8 +17239,11 @@ function WelcomeModal({lang,onClose,onStartTour}){
         {/* תיקון (לבקשת המשתמש: "אפשר שהסיור יעלה אוטומטית כשנכנסים לאפליקציה?") — במקום בחירה בין שני כפתורים
             (התחל-סיור / דלג), כפתור-המשך יחיד שממשיך תמיד אל הסיור באופן אוטומטי — מי שלא רוצה להמשיך בו
             יכול לדלג מתוכו-עצמו (כפתור 'דלג' כבר קיים בכל שלב של הסיור עצמו) */}
-        <button onClick={onStartTour} style={{width:"100%",padding:"12px 0",borderRadius:12,border:"none",background:"#2e7d32",color:"white",fontSize:14,fontWeight:700,cursor:"pointer"}}>
-          {isHe?"בואו נתחיל ✅":"Let's get started ✅"}
+        <button onClick={()=>onStartTour(false)} style={{width:"100%",padding:"12px 0",borderRadius:12,border:"none",background:"#2e7d32",color:"white",fontSize:14,fontWeight:700,cursor:"pointer"}}>
+          {isHe?"בואו נתחיל ✅ (סיור קצר)":"Let's get started ✅ (short tour)"}
+        </button>
+        <button onClick={()=>onStartTour(true)} style={{width:"100%",padding:"8px 0",marginTop:6,borderRadius:12,border:"none",background:"transparent",color:"#2e7d32",fontSize:12.5,fontWeight:700,textDecoration:"underline",cursor:"pointer"}}>
+          {isHe?"סיור מלא — כל האפשרויות (15 שלבים)":"Full tour — all features (15 steps)"}
         </button>
         <button onClick={onClose} style={{width:"100%",padding:"10px 0",marginTop:8,borderRadius:12,border:"1px solid #E2DED4",background:"transparent",color:"#6B7C72",fontSize:12,cursor:"pointer"}}>
           {isHe?"דלג, כבר מכיר/ה":"Skip, I already know it"}
@@ -17247,6 +17256,18 @@ function WelcomeModal({lang,onClose,onStartTour}){
 // תיקון (לבקשת המשתמש: "בנה onboarding כראוי") — סיור מודרך אמיתי: שלב-אחד-בכל-פעם, כל שלב "מאיר" (spotlight)
 // אלמנט-אמיתי-וקיים באפליקציה (לא רק תיאור-טקסטואלי), עם טולטיפ ממוקם-לידו + ניווט הבא/הקודם/דלג. משתמש
 // בטכניקת ה-box-shadow-ענק כדי ליצור אפקט-חושך-מסביב-לחור-שקוף, בלי צורך בספריית-חיצונית
+// אזהרה קצרה בכניסה הראשונה (לבקשת המשתמש: פחות שכבות לפני שמתחילים) — 4 שורות עיקריות, והנוסח המלא בקישור
+function FirstRunDisclaimer({lang,onOk,onFull}){ const he=lang==="he";
+  const items=he?["מידע כללי בלבד — לא ייעוץ רפואי.","למבוגרים בריאים בגיל 18 ומעלה. עם מצב רפואי, בהריון או בהנקה, או עם הפרעת אכילה — רק בליווי רופא/ה או דיאטן/ית.","לפני שינוי משמעותי בתזונה — כדאי להתייעץ עם איש/אשת מקצוע.","הנתונים נשמרים רק במכשיר שלך."]
+    :["General information only — not medical advice.","For healthy adults aged 18+. With a medical condition, pregnancy or breastfeeding, or an eating disorder — only with a doctor or dietitian.","Before a major change in diet — consult a professional.","Your data is stored only on your device."];
+  return (<div style={{position:"fixed",inset:0,zIndex:390,background:"#0009",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div style={{background:"#FBF8F3",borderRadius:18,width:"100%",maxWidth:420,padding:"20px 20px 16px",border:"1px solid #E2DED4",direction:he?"rtl":"ltr",color:"#1E3A2B"}}>
+      <div style={{fontSize:17,fontWeight:800,marginBottom:10}}>{he?"⚠️ לפני שמתחילים":"⚠️ Before you start"}</div>
+      {items.map(t=><div key={t} style={{fontSize:14,lineHeight:1.55,marginBottom:6}}>• {t}</div>)}
+      <button onClick={onOk} style={{width:"100%",marginTop:10,padding:"11px 0",borderRadius:12,border:"none",background:"#2e7d32",color:"#FFFFFF",fontSize:15,fontWeight:800,cursor:"pointer"}}>{he?"הבנתי ✓":"Got it ✓"}</button>
+      <button onClick={onFull} style={{width:"100%",marginTop:6,padding:"8px 0",borderRadius:12,border:"none",background:"transparent",color:"#6B7C72",fontSize:12.5,textDecoration:"underline",cursor:"pointer"}}>{he?"לנוסח המלא":"Full text"}</button>
+    </div></div>);
+}
 const ONBOARD_STEPS = [
   {id:"onboard-profile", altId:"onboard-profile-mobile", tab:"meals", he:{title:"1. הפרופיל שלך", desc:"גובה, משקל, גיל, מין ופעילות — מהם מחושב היעד הקלורי. כאן גם מסמנים רגישויות ואלרגיות (סויה, גלוטן, אגוזים, בוטנים, שומשום) ומצב פסח, ועונים על שאלת המצב הרפואי — בלי תשובה אי אפשר לתכנן. ב״סגנון ארוחות״ בוחרים 🍽 פשוט (עד 4 רכיבים בארוחה — ברירת המחדל) או 📊 מלא (דיוק מרבי)."}, en:{title:"1. Your profile", desc:"Height, weight, age, sex and activity set your calorie target. Here you also mark sensitivities and allergies (soy, gluten, nuts, peanuts, sesame) and Passover mode, and answer the medical question — planning stays locked until it is answered. Under 'Meal style' choose 🍽 Simple (up to 4 items per meal — the default) or 📊 Full (maximum precision)."}},
   {id:"onboard-dayselector", altId:"onboard-dayselector-mobile", tab:"meals", he:{title:"2. בורר-היום", desc:"בחרו יום — כל שינוי חל רק על היום הזה."}, en:{title:"2. Day selector", desc:"Pick a day — changes apply only to this day."}},
@@ -17264,7 +17285,9 @@ const ONBOARD_STEPS = [
   {id:"detail-toggle", altId:"detail-toggle", tab:"meals", he:{title:"14. תצוגה פשוטה או מלאה", desc:"כברירת מחדל המסכים מציגים רק את העיקר: מה לאכול ומה חסר. הכפתור הזה פותח את כל המספרים והניתוחים, ובכל כרטיס יש גם ״פירוט ›״."}, en:{title:"14. Simple or full view", desc:"By default screens show just the essentials: what to eat and what's missing. This button opens all the numbers and analyses, and every card also has 'Details ›'."}},
   {id:"onboard-disclaimer", altId:"onboard-disclaimer-mobile", tab:"meals", he:{title:"15. אזהרה", desc:"זו אפליקציית-מידע בלבד, למבוגרים (18+). לא להריון ולהנקה ללא ליווי. אם יש בעיה בריאותית, שאלו רופא."}, en:{title:"15. Warning", desc:"Information app only, for adults (18+). Not for pregnancy or breastfeeding without guidance. For health issues, consult a doctor."}},
 ];
-function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen,setInfoMenuOpen}){
+// סיור קצר לכניסה הראשונה (לבקשת המשתמש): 5 שלבים עיקריים — פרופיל, תכנון אוטומטי, כרטיס הארוחה, מתכונים, יומן
+const ONBOARD_STEPS_SHORT=[0,2,4,6,9].map(i=>ONBOARD_STEPS[i]);
+function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen,setInfoMenuOpen,steps:STEPS=ONBOARD_STEPS}){
   const [step,setStep]=useState(0);
   const [rect,setRect]=useState(null);
   const tourElRef=useRef(null);
@@ -17276,7 +17299,7 @@ function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen,setInfoMe
     return ()=>{ window.removeEventListener("scroll",onMove,true); window.removeEventListener("resize",onMove); cancelAnimationFrame(raf); };
   },[]);
   useEffect(()=>{
-    const s = ONBOARD_STEPS[step];
+    const s = STEPS[step];
     setRect(null); tourElRef.current=null;
     if (setInfoMenuOpen) setInfoMenuOpen(false);
     if (s.tab) { 
@@ -17313,15 +17336,15 @@ function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen,setInfoMe
     const t1 = setTimeout(()=>findAndMeasure(3), 150);
     return ()=>clearTimeout(t1);
   }, [step]);
-  const s = ONBOARD_STEPS[step];
-  const isLast = step===ONBOARD_STEPS.length-1;
+  const s = STEPS[step];
+  const isLast = step===STEPS.length-1;
   const pad=6;
   // תיקון-המשך: לשלב שפותח-מודאל-אמיתי, לא מרנדרים שום שכבת-חושך-חוסמת-כלל - רק תגית-צפה-קטנה-בתחתית,
   // עם z-index גבוה-מ-60 (המודאל) כדי שתישאר גלויה, אבל בלי לכסות/לחסום שום קליק שמיועד למודאל-עצמו
   if (s.showsModal) {
     return (
       <div style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",width:300,maxWidth:"92vw",background:"#FBF8F3",borderRadius:14,padding:14,border:"1px solid #E2DED4",boxShadow:"0 8px 24px rgba(0,0,0,.3)",direction:isHe?"rtl":"ltr",textAlign:isHe?"right":"left",zIndex:9999}}>
-        <div style={{fontSize:13,fontWeight:800,color:"#1E3A2B",marginBottom:4}}>{s[lang==="he"?"he":"en"].title}</div>
+        <div style={{fontSize:13,fontWeight:800,color:"#1E3A2B",marginBottom:4}}>{(`${step+1}. `+s[lang==="he"?"he":"en"].title.replace(/^\d+\.\s*/,""))}</div>
         <div style={{fontSize:12,color:"#6B7C72",lineHeight:1.5,marginBottom:10}}>{s[lang==="he"?"he":"en"].desc}</div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
           <button onClick={onDone} style={{background:"none",border:"none",color:"#6B7C72",fontSize:11,cursor:"pointer",padding:4}}>{isHe?"דלג":"Skip"}</button>
@@ -17349,7 +17372,7 @@ function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen,setInfoMe
         width:Math.min(300,window.innerWidth-20), boxSizing:"border-box", background:"#FBF8F3", borderRadius:14, padding:16, border:"1px solid #E2DED4",
         boxShadow:"0 8px 24px rgba(0,0,0,.25)", direction:isHe?"rtl":"ltr", textAlign:isHe?"right":"left", zIndex:411,
       }}>
-        <div style={{fontSize:13,fontWeight:800,color:"#1E3A2B",marginBottom:4}}>{s[lang==="he"?"he":"en"].title}</div>
+        <div style={{fontSize:13,fontWeight:800,color:"#1E3A2B",marginBottom:4}}>{(`${step+1}. `+s[lang==="he"?"he":"en"].title.replace(/^\d+\.\s*/,""))}</div>
         <div style={{fontSize:12,color:"#6B7C72",lineHeight:1.5,marginBottom:12}}>{s[lang==="he"?"he":"en"].desc}</div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
           <button onClick={onDone} style={{background:"none",border:"none",color:"#6B7C72",fontSize:11,cursor:"pointer",padding:4}}>{isHe?"דלג":"Skip"}</button>
@@ -17358,7 +17381,7 @@ function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen,setInfoMe
             <button onClick={()=>isLast?onDone():setStep(st=>st+1)} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#2e7d32",color:"white",fontSize:12,fontWeight:700,cursor:"pointer"}}>{isLast?(isHe?"סיימתי ✅":"Done ✅"):(isHe?"הבא":"Next")}</button>
           </div>
         </div>
-        <div style={{fontSize:10,color:"#A79A85",marginTop:8,textAlign:"center"}}>{step+1}/{ONBOARD_STEPS.length}</div>
+        <div style={{fontSize:10,color:"#A79A85",marginTop:8,textAlign:"center"}}>{step+1}/{STEPS.length}</div>
       </div>
     </div>
   );
@@ -18420,6 +18443,12 @@ function PlanBlockedNotice({block,lang,onOpenProfile}){
     : block.kind==="severe"
     ? (he?`סימנת: ${names}. במצב הזה התפריט צריך להיבנות על ידי דיאטן/ית או רופא/ה — התכנון חסום גם עם הצהרה על ליווי.`:`You marked: ${names}. In this condition the menu must be built by a dietitian or doctor — planning stays blocked even with a supervision declaration.`)
     : (he?`האפליקציה מיועדת למבוגרים בריאים. סימנת: ${names}. אם את/ה בליווי דיאטן/ית — אפשר לאשר זאת בפרופיל, ואז התכנון ייפתח.`:`The app is intended for healthy adults. You marked: ${names}. If you are under a dietitian's supervision, confirm it in your profile to unlock planning.`);
+  // משתמש חדש שעוד לא מילא פרופיל (לבקשת המשתמש: חוויה ראשונה מזמינה ולא "חסום") — הזמנה ירוקה במקום אזהרה אדומה
+  if (block.kind==="unanswered") return (<div style={{background:"#E8F3EA",border:"1px solid #9cc9a5",borderRadius:12,padding:"12px 13px",marginBottom:8,color:"#1E3A2B",direction:he?"rtl":"ltr"}}>
+    <div style={{fontSize:16,fontWeight:800,color:"#2e7d32",marginBottom:4}}>{he?"👋 ברוכים הבאים! שלב 1 מתוך 2: הפרופיל שלך":"👋 Welcome! Step 1 of 2: your profile"}</div>
+    <div style={{fontSize:13.5,lineHeight:1.55}}>{he?"ממלאים גובה, משקל, גיל ורמת פעילות, ועונים על שאלת המצב הרפואי (אם אין — מסמנים ״אין״). זה לוקח כדקה — ואז בשלב 2 נציע לך תפריט לשבוע שלם.":"Fill in height, weight, age and activity, and answer the medical question (if none — tick \"None\"). It takes about a minute — then in step 2 we'll suggest a menu for the whole week."}</div>
+    {onOpenProfile&&<button onClick={onOpenProfile} style={{marginTop:9,padding:"9px 16px",borderRadius:10,border:"none",background:"#2e7d32",color:"#FFFFFF",fontSize:14,fontWeight:800,cursor:"pointer"}}>{he?"למילוי הפרופיל ←":"Fill in my profile →"}</button>}
+  </div>);
   return (<div style={{background:"#FDECEA",border:"1px solid #e6a39c",borderRadius:12,padding:"10px 12px",marginBottom:8,color:"#1E3A2B",direction:he?"rtl":"ltr"}}>
     <div style={{fontSize:15,fontWeight:800,color:"#b3261e",marginBottom:4}}>{title}</div>
     <div style={{fontSize:13.5,lineHeight:1.55}}>{body}</div>
@@ -18981,6 +19010,7 @@ function FoodLogPanel({logDate,onDateChange,meals,actualIntake,onMarkPlanned,onF
 function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,setRememberProfile,compact}){
   // ageErr: גיל מתחת ל-18 — לא נשמר (האפליקציה למבוגרים בלבד)
   const[open,setOpen]=useState(false); const[ageErr,setAgeErr]=useState(false); const tx=T[lang];const goal=effectiveGoal(profile);
+  useEffect(()=>{ const f=()=>setOpen(true); window.addEventListener("pv-open-profile",f); return ()=>window.removeEventListener("pv-open-profile",f); },[]); // "למילוי הפרופיל" פותח את הפאנל
   const h=+profile.height,w=+profile.weight;
   const bmi=h&&w?fmtN(w/((h/100)*(h/100)),1):null;
   const bmiColor=!bmi?"#6B7C72":bmi<18.5?"#3a7bc8":bmi<25?"#2e7d32":bmi<30?"#b8860b":bmi<35?"#b8722e":"#c62828";
@@ -21235,6 +21265,7 @@ function AppInner(){
   // אמיתיים), ולכן מוצג בכל כניסה, לא רק בפעם-הראשונה-אי-פעם. כשהאפליקציה תעבור לשיווק בפועל, שווה להחזיר
   // את הגייט המבוסס-על wfpb_seen_welcome (השורה המקורית עדיין למטה, בתגובה, לשחזור-מהיר)
   const[showWelcome,setShowWelcome]=useState(true);
+  const[tourFull,setTourFull]=useState(false); // סיור מלא (15 שלבים) או קצר (5)
   // const[showWelcome,setShowWelcome]=useState(()=>!load("wfpb_seen_welcome",false));
   function dismissWelcome(){ setShowWelcome(false); save("wfpb_seen_welcome", true); }
   // תיקון (לבקשת המשתמש: "בנה onboarding כראוי") — מצב-הסיור-המודרך: מופעל מכפתור "קחו אותי בסיור" במסך-
@@ -21468,7 +21499,8 @@ function AppInner(){
   const[saveDayToast,setSaveDayToast]=useState("");
   const[suggestOpen,setSuggestOpen]=useState(null);
   const[swapOpen,setSwapOpen]=useState(false);
-  const[infoOpen,setInfoOpen]=useState(()=>load("wfpb_disclaimer_seen",false)?null:"disclaimer");
+  const[infoOpen,setInfoOpen]=useState(null);
+  const[firstDisc,setFirstDisc]=useState(()=>!load("wfpb_disclaimer_seen",false)); // אזהרה קצרה בכניסה הראשונה
   const[priceEditorOpen,setPriceEditorOpen]=useState(false);
   const[priceOverrides,setPriceOverrides]=useState(()=>load(PRICE_OVERRIDE_STORAGE,{}));
   const[monthlyBudget,setMonthlyBudget]=useState(()=>loadMonthlyBudget());
@@ -21992,25 +22024,30 @@ function AppInner(){
       ))}
     </div>
   );
+  // שבוע ריק (לבקשת המשתמש: הפעולה העיקרית גלויה למשתמש חדש) — כפתור גדול אחד "הצע לי תפריט לשבוע"
+  const weekIsEmpty=!Object.values(meals||{}).some(d=>MEAL_KEYS.some(mk=>((d||{})[mk]||[]).length));
+  const weekEmptyCta=(weekIsEmpty&&!planBlock)?(<button onClick={()=>askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
+    style={{width:"100%",flex:"1 1 100%",padding:"14px 0",marginBottom:8,borderRadius:14,border:"none",background:"linear-gradient(135deg,#2e7d32,#43a047)",color:"#FFFFFF",fontSize:16,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 12px rgba(46,125,50,0.25)"}}>
+    {lang==="he"?"✨ הצע לי תפריט לשבוע":"✨ Suggest a menu for my week"}</button>):null;
   const autoPlanNode=(
-    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ document.getElementById("onboard-profile")?.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} }}/>:<AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
+    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<><AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
       onSuggestDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("full");setDayPlanOpen(true);})}
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
       onSuggestRecipesNSFWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
       onSuggestMixedDayPlan={isVegan?undefined:()=>askBudgetThen("day",()=>setMixedPlanOpen(true))}
-      onSuggestMixedWeekPlan={isVegan?undefined:()=>askBudgetThen("week",()=>setMixedWeekPlanOpen(true))}/>
+      onSuggestMixedWeekPlan={isVegan?undefined:()=>askBudgetThen("week",()=>setMixedWeekPlanOpen(true))}/></>
   );
   // גרסה ייעודית לסרגל הצד ב-Desktop (לבקשת המשתמש): האופציות מוצגות ישירות בסרגל עצמו (alwaysOpen), לא בחלון
   // נפתח בלחיצה. "השלם יום" ו"נקה" הוסרו מכאן והועברו לתוך לוח הארוחות עצמו (בין קוביית בוקר לצהריים)
   const autoPlanNodeSidebar=(
-    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ document.getElementById("onboard-profile")?.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} }}/>:<AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)} alwaysOpen
+    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<>{weekEmptyCta}<AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)} alwaysOpen
       onSuggestDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("full");setDayPlanOpen(true);})}
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
       onSuggestRecipesNSFWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
       onSuggestMixedDayPlan={isVegan?undefined:()=>askBudgetThen("day",()=>setMixedPlanOpen(true))}
-      onSuggestMixedWeekPlan={isVegan?undefined:()=>askBudgetThen("week",()=>setMixedWeekPlanOpen(true))}/>
+      onSuggestMixedWeekPlan={isVegan?undefined:()=>askBudgetThen("week",()=>setMixedWeekPlanOpen(true))}/></>
   );
   // מקטע החלפת "מתוכנן/בפועל" — מוצג בראש אזור התוכן הראשי גם בפריסת ה-Desktop. כפתור האיפוס הידני (🧹) שהיה
   // כאן הוסר (לבקשת המשתמש): הוא התייתר ברגע שנוסף איפוס אוטומטי של התפריט המתוכנן בכל כניסה חדשה לאפליקציה
@@ -22584,6 +22621,7 @@ function AppInner(){
           {(tab==="meals"||tab==="micro")&&<div id="onboard-autoplan-mobile">{autoPlanNode}</div>}
         </div>
         )}
+        {!desktopSidebarTab&&tab==="meals"&&weekEmptyCta&&<div style={{marginTop:8}}>{weekEmptyCta}</div>}
       </div>
 
       {/* Content */}
@@ -22823,13 +22861,14 @@ function AppInner(){
         lang={lang} recipes={recipes} excludedFks={excludedFks} onToggleExclude={toggleExcludedFk}/>}
       {savedOpen&&<SavedMealsModal mealKey={savedOpen} onClose={()=>setSavedOpen(null)}
         onLoad={ings=>{setMeal(savedOpen,ings.map(x=>({...x,_id:x._id||uid()})));setSavedOpen(null);}} lang={lang}/>}
-      {showWelcome&&<WelcomeModal lang={lang} onClose={()=>{dismissWelcome();setTab("meals");}} onStartTour={()=>{dismissWelcome();setTab("meals");setInfoOpen(null);fillDemoDayIfEmpty();setOnboardActive(true);}}/>}
-      {onboardActive&&<OnboardTour lang={lang} onDone={()=>{setDayPlanOpen(false);setInfoMenuOpen(false);setOnboardActive(false);setTab("meals");}} setTab={setTab} setDayPlanMode={setDayPlanMode} setDayPlanOpen={setDayPlanOpen} setInfoMenuOpen={setInfoMenuOpen}/>}
+      {showWelcome&&<WelcomeModal lang={lang} onClose={()=>{dismissWelcome();setTab("meals");}} onStartTour={(full)=>{dismissWelcome();setTab("meals");setInfoOpen(null);fillDemoDayIfEmpty();setTourFull(!!full);setOnboardActive(true);}}/>}
+      {onboardActive&&<OnboardTour lang={lang} steps={tourFull?ONBOARD_STEPS:ONBOARD_STEPS_SHORT} onDone={()=>{setDayPlanOpen(false);setInfoMenuOpen(false);setOnboardActive(false);setTab("meals");}} setTab={setTab} setDayPlanMode={setDayPlanMode} setDayPlanOpen={setDayPlanOpen} setInfoMenuOpen={setInfoMenuOpen}/>}
       {savedDaysOpen&&<SavedDaysModal onClose={()=>setSavedDaysOpen(false)}
         onLoad={dayData=>{loadSavedDayTemplate(dayData);setSavedDaysOpen(false);}} lang={lang}/>}
       {swapOpen&&<SwapModal allMeals={allDayMeals} target={target} wKg={wKg} profile={profile}
         lang={lang} onClose={()=>setSwapOpen(false)} onApply={handleSwapApply}/>}
-      {infoOpen&&<InfoModal infoKey={infoOpen} lang={lang} onClose={()=>{ if(infoOpen==="disclaimer") save("wfpb_disclaimer_seen",true); setInfoOpen(null); }}/>}
+      {infoOpen&&<InfoModal infoKey={infoOpen} lang={lang} onClose={()=>{ if(infoOpen==="disclaimer") { save("wfpb_disclaimer_seen",true); setFirstDisc(false); } setInfoOpen(null); }}/>}
+      {firstDisc&&!showWelcome&&!onboardActive&&!infoOpen&&<FirstRunDisclaimer lang={lang} onOk={()=>{ save("wfpb_disclaimer_seen",true); setFirstDisc(false); }} onFull={()=>setInfoOpen("disclaimer")}/>}
       {restRun&&restRun.loading&&(
         <div style={{position:"fixed",inset:0,zIndex:390,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center"}}>
           <div style={{background:"#FBF8F3",borderRadius:16,padding:"24px 30px",textAlign:"center",border:"1px solid #E2DED4"}}>
