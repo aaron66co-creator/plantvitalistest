@@ -9211,7 +9211,7 @@ function simplePools(recipes, excl){
     oneB: ids(rs.filter(r=>r.onePlate&&r.preferredMeal==="breakfast")),
     bfast: ids(reg.filter(r=>["דייסות","קערות"].includes(cat(r))||(r.preferredMeal==="breakfast"&&cat(r)!=="משקאות"&&kc(r)>=150))),
     spread: ids(reg.filter(r=>cat(r)==="ממרחים")),
-    cookie: ids(reg.filter(r=>/עוגי/.test(r.name))),
+    cookie: ids(reg.filter(r=>/עוגי|מאפינס/.test(r.name)&&kc(r)<=100)), // עוגיות ומיני מאפינס — עד 100 קק"ל ליחידה (לצד פרי)
     fav: new Set(rs.filter(r=>r.fav).map(r=>r.id)), // מתכונים מועדפים (☆) — העדפה עדינה בבחירת היום
     stew: ids(reg.filter(r=>["תבשילי קטניות","תבשילי דגנים"].includes(cat(r)))),
     grainStew: ids(reg.filter(r=>cat(r)==="תבשילי דגנים")),
@@ -9306,7 +9306,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   function score(plan){ const all=["breakfast","snack","lunch","dinner"].flatMap(mk=>plan[mk]||[]); const t=nutOf(all); const k=t.kcal||0;
     // הבסיס נבחר ב-93%–101% מהיעד — משאיר מקום לתוספות (פשתן, גרעינים) שמתווספות אחר כך
     if (k<target*0.93||k>target*1.01) return null; if ((t.sodium||0)>naCap) return null;
-    let sc=0; for (const key of KEYS){ const tg=key==="protein"?(wKg||70)*0.9:key==="fiber"?14*target/1000:dri[key]?.dri; if(!tg) continue; sc+=Math.min(1,(t[key]||0)/tg)*(key==="calcium"?caW:key==="vitE"?1.5:1); }
+    let sc=0; for (const key of KEYS){ const tg=key==="protein"?(wKg||70)*0.9:key==="fiber"?14*target/1000:dri[key]?.dri; if(!tg) continue; const tgK=key==="calcium"?(dri.calcium?.weekDri||tg):tg; sc+=Math.min(1,(t[key]||0)/tgK)*(key==="calcium"?caW:key==="vitE"?1.5:1); } // סידן — מול היעד המלא (לבקשת המשתמש: 100% בשבוע)
     ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)) return; const l=leuOf(plan[mk]); sc+=l>=LEU?3:l+0.45>=LEU?2:l>=2?1:-3; }); // לאוצין: ביעד, או בהישג יד עם גרעיני דלעת (עד 2 כפות)
     const v=mealShareViolation(plan); if (v>0.03) return null; sc-=v*25;
     // חלוקה מאוזנת בין הארוחות (לבקשת המשתמש: "מעט קלוריות בבוקר, הרבה מאוד בצהריים ובערב"): בוקר לפחות 24%,
@@ -9354,7 +9354,11 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   { const dayVeg=()=>["breakfast","snack","lunch","dinner"].reduce((a,mk)=>a+simpleVegUnits(plan[mk]),0);
     for (let g=0; g<6 && dayVeg()<SIMPLE_VEG_MIN; g++){ const mk=["lunch","dinner","breakfast"].filter(m=>!isFixed(m)&&(plan[m]||[]).length&&simpleCount(plan[m])<SIMPLE_MAIN_CAP).sort((a,b)=>simpleVegUnits(plan[a])-simpleVegUnits(plan[b]))[0];
       if (!mk) break; const fk=pick(VEG_FRESH.filter(f=>P.ok(f)&&!plan[mk].some(x=>x.fk===f))); if (!fk) break; const add={fk,g:unitG(fk)};
-      if (dayK()+ingNut(fk,add.g).kcal>target*1.05) break; plan[mk].push(add); } }
+      if (dayK()+ingNut(fk,add.g).kcal>target*1.05) break; plan[mk].push(add); }
+    // עדיין חסר מעט (אין מקום לרכיב נוסף) — מגדילים ירק טרי שכבר בצלחת ביחידה (עד פי 1.6 מהכמות, עד 20 קק"ל)
+    for (const mk of ["breakfast","lunch","dinner"]) { if (dayVeg()>=SIMPLE_VEG_MIN||isFixed(mk)) continue;
+      for (const x of (plan[mk]||[]).filter(x=>VEG_FRESH.includes(x.fk))) { if (dayVeg()>=SIMPLE_VEG_MIN) break; const g0=x.g, u=getServingUnit(x.fk,FDB[x.fk],"he")?.g||80;
+        const ng=Math.ceil((Math.round(g0/u)+0.5)*u)+1; if (ng>g0*1.6) continue; const k0=dayK(); x.g=ng; if (dayK()>Math.max(k0,target*1.05)+20) x.g=g0; } } }
   // יוד: מלח מיודד ברבעי כפית (1.5 גר') ליד הסלט של ארוחת הערב, עד שהיוד ביעד — בתוך תקרת הנתרן, עד 3 גר' ביום
   if (!opts.iodineSupp && P.ok("saltIodized")){ const mk=["dinner","lunch"].find(m=>!isFixed(m)&&(plan[m]||[]).length); let added=0;
     while (mk && (dayN().iodine||0)<(dri.iodine?.dri||150) && added<3){ const n=dayN(); if ((n.sodium||0)+ingNut("saltIodized",1.5).sodium>naCap) break;
@@ -9395,6 +9399,52 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
     Object.values(day).flat().forEach(x=>{ if (TEMP_FDB[x.fk]?._isRecipe) used[x.fk]=(used[x.fk]||0)+1; });
     if ((day.breakfast||[]).some(x=>P.oneB.includes(x.fk))) newB++;
     week[`d${d}`]=day; }
+  // סידן שבועי לפחות 100% מהיעד (לבקשת המשתמש): בימים הדלים ביותר — פשטידה מוחלפת במשקה סויה מועשר (300 מ"ג), יוגורט סויה
+  // ביתי (כ-40 מ"ג) מוחלף במשקה, או מתווסף משקה לארוחה עיקרית בלי סויה (עד 5 רכיבים, עד 105% קלוריות), ולבסוף טחינה מלאה
+  { const caT=dri?.calcium?.weekDri||dri?.calcium?.dri||1000; const all=d=>["breakfast","snack","lunch","dinner"].flatMap(m=>d[m]||[]);
+    const dN=d=>sumNuts(all(d).map(x=>ingNut(x.fk,x.g,x.soaked))); const days=Object.keys(week);
+    const avgCa=()=>days.reduce((a,k)=>a+(dN(week[k]).calcium||0),0)/days.length;
+    const soyIn=a=>(a||[]).some(x=>SOY_FKS_ALL.has(x.fk)||(TEMP_FDB[x.fk]?._ings||[]).some(i=>SOY_FKS_ALL.has(i.fk)));
+    const okDrink=!!FDB.soymilkFortified&&!(excludedFks&&excludedFks.has("soymilkFortified"));
+    // מקום קלורי למשקה: אם היום יעבור 105% — המנה העיקרית בארוחה קטנה ברבע מנה (עד ¾ מנה לפחות); המשקה מחזיר חלבון ולאוצין
+    // אם אין מקום בארוחה עצמה — מנה עיקרית בארוחה אחרת באותו יום, ואחר כך תוספת דגן מבושל (עד 75% מהכמות, לא פחות מ-100 גרם)
+    const vegOk=d=>["breakfast","snack","lunch","dinner"].reduce((x,mk)=>x+simpleVegUnits(d[mk]),0)>=SIMPLE_VEG_MIN-0.01; // הקטנה לא מורידה מתחת ל-7 יחידות ירק
+    const fits=(d,a,addK)=>{ if (dN(d).kcal+addK<=target*1.05) return true; const orig=[];
+      const cand=[...[...a].filter(x=>TEMP_FDB[x.fk]?._isRecipe).sort((x,y)=>ingNut(y.fk,y.g).kcal-ingNut(x.fk,x.g).kcal),
+        ...["lunch","dinner","breakfast"].flatMap(m=>(d[m]||[]).filter(x=>!a.includes(x)&&TEMP_FDB[x.fk]?._isRecipe)),
+        ...["lunch","dinner"].flatMap(m=>(d[m]||[]).filter(x=>!TEMP_FDB[x.fk]?._isRecipe&&FDB[x.fk]?.cat==="דגן"&&x.g>=130))];
+      for (const m of cand) { const isR=!!TEMP_FDB[m.fk]?._isRecipe; const sv=isR?(TEMP_FDB[m.fk]._servingG||200):m.g;
+        const ng=Math.round((m.g-sv*0.25)*10)/10; if (isR?ng<sv*0.75-0.01:ng<100) continue; orig.push([m,m.g]); m.g=ng;
+        if (vegOk(d)&&dN(d).kcal+addK<=target*1.05) return true; }
+      orig.forEach(([m,g])=>{ m.g=g; }); return false; };
+    const skip=new Set();
+    for (let g=0; g<40 && avgCa()<caT; g++){ let done=false, reverted=false;
+      for (const k of [...days].sort((a,b)=>(dN(week[a]).calcium||0)-(dN(week[b]).calcium||0))){ if (skip.has(k)) continue; const d=week[k];
+        const snap=JSON.stringify(d), wasOk=vegOk(d);
+        for (const mk of ["dinner","lunch"]) { if (done||!okDrink) break; const a=d[mk]||[]; const i=a.findIndex(x=>P.pash.includes(x.fk)); if (i>=0&&!soyIn(a.filter((x,j)=>j!==i))) { a[i]={fk:"soymilkFortified",g:250}; done=true; } } // בודקים סויה בלי הפשטידה עצמה
+        for (const mk of ["breakfast","lunch","dinner","snack"]) { if (done||!okDrink) break; const a=d[mk]||[]; const i=a.findIndex(x=>x.fk==="soyYogurtPlain"); if (i>=0&&!a.some(x=>x.fk==="soymilkFortified")) { a[i]={fk:"soymilkFortified",g:250}; done=true; } }
+        for (const mk of ["dinner","lunch","breakfast"]) { if (done||!okDrink) break; const a=d[mk]||[]; if (a.length&&!soyIn(a)&&simpleCount(a)<SIMPLE_MAIN_CAP&&fits(d,a,115)) { a.push({fk:"soymilkFortified",g:250}); done=true; } }
+        // פשטידה בארוחה שיש בה מנת סויה — מוחלפת במשקה שיבולת שועל מועשר (לא סויה כפולה, וגם קל יותר)
+        for (const mk of ["dinner","lunch"]) { if (done||!FDB.oatMilk||(excludedFks&&excludedFks.has("oatMilk"))) break; const a=d[mk]||[]; const i=a.findIndex(x=>P.pash.includes(x.fk)); if (i>=0&&!a.some(x=>x.fk==="oatMilk"||x.fk==="soymilkFortified")) { a[i]={fk:"oatMilk",g:250}; done=true; } }
+        // ארוחת בוקר: הפרי (שאינו חובה בבוקר) מוחלף במשקה מועשר — סויה, או שיבולת שועל כשיש סויה במנה
+        if (!done) { const a=d.breakfast||[]; const i=a.findIndex(x=>FDB[x.fk]?.cat==="פרי"); if (i>=0&&!a.some(x=>x.fk==="soymilkFortified"||x.fk==="oatMilk")) { const fk=(!soyIn(a)&&okDrink)?"soymilkFortified":(FDB.oatMilk&&!(excludedFks&&excludedFks.has("oatMilk"))?"oatMilk":null);
+          if (fk) { const f0=a[i]; a[i]={fk,g:250}; if (dN(d).kcal<=target*1.05||fits(d,a,0)) done=true; else a[i]=f0; } } }
+        // ארוחה שכבר יש בה סויה — משקה שיבולת שועל מועשר (300 מ"ג סידן) במקום משקה סויה
+        const okOat=!!FDB.oatMilk&&!(excludedFks&&excludedFks.has("oatMilk"));
+        for (const mk of ["dinner","lunch","breakfast"]) { if (done||!okOat) break; const a=d[mk]||[]; if (a.length&&!a.some(x=>x.fk==="oatMilk"||x.fk==="soymilkFortified")&&simpleCount(a)<SIMPLE_MAIN_CAP&&fits(d,a,110)) { a.push({fk:"oatMilk",g:250}); done=true; } }
+        for (const mk of ["dinner","lunch"]) { if (done||!FDB.tahiniFullRaw||(excludedFks&&excludedFks.has("tahiniFullRaw"))) break; const a=d[mk]||[]; const ex=a.find(x=>x.fk==="tahiniFullRaw"); if (a.length&&(!ex||ex.g<30)&&fits(d,a,93)) { if (ex) ex.g+=15; else a.push({fk:"tahiniFullRaw",g:15}); done=true; } }
+        // אחרון: משקה מועשר לארוחת הביניים (סויה, או שיבולת שועל כשכבר יש סויה ביום); המקום הקלורי — מהצהריים
+        if (!done) { const a=d.snack||[]; const fk=okDrink&&!soyIn(a)?"soymilkFortified":okOat?"oatMilk":null;
+          if (fk&&a.length&&!a.some(x=>x.fk==="oatMilk"||x.fk==="soymilkFortified")&&fits(d,d.lunch||[],110)) { a.push({fk,g:250}); done=true; } }
+        // שינוי שהוריד את היום מתחת ל-7 יחידות ירק (פשטידת ירקות שהוחלפה) — מבוטל, והיום לא נוגעים בו עוד
+        if (done&&wasOk&&!vegOk(d)) { week[k]=JSON.parse(snap); skip.add(k); done=false; reverted=true; break; }
+        if (done) break; }
+      if (!done&&!reverted) break; }
+    // ההחלפות לא מוציאות יום מטווח הקלוריות (95%-105%): עודף — מקטינים מנה; חוסר (פשטידה שהוחלפה במשקה) — רבע מנה נוספת
+    for (const k of days) { const d=week[k]; if (dN(d).kcal>target*1.05) fits(d,[],0);
+      for (let r=0; r<4 && dN(d).kcal<target*0.95; r++) { const m=["lunch","dinner"].flatMap(mk=>(d[mk]||[]).filter(x=>TEMP_FDB[x.fk]?._isRecipe))
+          .filter(x=>x.g+(TEMP_FDB[x.fk]._servingG||200)*0.25<=(TEMP_FDB[x.fk]._servingG||200)*1.5).sort((x,y)=>x.g/(TEMP_FDB[x.fk]._servingG||200)-y.g/(TEMP_FDB[y.fk]._servingG||200))[0];
+        if (!m) break; const sv=TEMP_FDB[m.fk]._servingG||200; m.g=Math.round((m.g+sv*0.25)*10)/10; if (dN(d).kcal>target*1.05) { m.g=Math.round((m.g-sv*0.25)*10)/10; break; } } } }
   return week;
 }
 
@@ -15739,6 +15789,11 @@ const DEF_RECIPES=[
 {id:"wg02sal",name:"סלט עגבניות, מלפפון ונבט חיטה",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"tomato",g:200},{fk:"cucumber",g:238},{fk:"springOnion",g:30},{fk:"parsley",g:8},{fk:"lemon",g:25},{fk:"oliveOil",g:7.5},{fk:"wheatGerm",g:14}],instructions:"קוצצים עגבניות, מלפפונים, בצל ירוק ופטרוזיליה. מתבלים במיץ לימון ושמן זית. מפזרים נבט חיטה ממש לפני ההגשה, כדי שיישאר פריך."},
 {id:"wg03lat",name:"לביבות עדשים ונבט חיטה",servings:4,type:"חביתה",preferredMeal:"any",foodGroup:"קטנית",ings:[{fk:"redLentils",g:330},{fk:"oatFlour",g:46},{fk:"wheatGerm",g:28},{fk:"onion",g:110},{fk:"garlic",g:6},{fk:"parsley",g:16},{fk:"oliveOil",g:15},{fk:"turmericGround",g:2},{fk:"blackPepperGround",g:1}],instructions:"מועכים עדשים אדומות מבושלות. מוסיפים בצל ושום קצוצים דק, פטרוזיליה, קמח שיבולת שועל, נבט חיטה, כורכום ופלפל, ולשים לעיסה אחידה. יוצרים 8 לביבות ומטגנים במחבת מוברשת בשמן זית, 3–4 דקות מכל צד."},
 {id:"wg04bwl",name:"קערת יוגורט סויה, פירות יער ונבט חיטה",servings:1,type:"קערה",preferredMeal:"breakfast",foodGroup:"חלבון",ings:[{fk:"soyYogurtPlain",g:250},{fk:"blueberry",g:74},{fk:"banana",g:60},{fk:"wheatGerm",g:7},{fk:"flaxseed",g:7},{fk:"pumpkinS",g:15}],instructions:"שמים יוגורט סויה בקערה. מוסיפים אוכמניות וחצי בננה פרוסה. מפזרים מעל נבט חיטה וזרעי פשתן טחונים. מפזרים מעל כף גרעיני דלעת."},
+// מאפים קטנים לארוחת ביניים (לבקשת המשתמש: "עוד עוגיות ומאפים מתאימים ליד פרי") — 64–86 קק"ל ליחידה, מרכיבי משרד הבריאות
+{id:"sb01tc",name:"עוגיות טחינה ושיבולת שועל",servings:20,type:"מאפה",preferredMeal:"snack",foodGroup:"דגן",ings:[{fk:"oatsMedRaw",g:200},{fk:"tahiniRaw",g:90},{fk:"dateSilan",g:80},{fk:"cinnamon",g:2}],instructions:"מערבבים שיבולת שועל, טחינה גולמית, סילאן וקינמון לבצק דביק. יוצרים 20 כדורים, משטחים על תבנית עם נייר אפייה ואופים ב-180°C כ-12–14 דקות. מצננים לפני ההגשה."},
+{id:"sb02bn",name:"עוגיות בננה, שיבולת שועל וצימוקים",servings:18,type:"מאפה",preferredMeal:"snack",foodGroup:"דגן",ings:[{fk:"banana",g:240},{fk:"oatsMedRaw",g:200},{fk:"raisins",g:60},{fk:"cinnamon",g:2}],instructions:"מועכים את הבננות, מוסיפים שיבולת שועל, צימוקים וקינמון ומערבבים. יוצרים 18 עוגיות על תבנית עם נייר אפייה ואופים ב-180°C כ-15 דקות, עד הזהבה."},
+{id:"sb03pb",name:"עוגיות חמאת בוטנים ותמרים",servings:20,type:"מאפה",preferredMeal:"snack",foodGroup:"דגן",ings:[{fk:"oatsMedRaw",g:180},{fk:"peanutButter",g:100},{fk:"medjoolDate",g:144},{fk:"cinnamon",g:2}],instructions:"טוחנים את התמרים לממרח, מוסיפים חמאת בוטנים, שיבולת שועל וקינמון ומערבבים. יוצרים 20 עוגיות ואופים ב-175°C כ-12 דקות."},
+{id:"sb04cm",name:"מיני מאפינס גזר ואגוזים",servings:20,type:"מאפה",preferredMeal:"snack",foodGroup:"דגן",ings:[{fk:"oatFlour",g:150},{fk:"carrot",g:150},{fk:"medjoolDate",g:96},{fk:"walnuts",g:40},{fk:"flaxseed",g:14},{fk:"cinnamon",g:2}],instructions:"מערבבים זרעי פשתן טחונים עם 3 כפות מים ומניחים 5 דקות. מגררים גזר, קוצצים תמרים ואגוזים, ומערבבים עם קמח שיבולת שועל, קינמון והפשתן וכ-100 מ\"ל מים. ממלאים 20 תבניות מיני מאפינס ואופים ב-180°C כ-18 דקות."},
 ];
 // ארוחות בצלחת אחת (לבקשת המשתמש): עד 400 קק"ל למנה, ולכל היותר 2 מנות (אוכלים אותן לכל היותר יומיים ברצף) —
 // הכמויות מוקטנות באופן יחסי ומעוגלות (5 גר' מעל 20 גר', גרם שלם מתחת; תבלינים — חצאי גרם)
