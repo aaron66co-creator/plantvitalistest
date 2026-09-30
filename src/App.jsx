@@ -9187,6 +9187,14 @@ function* generateMixedWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=
 // ביותר — קלוריות 95–105% מהיעד, נתרן מתחת לתקרה, כללי תמהיל הארוחות, וכיסוי מרבי של היעדים; לאוצין ≥2 גר' בכל ארוחה
 // עיקרית; משקל כפול לסידן כשהיעד 1,200 מ"ג (נשים מגיל 51, גברים מגיל 71). אחר כך: פשתן לאומגה 3, גרעיני דלעת ללאוצין
 // שחסר, ומלח מיודד ליוד (אלא אם מסומן תוסף יוד) — כולם בתוך תקרת הנתרן והקלוריות. ההתאמה נבדקה בסימולציה לפני הבנייה
+const STARCHY_VEG=new Set(["potatoCooked","potatoRaw","sweetPotatoCooked","sweetPotatoRaw","corn"]);
+const isVegNonStarchy=fk=>{ const c=FDB[fk]?.cat; return (c==="ירק"||c==="עלים")&&!STARCHY_VEG.has(fk); };
+// יחידות ירק (לבקשת המשתמש: "לפחות 7 יחידות ירק / סלט ירקות ביום"): ירק טרי — יחידה לכל יחידה; מנה/מתכון — לפי גרם הירקות
+// (לא עמילניים) במנה המוגשת, 80 גר' = יחידה
+function simpleVegUnits(items){ return (items||[]).reduce((a,it)=>{ const fd=FDB[it.fk]||TEMP_FDB[it.fk]; if(!fd) return a;
+  if (fd._isRecipe){ const I=fd._ings||[]; const tot=I.reduce((t,i)=>t+(i.g||0),0)||1; return a+I.filter(i=>isVegNonStarchy(i.fk)).reduce((t,i)=>t+(i.g||0),0)/tot*(it.g||0)/80; }
+  if (!isVegNonStarchy(it.fk)) return a; const u=getServingUnit(it.fk,fd,"he")?.g||80; return a+Math.max(1,Math.round((it.g||0)/u)); },0); }
+const SIMPLE_VEG_MIN=7;
 const SIMPLE_MAIN_CAP=5, SIMPLE_SNACK_CAP=2; // עד 5 רכיבים כשיש צורך (לבקשת המשתמש) — לירק שני בבוקר ולהשלמת לאוצין; המבנה הבסיסי נשאר 4
 const FAV_BONUS=1; // נקודות לכל מתכון מועדף ביום בבחירת התפריט הפשוט
 const SIMPLE_ADDON_FKS=new Set(["flaxseed","chiaseeds","pumpkinS","sunflowerS","saltIodized","wakame","tahiniFullRaw"]);
@@ -9213,7 +9221,8 @@ function simplePools(recipes, excl){
     soup: ids(reg.filter(r=>cat(r)==="מרקים")),
     legSal: ids(reg.filter(r=>cat(r)==="סלטי קטניות")),
     // סלט ירקות בלי דגן משמעותי (לא סלט קינואה/בורגול) — בכל ארוחה עיקרית כבר יש דגן, לחם או תבשיל דגנים
-    vegSal: ids(reg.filter(r=>{ if (cat(r)!=="סלטי ירקות") return false; const tot=r.ings.reduce((a,i)=>a+(i.g||0),0)||1; return r.ings.filter(i=>FDB[i.fk]?.cat==="דגן").reduce((a,i)=>a+(i.g||0),0)/tot<0.15; })),
+    vegSal: ids(reg.filter(r=>{ if (cat(r)!=="סלטי ירקות") return false; const tot=r.ings.reduce((a,i)=>a+(i.g||0),0)||1; if (r.ings.filter(i=>FDB[i.fk]?.cat==="דגן").reduce((a,i)=>a+(i.g||0),0)/tot>=0.15) return false;
+      return r.ings.filter(i=>isVegNonStarchy(i.fk)).reduce((a,i)=>a+(i.g||0),0)/tot>=0.5; })), // לפחות חצי ירקות (לא סלט תפוחי אדמה / בטטה)
     fruit: ["apple","orange","banana","pear","kiwi","clementine","grapes","mango","peach","strawberry","persimmon","pomegranate","plum","nectarine","grapefruit","pineapple"].filter(ok),
     nuts: ["almonds","walnuts","cashews","pistachio","hazelnuts","pecans"].filter(ok),
     grain: COOKED_GRAIN_FKS.filter(fk=>ok(fk)&&fk!=="wholeWPasta"),
@@ -9299,6 +9308,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     const v=mealShareViolation(plan); if (v>0.03) return null; sc-=v*25;
     // חלוקה מאוזנת בין הארוחות (לבקשת המשתמש: "מעט קלוריות בבוקר, הרבה מאוד בצהריים ובערב"): בוקר לפחות 24%,
     // צהריים עד 36% וערב עד 34% — לפני התוספות (זרעים, טחינה), שמוסיפות לצהריים ולערב עוד כ-2%
+    { const vu=["breakfast","snack","lunch","dinner"].reduce((a,mk)=>a+simpleVegUnits(plan[mk]),0); sc-=Math.max(0,SIMPLE_VEG_MIN-vu)*0.4; } // העדפה לימים עשירים בירקות
     // תמהיל (לבקשת המשתמש): ביניים 6% והיתרה לארוחות העיקריות — כ-31% לכל אחת (טווח 25%–36%), ועונש על כל סטייה
     const sh=mk=>nutOf(plan[mk]).kcal/k;
     for (const mk of ["breakfast","lunch","dinner"]) { if (isFixed(mk)) continue; const x=sh(mk); if (x<0.25||x>0.36) return null; sc-=Math.abs(x-0.313)*40; }
@@ -9337,6 +9347,11 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     // עדיין חסר — "מנה גדולה" (1.25) של המנה העיקרית, אם יש מקום קלורי
     const main=plan[mk].find(x=>TEMP_FDB[x.fk]?._isRecipe); if (main && leuOf(plan[mk])<LEU && main.g<=svG(main.fk)*1.01) { const add=svG(main.fk)*0.25;
       if (dayK()+ingNut(main.fk,add).kcal<=target*1.05) main.g=Math.round((main.g+add)*10)/10; } });
+  // ירקות (לבקשת המשתמש): לפחות 7 יחידות ביום — ירק טרי לצהריים/ערב (הארוחה הדלה יותר בירקות), בתוך מכסת 5 הרכיבים ועד 105% קלוריות
+  { const dayVeg=()=>["breakfast","snack","lunch","dinner"].reduce((a,mk)=>a+simpleVegUnits(plan[mk]),0);
+    for (let g=0; g<6 && dayVeg()<SIMPLE_VEG_MIN; g++){ const mk=["lunch","dinner","breakfast"].filter(m=>!isFixed(m)&&(plan[m]||[]).length&&simpleCount(plan[m])<SIMPLE_MAIN_CAP).sort((a,b)=>simpleVegUnits(plan[a])-simpleVegUnits(plan[b]))[0];
+      if (!mk) break; const fk=pick(VEG_FRESH.filter(f=>P.ok(f)&&!plan[mk].some(x=>x.fk===f))); if (!fk) break; const add={fk,g:unitG(fk)};
+      if (dayK()+ingNut(fk,add.g).kcal>target*1.05) break; plan[mk].push(add); } }
   // יוד: מלח מיודד ברבעי כפית (1.5 גר') ליד הסלט של ארוחת הערב, עד שהיוד ביעד — בתוך תקרת הנתרן, עד 3 גר' ביום
   if (!opts.iodineSupp && P.ok("saltIodized")){ const mk=["dinner","lunch"].find(m=>!isFixed(m)&&(plan[m]||[]).length); let added=0;
     while (mk && (dayN().iodine||0)<(dri.iodine?.dri||150) && added<3){ const n=dayN(); if ((n.sodium||0)+ingNut("saltIodized",1.5).sodium>naCap) break;
@@ -18041,6 +18056,8 @@ const ginghamBg=mk=>{ const c=`rgba(${MEAL_FRAME_RGB[mk]||MEAL_FRAME_RGB.breakfa
 // תווית מתכון בלי מילה כפולה (לבקשת המשתמש): כשהשם מתחיל באותה מילה כמו היחידה — "2 עוגיות שיבולת שועל ותמרים"
 function recipeLabelOf(qty, fk, lang){ const name=foodName(fk,lang); const w=name.split(" "); const q=String(qty).trim().split(" "); const last=q[q.length-1]||"";
   const root=t=>t.replace(/^[והב]/,"").slice(0,3); if (w.length>1 && last && root(w[0])===root(last)) return `${qty} ${w.slice(1).join(" ")}`; return `${qty} ${name}`; }
+// המנה שהערת הבישול שייכת אליה (לבקשת המשתמש: "מאתמול" ליד המנה עצמה, לא בכותרת הארוחה)
+function cookNoteFkOf(week, dayIdx){ const it=((week&&week[`d${dayIdx}`]?.lunch)||[]).find(x=>TEMP_FDB[x.fk]?._onePlate); return it?it.fk:null; }
 function cookNoteOf(week, dayIdx, lang){
   const op=d=>((week&&week[`d${d}`]?.lunch)||[]).find(x=>TEMP_FDB[x.fk]?._onePlate)?.fk||null;
   const cur=op(dayIdx); if (!cur) return null; const he=lang==="he";
@@ -18073,10 +18090,11 @@ function buildWeekMenuPrintHTML(week, lang){ const he=lang==="he";
   const body=[0,1,2,3,4,5,6].map(d=>{ const day=week[`d${d}`]||{}; const any=MEAL_KEYS.some(mk=>(day[mk]||[]).length); if(!any) return "";
     const k=Math.round(sumNuts(MEAL_KEYS.flatMap(mk=>day[mk]||[]).map(x=>ingNut(x.fk,x.g,x.soaked))).kcal||0);
     return `<div class="box"><h2>${he?"יום":""} ${DAYS[d]} <span class="muted">· ${k} ${he?"קק\"ל":"kcal"}</span></h2>${MEAL_KEYS.map(mk=>{ const its=day[mk]||[]; if(!its.length) return "";
-      const note=mk==="lunch"?cookNoteOf(week,d,lang):null;
-      return `<h3>${ML[mk]}${note?` <span class="muted">${escH(note)}</span>`:""}</h3><ul>${its.map(x=>`<li>${escH(itemTextOf(x.fk,x.g,lang))}${OMEGA_SEED_TBSP_G[x.fk]!=null||SALAD_ADDON_FKS.has(x.fk)?(he?" (להוספה)":" (to add)"):""}</li>`).join("")}</ul>`; }).join("")}</div>`; }).join("");
+      const note=mk==="lunch"?cookNoteOf(week,d,lang):null; const nfk=note?cookNoteFkOf(week,d):null; // ההערה ליד המנה עצמה
+      return `<h3>${ML[mk]}</h3><ul>${its.map(x=>`<li>${escH(itemTextOf(x.fk,x.g,lang))}${OMEGA_SEED_TBSP_G[x.fk]!=null||SALAD_ADDON_FKS.has(x.fk)?(he?" (להוספה)":" (to add)"):""}${note&&x.fk===nfk?` <span class="muted">${escH(note)}</span>`:""}</li>`).join("")}</ul>`; }).join("")}</div>`; }).join("");
   return `<!doctype html><html dir="${he?"rtl":"ltr"}"><head><meta charset="utf-8"><title>PlantVitalis</title><style>${PRINT_CSS}</style></head><body><h1>${he?"תפריט השבוע":"This week's menu"}</h1><div class="muted">PlantVitalis</div>${body||`<p class="muted">${he?"עוד לא נבנה תפריט לשבוע הזה.":"No menu has been built for this week yet."}</p>`}</body></html>`; }
-function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple,note}){
+function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple,note,noteFk}){
+  const noteOnItem=!!(note&&noteFk&&(ings||[]).some(x=>x.fk===noteFk)); // ההערה מוצגת ליד המנה עצמה
   const tx=T[lang];
   const icons={breakfast:"🌅",snack:"🍎",lunch:"☀️",dinner:"🌙"};
   const t=totalNut(ings);
@@ -18105,7 +18123,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
       {/* שורה 1: שם + שעה + kcal */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:12,color:"#1E3A2B",fontWeight:700}}>{icons[mealKey]} {tx[mealKey]}{note&&<span style={{fontSize:11,fontWeight:700,color:"#8C6D53",marginInlineStart:6}}>{note}</span>}</span>
+          <span style={{fontSize:12,color:"#1E3A2B",fontWeight:700}}>{icons[mealKey]} {tx[mealKey]}{note&&!noteOnItem&&<span style={{fontSize:11,fontWeight:700,color:"#8C6D53",marginInlineStart:6}}>{note}</span>}</span>
           {/* שעת אכילה — שדה צר (לבקשת המשתמש: "ארוך מאוד") */}
           <input type="time" className="pv-time" value={time||""} onChange={e=>onTimeChange(e.target.value)}
             style={{background:"#F5F2EB",border:"1px solid #E2DED4",borderRadius:7,color:"#1E3A2B",fontSize:11,padding:"1px 3px",outline:"none",width:68,minWidth:0,maxWidth:68,flex:"0 0 auto",boxSizing:"border-box"}}/>
@@ -18157,7 +18175,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                         מתצוגות אחרות באפליקציה (חלון-הצעת-שבוע/יום, תצוגת-מתכון) שכן מציגות "kcal · gr'" לכל שורה.
                         נבדק חישובית (סימולציה, 140 ארוחות): סכום-קלוריות-לפי-פריט תמיד תואם בדיוק לסך-הארוחה
                         המוצג (0 אי-התאמות) — אין באג בחישוב עצמו, רק חוסר-תצוגה. נוסף כאן */}
-                    {(su&&!fd._isRecipe&&itemLabel(fk,su,(gD/su.g)*(su.count||1),lang))||(fd._isRecipe?recipeLabelOf(qty,fk,lang):<>{qty} {foodName(fk,lang)}</>)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}{!simple&&!__ED_MODE&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
+                    {(su&&!fd._isRecipe&&itemLabel(fk,su,(gD/su.g)*(su.count||1),lang))||(fd._isRecipe?recipeLabelOf(qty,fk,lang):<>{qty} {foodName(fk,lang)}</>)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}{noteOnItem&&fk===noteFk&&<span style={{fontSize:11,fontWeight:700,color:"#8C6D53",marginInlineStart:6}}>{note}</span>}{!simple&&!__ED_MODE&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
                   {fd._isRecipe && (
                     <button onClick={()=>setViewRecipeId(fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                       style={{marginInlineStart:3,marginInlineEnd:isLast?0:3,background:"#F7EFE3",border:"1px solid #d9c2a3",borderRadius:6,color:"#8C6D53",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
@@ -22669,7 +22687,7 @@ function AppInner(){
         {tab==="meals"&&!desktopMealsLayout&&(
           <>
             {MEAL_KEYS.map(mk=>(<div key={mk} id={mk==="breakfast"?"onboard-mealcard-mobile":undefined}>
-              <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={mk==="lunch"&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang):null}
+              <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={mk==="lunch"&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang):null} noteFk={mk==="lunch"&&dashSource!=="actual"?cookNoteFkOf(meals,dayIdx):null}
                 onTimeChange={t=>setMealTime(mk,t)}
                 onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
                 onSaved={()=>planGuard(()=>setSavedOpen(mk),dashSource)}
@@ -22775,7 +22793,7 @@ function AppInner(){
                   onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
                   lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 {["lunch","dinner"].map(mk=>(
-                  <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={mk==="lunch"&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang):null}
+                  <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={mk==="lunch"&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang):null} noteFk={mk==="lunch"&&dashSource!=="actual"?cookNoteFkOf(meals,dayIdx):null}
                     onTimeChange={t=>setMealTime(mk,t)}
                     onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
                     onSaved={()=>planGuard(()=>setSavedOpen(mk),dashSource)}
