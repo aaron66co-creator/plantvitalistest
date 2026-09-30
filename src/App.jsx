@@ -9199,6 +9199,34 @@ const SIMPLE_MAIN_CAP=5, SIMPLE_SNACK_CAP=2; // עד 5 רכיבים כשיש צ�
 const FAV_BONUS=1; // נקודות לכל מתכון מועדף ביום בבחירת התפריט הפשוט
 const SIMPLE_ADDON_FKS=new Set(["flaxseed","chiaseeds","pumpkinS","sunflowerS","saltIodized","wakame","tahiniFullRaw"]);
 const simpleCount=items=>(items||[]).filter(it=>!SIMPLE_ADDON_FKS.has(it.fk)&&FDB[it.fk]?.cat!=="פרי").length; // פרי לא נספר (לבקשת המשתמש)
+// השלמת לאוצין בהחלפה (לבקשת המשתמש: "לאוצין ירוד מאוד אצל בני 55 פלוס"): ארוחה עיקרית מתחת ליעד מקבלת מקור מרוכז —
+// תורמוס, יוגורט סויה, אדממה, משקה סויה במקום משקה שיבולת שועל, או רבע מנה נוספת מהמנה העיקרית — ובמקום הקלוריות
+// תוספת הדגן או הלחם (הכי מעט לאוצין לקלוריה) קטנה ברבע, עד מחצית. נשמר רק אם היום נשאר עד 105% והלאוצין עלה
+function simpleLeuSwap(plan, mk, LEU, target, ok){
+  const all=()=>["breakfast","snack","lunch","dinner"].flatMap(m=>plan[m]||[]); const nut=a=>sumNuts(a.map(x=>ingNut(x.fk,x.g,x.soaked)));
+  const dayK=()=>nut(all()).kcal, leu=()=>nut(plan[mk]||[]).leucine||0; if (!(plan[mk]||[]).length) return;
+  const ingsOf=fk=>TEMP_FDB[fk]?._ings||[]; const has=fks=>plan[mk].some(x=>fks.has(x.fk)||ingsOf(x.fk).some(i=>fks.has(i.fk)));
+  const soyIn=()=>has(SOY_FKS_ALL), lupIn=()=>has(new Set(["lupinBeansCooked"]));
+  const acts=[
+    ()=>mk!=="breakfast"&&!lupIn()&&ok("lupinBeansCooked")&&simpleCount(plan[mk])<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:"lupinBeansCooked",g:60}),true),
+    ()=>{ const y=ok("soyYogurtOrgPlain")?"soyYogurtOrgPlain":"soyYogurtPlain"; return !soyIn()&&ok(y)&&simpleCount(plan[mk])<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:y,g:170}),true); }, // הקנוי — עשיר בסידן
+    ()=>mk!=="breakfast"&&!soyIn()&&ok("edamame")&&simpleCount(plan[mk])<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:"edamame",g:80}),true),
+    ()=>{ const o=plan[mk].find(x=>x.fk==="oatMilk"); if (!o||!ok("soymilkFortified")) return false; const rest=plan[mk].filter(x=>x!==o);
+      if (rest.some(x=>SOY_FKS_ALL.has(x.fk)||ingsOf(x.fk).some(i=>SOY_FKS_ALL.has(i.fk)))) return false; o.fk="soymilkFortified"; return true; }, // לא סויה כפולה, גם בתוך מתכון
+    ()=>{ const m=plan[mk].filter(x=>TEMP_FDB[x.fk]?._isRecipe).sort((a,b)=>(ingNut(b.fk,100).leucine||0)/(ingNut(b.fk,100).kcal||1)-(ingNut(a.fk,100).leucine||0)/(ingNut(a.fk,100).kcal||1))[0];
+      if (!m) return false; const sv=TEMP_FDB[m.fk]._servingG||200; if (m.g+sv*0.25>sv*1.5+0.01) return false; m.g=Math.round((m.g+sv*0.25)*10)/10; return true; },
+    // מתחת לרף של 2 גר' — גרעיני דלעת עד 3 כפות (30 גר') במקום 2
+    ()=>{ if (leu()>=2||!ok("pumpkinS")) return false; let x=plan[mk].find(x=>x.fk==="pumpkinS"); if (x&&x.g>=30) return false;
+      if (!x) { x={fk:"pumpkinS",g:0}; plan[mk].push(x); } while (leu()<2&&x.g<30) x.g=Math.round((x.g+2.5)*10)/10; return true; } ];
+  for (const act of acts) { if (leu()>=LEU) break; const snap=plan[mk].map(x=>({...x})), l0=leu();
+    if (!act()) { plan[mk]=snap; continue; }
+    const grains=plan[mk].filter(x=>!TEMP_FDB[x.fk]?._isRecipe&&FDB[x.fk]?.cat==="דגן").map(x=>[x,x.g]);
+    for (let r=0; r<2 && dayK()>target*1.05; r++) grains.forEach(([x,g0])=>{ if (dayK()>target*1.05&&x.g-g0*0.25>=g0*0.5-0.01) x.g=Math.round((x.g-g0*0.25)*10)/10; });
+    // עדיין אין מקום (בעיקר בבוקר, שאין בו תוספת דגן) — רק לארוחה מתחת ל-2 גר': מתוספת הדגן בצהריים/ערב, אם הארוחה ההיא נשארת מעל 2 גר'
+    const other=[]; if (l0<2) for (const om of ["lunch","dinner"].filter(m=>m!==mk)) for (const x of (plan[om]||[]).filter(x=>!TEMP_FDB[x.fk]?._isRecipe&&FDB[x.fk]?.cat==="דגן"&&x.g>=100)) {
+      if (dayK()<=target*1.05) break; const g0=x.g; x.g=Math.round(g0*0.75*10)/10; if ((nut(plan[om]).leucine||0)<2) x.g=g0; else other.push([x,g0]); }
+    const gain=leu()>=l0+0.1||(l0<2&&leu()>=2)||(l0<LEU&&leu()>=LEU); // עלייה של 0.1 לפחות, או חציית הרף/היעד
+    if (dayK()>target*1.05||!gain) { plan[mk]=snap; other.forEach(([x,g0])=>{ x.g=g0; }); } } }
 function simplePools(recipes, excl){
   const ok=fk=>!!FDB[fk]&&!(excl&&excl.has(fk));
   const rs=(recipes||[]).filter(r=>r&&r.ings&&!r.ings.some(i=>excl&&excl.has(i.fk)));
@@ -9211,7 +9239,7 @@ function simplePools(recipes, excl){
     oneB: ids(rs.filter(r=>r.onePlate&&r.preferredMeal==="breakfast")),
     bfast: ids(reg.filter(r=>["דייסות","קערות"].includes(cat(r))||(r.preferredMeal==="breakfast"&&cat(r)!=="משקאות"&&kc(r)>=150))),
     spread: ids(reg.filter(r=>cat(r)==="ממרחים")),
-    cookie: ids(reg.filter(r=>/עוגי/.test(r.name))),
+    cookie: ids(reg.filter(r=>/עוגי|מאפינס/.test(r.name)&&kc(r)<=100)), // עוגיות ומיני מאפינס — עד 100 קק"ל ליחידה (לצד פרי)
     fav: new Set(rs.filter(r=>r.fav).map(r=>r.id)), // מתכונים מועדפים (☆) — העדפה עדינה בבחירת היום
     stew: ids(reg.filter(r=>["תבשילי קטניות","תבשילי דגנים"].includes(cat(r)))),
     grainStew: ids(reg.filter(r=>cat(r)==="תבשילי דגנים")),
@@ -9257,34 +9285,43 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   const clean=a=>a.filter(Boolean);
   // מתכון שכבר יש בו סויה (משקה, יוגורט, טופו) — בלי משקה/יוגורט סויה לידו; מתכון שיש בו ירק — בלי ירק נוסף
   const ingsOf=id=>TEMP_FDB[id]?._ings||[]; const perSv=(id,f)=>{ const I=ingsOf(id); const tot=I.reduce((a,i)=>a+(i.g||0),0)||1; return I.filter(f).reduce((a,i)=>a+(i.g||0),0)/tot*svG(id); };
-  const hasSoy=id=>ingsOf(id).some(i=>SOY_FKS_ALL.has(i.fk)); const hasVeg=id=>perSv(id,i=>["ירק","עלים"].includes(FDB[i.fk]?.cat))>=40;
+  const hasSoy=id=>ingsOf(id).some(i=>SOY_FKS_ALL.has(i.fk));
+  // מנה שכבר יש בה דגן (גריסים, כוסמין, אורז...) — בלי לחם/פיתה לידה; עדיף פשטידה (לבקשת המשתמש)
+  const hasGrainIn=id=>{ const I=ingsOf(id); const tot=I.reduce((a,i)=>a+(i.g||0),0)||1; return I.filter(i=>FDB[i.fk]?.cat==="דגן"&&!/קמח/.test(FDB[i.fk]?.he||"")).reduce((a,i)=>a+(i.g||0),0)/tot>=0.1; }; const hasVeg=id=>perSv(id,i=>["ירק","עלים"].includes(FDB[i.fk]?.cat))>=40;
   const used=opts.used||{}; const newBOk=opts.newBreakfastOk!==false;
   const fixed=opts.existing||{}; const isFixed=mk=>(fixed[mk]||[]).length>0;
   const npBase=opts.onePlate?[opts.onePlate]:(P.oneL.filter(id=>(used[id]||0)<2).length?P.oneL.filter(id=>(used[id]||0)<2):P.oneL);
   const npChoices=opts.onePlate?npBase:[...npBase,...npBase.filter(id=>P.fav&&P.fav.has(id)),...npBase.filter(id=>P.fav&&P.fav.has(id))]; // ארוחה בצלחת אחת מועדפת — משקל כפול
   const reUsedOk=id=>(used[id]||0)<2;
   const lim=a=>{ const b=(a||[]).filter(reUsedOk); return b.length?b:a; }; // כל מתכון (גם סלט, ממרח, עוגייה) — עד פעמיים בשבוע
+  // מגיל 65 (יעד 2.5 גר' לאוצין, לבקשת המשתמש — "אפשרות א"): ארוחת הבוקר נבחרת מהמחצית העשירה יותר בלאוצין לקלוריה
+  // (חביתת טופו, טופו מקושקש, טוסט אבוקדו וטופו, קערות יוגורט סויה...), וממרח עם לחם רק כשהוא עשיר בחלבון
+  const leuD=id=>{ const n=ingNut(id,100); return (n.leucine||0)/(n.kcal||1); };
+  const topLeu=a=>{ if (LEU<2.5||!a||a.length<3) return a; const v=a.map(leuD).sort((x,y)=>x-y), med=v[Math.floor(v.length/2)]; const b=a.filter(id=>leuD(id)>=med); return b.length?b:a; };
   function breakfast(){ const r=rnd();
     // בכל ארוחת בוקר יש ירק (לבקשת המשתמש) — אלא אם המנה כבר כוללת ירקות
     const sweet=id=>clean([rec(id), hasSoy(id)?null:PROT(), ...(hasVeg(id)?[]:VEG2()), FR()]); // שני ירקות טריים (רכיב חמישי כשצריך)
     const salty=id=>clean([rec(id), bread(small?1:2), ...VEG2(), spreadOrYog(hasSoy(id))]); // חביתה — תמיד עם ירק טרי בצד
-    if (newBOk && P.oneB.length && r<0.35) { const id=pick(P.oneB); return clean([rec(id,pick(small?[0.5,0.75]:[0.75,1,1])), hasVeg(id)?null:VEG(), rnd()<0.5?FR():null]); }
-    const bf=P.bfast.filter(reUsedOk);
-    if (bf.length && r<0.8) { const id=pick(bf); return isSavory(id)?salty(id):sweet(id); }
+    // מגיל 65 — ארוחת בוקר חדשה בסיכוי גבוה יותר, עד 3 בשבוע (לבקשת המשתמש)
+    if (newBOk && P.oneB.length && r<(LEU>=2.5?0.45:0.35)) { const id=pick(topLeu(P.oneB)); return clean([rec(id,pick(small?[0.5,0.75]:[0.75,1,1])), hasVeg(id)?null:VEG(), rnd()<0.5?FR():null]); }
+    const bf=topLeu(P.bfast.filter(reUsedOk));
+    if (bf.length && (r<0.8||LEU>=2.5)) { const id=pick(bf); return isSavory(id)?salty(id):sweet(id); }
     if (SPR.length) return clean([rec(pick(lim(SPR))), bread(small?1:2), ...VEG2(), PROT()]);
-    { const id=pick(bf.length?bf:P.bfast); return isSavory(id)?salty(id):sweet(id); } }
+    { const id=pick(bf.length?bf:topLeu(P.bfast)); return isSavory(id)?salty(id):sweet(id); } }
   function lunch(np){ if (!np) return dinner(true);
     const m=small?pick([0.75,1]):1; const out=[rec(np,m)]; // מנה אחת (ביעד נמוך — ¾): שתי מנות המתכון מספיקות ליומיים
-    if (P.vegSal.length) out.push(rec(pick(lim(P.vegSal)))); if ((caHigh||rnd()<0.6)&&!hasSoy(np)) out.push(PROT()); // יעד סידן גבוה — תמיד משקה סויה מועשר (אם אין סויה במנה)
+    if (P.vegSal.length) out.push(rec(pick(lim(P.vegSal))));
+    if (hasGrainIn(np) && P.pash.length && rnd()<0.5) out.push(rec(pick(lim(P.pash)))); // מרק/תבשיל עם דגן — פשטידה לצד (לא לחם)
+    if ((caHigh||rnd()<0.6)&&!out.some(x=>x&&(hasSoy(x.fk)||SOY_FKS_ALL.has(x.fk)))) out.push(PROT()); // יעד סידן גבוה — תמיד משקה סויה מועשר (אם אין סויה במנה)
     return [...clean(out).slice(0,4), ...clean([frMk!=="dinner"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   function dinner(){ const r=rnd(); const st=P.stew.filter(reUsedOk), so=P.soup.filter(reUsedOk), ls=P.legSal.filter(reUsedOk); let m;
     // תבשיל דגנים (לבקשת המשתמש: "גדוש דגנים") — בלי דגן נוסף לידו; במקומו פשטידה או מרק עשיר בחלבון. תבשיל קטניות — עם דגן
-    const side=id=>{ if (P.grainStew.includes(id)) { const o=[...P.pash,...P.protSoup].filter(reUsedOk); return o.length?rec(pick(o)):null; } const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); };
+    const side=id=>{ if (P.grainStew.includes(id)||hasGrainIn(id)) { const o=[...P.pash,...P.protSoup].filter(reUsedOk); return o.length?rec(pick(o)):null; } const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); };
     if (st.length && r<0.45) { const id=pick(st); m=[rec(id), side(id), rec(pick(lim(P.vegSal)))]; }
-    else if (so.length && r<0.7) m=[rec(pick(so)), bread(), rec(pick(lim(P.vegSal)))];
-    else if (ls.length) m=[rec(pick(ls)), bread(), rec(pick(lim(P.vegSal)))];
+    else if (so.length && r<0.7) { const id=pick(so); m=[rec(id), hasGrainIn(id)?(P.pash.length?rec(pick(lim(P.pash))):null):bread(), rec(pick(lim(P.vegSal)))]; } // מרק עם דגן — פשטידה, לא לחם
+    else if (ls.length) { const id=pick(ls); m=[rec(id), hasGrainIn(id)?(P.pash.length?rec(pick(lim(P.pash))):null):bread(), rec(pick(lim(P.vegSal)))]; } // סלט קטניות עם דגן — בלי לחם
     else { const id=pick(st.length?st:P.stew); m=[rec(id), side(id), rec(pick(lim(P.vegSal)))]; }
-    if ((caHigh||rnd()<0.6)&&!(m[0]&&hasSoy(m[0].fk))) m.push(PROT());
+    if ((caHigh||rnd()<0.6)&&!m.some(x=>x&&(hasSoy(x.fk)||SOY_FKS_ALL.has(x.fk)))) m.push(PROT()); // לא סויה כפולה — גם סלט/פשטידה עם טופו
     return [...clean(m).slice(0,4), ...clean([frMk!=="lunch"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   // ביניים (לבקשת המשתמש): כ-6% מהיום — פרי ועוגייה, או שני פירות שונים; נבחר הצירוף הקרוב ביותר ל-6%
   const __kc=new Map(); const kOfC=x=>{ const key=x.fk+"|"+x.g; let v=__kc.get(key); if (v==null){ v=ingNut(x.fk,x.g).kcal; __kc.set(key,v); } return v; };
@@ -9303,7 +9340,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   function score(plan){ const all=["breakfast","snack","lunch","dinner"].flatMap(mk=>plan[mk]||[]); const t=nutOf(all); const k=t.kcal||0;
     // הבסיס נבחר ב-93%–101% מהיעד — משאיר מקום לתוספות (פשתן, גרעינים) שמתווספות אחר כך
     if (k<target*0.93||k>target*1.01) return null; if ((t.sodium||0)>naCap) return null;
-    let sc=0; for (const key of KEYS){ const tg=key==="protein"?(wKg||70)*0.9:key==="fiber"?14*target/1000:dri[key]?.dri; if(!tg) continue; sc+=Math.min(1,(t[key]||0)/tg)*(key==="calcium"?caW:key==="vitE"?1.5:1); }
+    let sc=0; for (const key of KEYS){ const tg=key==="protein"?(wKg||70)*0.9:key==="fiber"?14*target/1000:dri[key]?.dri; if(!tg) continue; const tgK=key==="calcium"?(dri.calcium?.weekDri||tg):tg; sc+=Math.min(1,(t[key]||0)/tgK)*(key==="calcium"?caW:key==="vitE"?1.5:1); } // סידן — מול היעד המלא (לבקשת המשתמש: 100% בשבוע)
     ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)) return; const l=leuOf(plan[mk]); sc+=l>=LEU?3:l+0.45>=LEU?2:l>=2?1:-3; }); // לאוצין: ביעד, או בהישג יד עם גרעיני דלעת (עד 2 כפות)
     const v=mealShareViolation(plan); if (v>0.03) return null; sc-=v*25;
     // חלוקה מאוזנת בין הארוחות (לבקשת המשתמש: "מעט קלוריות בבוקר, הרבה מאוד בצהריים ובערב"): בוקר לפחות 24%,
@@ -9347,11 +9384,17 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     // עדיין חסר — "מנה גדולה" (1.25) של המנה העיקרית, אם יש מקום קלורי
     const main=plan[mk].find(x=>TEMP_FDB[x.fk]?._isRecipe); if (main && leuOf(plan[mk])<LEU && main.g<=svG(main.fk)*1.01) { const add=svG(main.fk)*0.25;
       if (dayK()+ingNut(main.fk,add).kcal<=target*1.05) main.g=Math.round((main.g+add)*10)/10; } });
+  // החלפה ללאוצין כשאין מקום קלורי להוספה (לבקשת המשתמש)
+  ["breakfast","lunch","dinner"].forEach(mk=>{ if (!isFixed(mk)&&leuOf(plan[mk]||[])<LEU) simpleLeuSwap(plan,mk,LEU,target,P.ok); });
   // ירקות (לבקשת המשתמש): לפחות 7 יחידות ביום — ירק טרי לצהריים/ערב (הארוחה הדלה יותר בירקות), בתוך מכסת 5 הרכיבים ועד 105% קלוריות
   { const dayVeg=()=>["breakfast","snack","lunch","dinner"].reduce((a,mk)=>a+simpleVegUnits(plan[mk]),0);
     for (let g=0; g<6 && dayVeg()<SIMPLE_VEG_MIN; g++){ const mk=["lunch","dinner","breakfast"].filter(m=>!isFixed(m)&&(plan[m]||[]).length&&simpleCount(plan[m])<SIMPLE_MAIN_CAP).sort((a,b)=>simpleVegUnits(plan[a])-simpleVegUnits(plan[b]))[0];
       if (!mk) break; const fk=pick(VEG_FRESH.filter(f=>P.ok(f)&&!plan[mk].some(x=>x.fk===f))); if (!fk) break; const add={fk,g:unitG(fk)};
-      if (dayK()+ingNut(fk,add.g).kcal>target*1.05) break; plan[mk].push(add); } }
+      if (dayK()+ingNut(fk,add.g).kcal>target*1.05) break; plan[mk].push(add); }
+    // עדיין חסר מעט (אין מקום לרכיב נוסף) — מגדילים ירק טרי שכבר בצלחת ביחידה (עד פי 1.6 מהכמות, עד 20 קק"ל)
+    for (const mk of ["breakfast","lunch","dinner"]) { if (dayVeg()>=SIMPLE_VEG_MIN||isFixed(mk)) continue;
+      for (const x of (plan[mk]||[]).filter(x=>VEG_FRESH.includes(x.fk))) { if (dayVeg()>=SIMPLE_VEG_MIN) break; const g0=x.g, u=getServingUnit(x.fk,FDB[x.fk],"he")?.g||80;
+        const ng=Math.ceil((Math.round(g0/u)+0.5)*u)+1; if (ng>g0*1.6) continue; const k0=dayK(); x.g=ng; if (dayK()>Math.max(k0,target*1.05)+20) x.g=g0; } } }
   // יוד: מלח מיודד ברבעי כפית (1.5 גר') ליד הסלט של ארוחת הערב, עד שהיוד ביעד — בתוך תקרת הנתרן, עד 3 גר' ביום
   if (!opts.iodineSupp && P.ok("saltIodized")){ const mk=["dinner","lunch"].find(m=>!isFixed(m)&&(plan[m]||[]).length); let added=0;
     while (mk && (dayN().iodine||0)<(dri.iodine?.dri||150) && added<3){ const n=dayN(); if ((n.sodium||0)+ingNut("saltIodized",1.5).sodium>naCap) break;
@@ -9382,16 +9425,74 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   plan.__onePlate=best.np; return plan;
 }
 // שבוע במצב פשוט: הארוחה בצלחת אחת של הצהריים חוזרת יומיים ברצף (בישול אחד), כל מתכון עד פעמיים בשבוע;
-// ארוחות בוקר חדשות עד פעמיים בשבוע (השאר — ארוחות הבוקר הקיימות, לבקשת המשתמש: 70% מהמנות ממתכונים קיימים)
+// ארוחות בוקר חדשות עד פעמיים בשבוע (מגיל 65 — עד 3) (השאר — ארוחות הבוקר הקיימות, לבקשת המשתמש: 70% מהמנות ממתכונים קיימים)
 function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, excludedFks=new Set(), opts={}){
   const P=simplePools(recipes,excludedFks); const used={}; let newB=0; const week={}; let prevNp=null;
   for (let d=0; d<7; d++){
     const pairDay=d%2===1&&prevNp;
-    const day=generateSimpleDayPlan(target,recipes,dri,wKg,hp,excludedFks,{...opts,pools:P,used,newBreakfastOk:newB<2,onePlate:pairDay?prevNp:null});
+    const day=generateSimpleDayPlan(target,recipes,dri,wKg,hp,excludedFks,{...opts,pools:P,used,newBreakfastOk:newB<(((dri&&dri._age)||35)>=65?3:2),onePlate:pairDay?prevNp:null});
     const np=day.__onePlate; delete day.__onePlate; prevNp=pairDay?null:np;
     Object.values(day).flat().forEach(x=>{ if (TEMP_FDB[x.fk]?._isRecipe) used[x.fk]=(used[x.fk]||0)+1; });
     if ((day.breakfast||[]).some(x=>P.oneB.includes(x.fk))) newB++;
     week[`d${d}`]=day; }
+  // סידן שבועי לפחות 100% מהיעד (לבקשת המשתמש), בלי לפגוע בלאוצין: בימים הדלים ביותר מנסים לפי הסדר — פשטידה → משקה
+  // סויה מועשר, יוגורט סויה → משקה סויה, משקה סויה לארוחה בלי סויה, פרי הבוקר → משקה, משקה שיבולת שועל, משקה לארוחת
+  // הביניים. כל שינוי נבדק: ארוחה שהייתה ביעד הלאוצין לא יורדת ממנו (וארוחה מתחתיו לא מאבדת), היום נשאר עם 7 יחידות
+  // ירק לפחות ועד 105% קלוריות — אחרת השינוי מבוטל ומנסים את הבא
+  { const caT=dri?.calcium?.weekDri||dri?.calcium?.dri||1000; const MEALS=["breakfast","snack","lunch","dinner"], MAIN=["breakfast","lunch","dinner"];
+    const LEU=((dri&&dri._age)||35)>=65?2.5:2; const all=d=>MEALS.flatMap(m=>d[m]||[]);
+    // רף תחתון (לבקשת המשתמש, "אפשרות א"): היעד מגיל 65 נשאר 2.5 גר' לארוחה, אבל שינויי הסידן רק לא מורידים ארוחה
+    // מתחת ל-2 גר' (ההמלצה הרשמית היא יומית — 42 מ"ג לק"ג; 2.5 לארוחה היא המלצת מומחים)
+    const LEU_FLOOR=2;
+    const dN=d=>sumNuts(all(d).map(x=>ingNut(x.fk,x.g,x.soaked))); const days=Object.keys(week);
+    const leuM=a=>sumNuts((a||[]).map(x=>ingNut(x.fk,x.g,x.soaked))).leucine||0;
+    const avgCa=()=>days.reduce((a,k)=>a+(dN(week[k]).calcium||0),0)/days.length;
+    const soyIn=a=>(a||[]).some(x=>SOY_FKS_ALL.has(x.fk)||(TEMP_FDB[x.fk]?._ings||[]).some(i=>SOY_FKS_ALL.has(i.fk)));
+    const okDrink=P.ok("soymilkFortified"), okOat=P.ok("oatMilk"), hasDrink=a=>a.some(x=>x.fk==="oatMilk"||x.fk==="soymilkFortified");
+    const vegOk=d=>MEALS.reduce((x,mk)=>x+simpleVegUnits(d[mk]),0)>=SIMPLE_VEG_MIN-0.01;
+    // מקום קלורי: קודם תוספת דגן מבושל (עד 75%, לא פחות מ-100 גר'), אחר כך רבע מנה ממנה עיקרית (עד ¾ מנה)
+    const fits=(d,a,addK)=>{ if (dN(d).kcal+addK<=target*1.05) return true; const orig=[];
+      const cand=[...["lunch","dinner"].flatMap(m=>(d[m]||[]).filter(x=>!TEMP_FDB[x.fk]?._isRecipe&&FDB[x.fk]?.cat==="דגן"&&x.g>=130)),
+        ...[...a].filter(x=>TEMP_FDB[x.fk]?._isRecipe), ...MAIN.flatMap(m=>(d[m]||[]).filter(x=>!a.includes(x)&&TEMP_FDB[x.fk]?._isRecipe))];
+      for (const m of cand) { const isR=!!TEMP_FDB[m.fk]?._isRecipe; const sv=isR?(TEMP_FDB[m.fk]._servingG||200):m.g;
+        const ng=Math.round((m.g-sv*0.25)*10)/10; if (isR?ng<sv*0.75-0.01:ng<100) continue;
+        const home=MAIN.find(mm=>(d[mm]||[]).includes(m)); const g0=m.g; m.g=ng;
+        if (isR&&home&&!a.includes(m)&&leuM(d[home])<LEU_FLOOR) { m.g=g0; continue; } // בארוחה אחרת — רק אם נשארת מעל הרף התחתון (בארוחה עצמה הבדיקה אחרי ההוספה)
+        orig.push([m,g0]); if (dN(d).kcal+addK<=target*1.05) return true; }
+      orig.forEach(([m,g])=>{ m.g=g; }); return false; };
+    const pashI=a=>a.findIndex(x=>P.pash.includes(x.fk));
+    const acts=[
+      // יוגורט סויה ביתי (38 מ"ג סידן) → יוגורט סויה אורגני קנוי (204 מ"ג), אותו לאוצין
+      d=>P.ok("soyYogurtOrgPlain")&&MEALS.some(mk=>{ const x=(d[mk]||[]).find(x=>x.fk==="soyYogurtPlain"); if (!x) return false; x.fk="soyYogurtOrgPlain"; return true; }),
+      d=>["dinner","lunch"].some(mk=>{ const a=d[mk]||[], i=pashI(a); if (!okDrink||i<0||soyIn(a.filter((x,j)=>j!==i))) return false; a[i]={fk:"soymilkFortified",g:250}; return true; }),
+      d=>MEALS.some(mk=>{ const a=d[mk]||[], i=a.findIndex(x=>x.fk==="soyYogurtPlain"||x.fk==="soyYogurtOrgPlain"); if (!okDrink||i<0||hasDrink(a)) return false; a[i]={fk:"soymilkFortified",g:250}; return true; }),
+      d=>["dinner","lunch","breakfast"].some(mk=>{ const a=d[mk]||[]; if (!okDrink||!a.length||soyIn(a)||hasDrink(a)||simpleCount(a)>=SIMPLE_MAIN_CAP||!fits(d,a,115)) return false; a.push({fk:"soymilkFortified",g:250}); return true; }),
+      d=>{ const a=d.breakfast||[], i=a.findIndex(x=>FDB[x.fk]?.cat==="פרי"); if (i<0||hasDrink(a)) return false; const fk=!soyIn(a)&&okDrink?"soymilkFortified":okOat?"oatMilk":null; if (!fk) return false;
+        const f0=a[i]; a[i]={fk,g:250}; if (dN(d).kcal<=target*1.05||fits(d,a,0)) return true; a[i]=f0; return false; },
+      d=>["dinner","lunch","breakfast"].some(mk=>{ const a=d[mk]||[]; if (!okOat||!a.length||hasDrink(a)||simpleCount(a)>=SIMPLE_MAIN_CAP||!fits(d,a,110)) return false; a.push({fk:"oatMilk",g:250}); return true; }),
+      // ארוחת ביניים: אחד משני הפירות (הקטן בקלוריות) מוחלף במשקה, או משקה ליד הפרי והעוגייה
+      d=>{ const a=d.snack||[]; const fk=okDrink&&!soyIn(a)?"soymilkFortified":okOat?"oatMilk":null; if (!fk||!a.length||hasDrink(a)) return false;
+        const fr=a.filter(x=>FDB[x.fk]?.cat==="פרי"); if (fr.length>=2) { const f=fr.sort((x,y)=>ingNut(x.fk,x.g).kcal-ingNut(y.fk,y.g).kcal)[0], i=a.indexOf(f);
+          a[i]={fk,g:250}; if (fits(d,[],0)) return true; a[i]=f; return false; }
+        if (!fits(d,[],110)) return false; a.push({fk,g:250}); return true; } ];
+    const blocked=new Set(); // "יום:פעולה" שנכשלו בבדיקה — לא מנסים שוב
+    for (let g=0; g<60 && avgCa()<caT; g++){ let done=false;
+      for (const k of [...days].sort((a,b)=>(dN(week[a]).calcium||0)-(dN(week[b]).calcium||0))){
+        for (let ai=0; ai<acts.length && !done; ai++) { if (blocked.has(k+":"+ai)) continue; const snap=JSON.stringify(week[k]); const d=week[k];
+          const vOk=vegOk(d), l0=Object.fromEntries(MAIN.map(m=>[m,leuM(d[m])])), c0=dN(d).calcium||0;
+          if (!acts[ai](d)) { week[k]=JSON.parse(snap); blocked.add(k+":"+ai); continue; }
+          const bad=(vOk&&!vegOk(d))||dN(d).kcal>target*1.05+1||(dN(d).calcium||0)<=c0+20||MAIN.some(m=>{ const l=leuM(d[m]); return l0[m]>=LEU_FLOOR?l<LEU_FLOOR:l<l0[m]-0.05; });
+          if (bad) { week[k]=JSON.parse(snap); blocked.add(k+":"+ai); } else done=true; }
+        if (done) break; }
+      if (!done) break; }
+    // השלמת לאוצין בסוף השבוע (אחרי שינויי הסידן) — בהחלפה, בלי לעבור 105% ובלי להוריד סידן
+    for (const k of days) { const d=week[k]; for (const mk of MAIN) { if (leuM(d[mk])>=LEU) continue; const snap=JSON.stringify(d), c0=avgCa();
+      simpleLeuSwap(d,mk,LEU,target,P.ok); if (avgCa()<Math.min(c0,caT)-0.01||(!vegOk(d)&&vegOk(JSON.parse(snap)))) week[k]=JSON.parse(snap); } }
+    // טווח הקלוריות (95%-105%): עודף — מקטינים; חוסר — רבע מנה נוספת מהמנה העיקרית בצהריים/ערב
+    for (const k of days) { const d=week[k]; if (dN(d).kcal>target*1.05) fits(d,[],0);
+      for (let r=0; r<4 && dN(d).kcal<target*0.95; r++) { const m=["lunch","dinner"].flatMap(mk=>(d[mk]||[]).filter(x=>TEMP_FDB[x.fk]?._isRecipe))
+          .filter(x=>x.g+(TEMP_FDB[x.fk]._servingG||200)*0.25<=(TEMP_FDB[x.fk]._servingG||200)*1.5).sort((x,y)=>x.g/(TEMP_FDB[x.fk]._servingG||200)-y.g/(TEMP_FDB[y.fk]._servingG||200))[0];
+        if (!m) break; const sv=TEMP_FDB[m.fk]._servingG||200; m.g=Math.round((m.g+sv*0.25)*10)/10; if (dN(d).kcal>target*1.05) { m.g=Math.round((m.g-sv*0.25)*10)/10; break; } } } }
   return week;
 }
 
@@ -15430,11 +15531,13 @@ const RECIPE_DEFAULTS_MIGRATION={key:"wfpb_recipes_migr_3", ids:["sk23rsp","l76q
 // עיגול ליחידה שלמה היה משנה את הקלוריות למנה ביותר מ-10% (בעיקר סלטים אישיים — חצי בצל, חצי פלפל) — חצאי יחידות.
 // עותקים שמורים במכשיר מתעדכנים רק ברכיב שהכמות שלו עדיין זהה לישנה — רכיב שהמשתמש שינה בעצמו לא נוגעים בו
 const RECIPE_UNITS_MIGRATION={key:"wfpb_recipes_units_v1",changes:{"2o0zv3b":[["zucchini",300,392],["oliveOil",20,22.5]],"359s51w":[["sweetPotatoCooked",445,480]],"b9kx6w8":[["banana",356,360]],"2ii5ngy":[["apple",208,240]],"wj3zbb8":[["almondbutter",64,67.5]],"odvsoil":[["redPepper",62,100]],"6mkc8r2":[["onion",55,110]],"ww7kwdm":[["onion",55,110]],"cn3jw7r":[["onion",55,110]],"giy9uyc":[["lemon",13,25]],"xmjhtcx":[["onion",55,110],["almondbutter",16,15]],"lbt379z":[["redPepper",62,100]],"5s5kcor":[["mintLeaf",8,7.5],["oliveOil",10,7.5]],"gjtodny":[["tahiniFullRaw",64,67.5]],"zm66rfq":[["lemon",38,50]],"atmeemk":[["tahiniFullRaw",128,127.5]],"6b9g0gx":[["tahiniFullRaw",48,45],["oliveOil",10,7.5]],"dnn3qrx":[["almondbutter",128,127.5]],"tsj80e5":[["sweetPotatoRaw",195,260]],"wz9m1v9":[["tomatoSauce",60,59.5]],"zg4j6d4":[["flaxseed",20,21]],"5c1acio":[["avocado",25,50]],"ylrg98s":[["onion",50,110]],"uvf15s5":[["sweetPotatoRaw",195,260]],"140vb9y":[["onion",50,110]],"sademr0":[["onion",55,110]],"1a7it9b":[["broccoli",200,170],["redPepper",130,100],["sesame",10,9]],"0emyftf":[["hotPepperRed",10,15],["redPepper",130,100]],"ij2d3f8":[["parsley",15,16]],"dicpivj":[["redPepper",260,300]],"z7qb3ct":[["redPepper",130,100]],"kckkups":[["broccoli",350,340],["tahiniFullRaw",20,22.5]],"ogi4ai9":[["oliveOil",12,15]],"3jjdjar":[["apple",130,120]],"ydaikpz":[["tomato",150,200],["cucumber",150,119],["onion",50,110],["lemon",15,25]],"tqxdmp3":[["avocado",150,200],["hotPepperGreen",10,15],["lemon",20,25],["oliveOil",10,7.5]],"toqhtp1":[["broccoli",250,255]],"9x46ocg":[["onion",80,110]],"ter5mvd":[["leek",200,180]],"tpp6veh":[["banana",356,360]],"03i2jtb":[["medjoolDate",200,192]],"sqgm3sw":[["onion",60,110]],"p5x9678":[["redPepper",260,300],["lemon",20,25],["oliveOil",10,7.5]],"5ft7qei":[["lemon",15,25]],"dpbhsah":[["tomato",150,200]],"xthv3a3":[["sweetPotatoCooked",356,360]],"t3w5uzb":[["redPepper",62,100]],"nnhj7xv":[["tahiniFullRaw",32,30]],"g0fn9xu":[["oliveOil",8,7.5]],"qjiujv6":[["chiaseeds",7,8]],"sg65kxv":[["cucumber",200,238]],"rtj5pht":[["cilantroLeaf",8,7.5]],"0hl9xps":[["zucchini",300,294]],"eimvihc":[["cucumber",200,238],["tomato",150,200]],"wi64ciy":[["zucchini",250,196],["lemon",20,25]],"he7ur23":[["tomato",150,200]],"9dom5ig":[["cucumber",200,238]],"tb94874":[["zucchini",250,196]],"zfk8ut0":[["redPepper",119,100],["tomato",150,200],["lemon",20,25]],"cvs4f8c":[["cucumber",300,357]],"gvyie6i":[["zucchini",150,196],["onion",55,110]],"zioykl1":[["onion",55,110]],"7eedtjv":[["broccoli",300,297.5]],"zhwjr64":[["cauliflower",350,400],["lemon",15,25]],"dpja1wj":[["onion",55,110]],"0tpac56":[["broccoli",250,255],["tahiniFullRaw",20,22.5],["lemon",20,25]],"cbk01ss":[["carrot",30,61],["sesame",6,4.5]],"cbk02th":[["parsley",15,16]],"kle03th":[["cucumber",150,119]],"cbw04kl":[["parsley",15,16]],"wkm05cu":[["cucumber",400,357],["springOnion",20,15]],"lup10sl":[["cucumber",300,357]],"pnt12pp":[["redPepper",150,200],["greenPepper",120,119]],"nto15bk":[["gingerRoot",8,7.5],["springOnion",20,15]],"tmp16br":[["broccoli",250,255],["oliveOil",10,7.5],["springOnion",20,15]],"grn05cc":[["zucchini",200,196]],"grn06fk":[["parsley",15,16]],"grn07ps":[["eggplant",300,400]],"sal01vg":[["redPepper",124,100],["oliveOil",5,7.5]],"sal02sp":[["oliveOil",5,7.5]],"sal03ch":[["redPepper",124,100]],"sal04kb":[["sweetPotatoCooked",150,180],["pumpkinS",16,15]],"sal09rm":[["romaine",150,140],["cucumber",150,119],["lemon",15,25]],"veg01gb":[["oliveOil",10,7.5]],"veg02bn":[["tahiniFullRaw",20,22.5],["lemon",15,25]],"sal06bb":[["broccoli",150,170]],"sal07gt":[["tahiniFullRaw",20,22.5]]}};
-const ONEPLATE_MIGRATION_KEY="wfpb_recipes_oneplate_v1"; // עותקים שמורים של ארוחות בצלחת אחת — מוחלפים בגרסה המוקטנת
+// קערות יוגורט סויה — יותר גרעיני דלעת ונבט חיטה, ללאוצין (לבקשת המשתמש). עותק שמור מתעדכן רק ברכיב שלא שונה ידנית
+const RECIPE_LEU_MIGRATION={key:"wfpb_recipes_leu_v1",changes:{"wg04bwl":[["pumpkinS",15,25],["wheatGerm",7,14]],"l76qu9i":[["pumpkinS",15,25]],"op40pl":[["pumpkinS",15,25]]}};
+const ONEPLATE_MIGRATION_KEY="wfpb_recipes_oneplate_v2"; // v2: מרקים עם דגן — בלי לחם/פיתה בתוך המנה (לבקשת המשתמש) // עותקים שמורים של ארוחות בצלחת אחת — מוחלפים בגרסה המוקטנת
 function mergeRecipesWithDefaults(saved0){
   let saved=(saved0||[]).filter(r=>r&&!REMOVED_RECIPE_IDS.has(r.id));
   if (!load(ONEPLATE_MIGRATION_KEY,false)) {
-    saved=saved.map(r=>{ if(!r.onePlate) return r; const d=DEF_RECIPES.find(x=>x.id===r.id); return d?{...r,servings:d.servings,ings:d.ings}:r; });
+    saved=saved.map(r=>{ if(!r.onePlate) return r; const d=DEF_RECIPES.find(x=>x.id===r.id); return d?{...r,name:d.name,servings:d.servings,ings:d.ings,instructions:d.instructions}:r; });
     save(ONEPLATE_MIGRATION_KEY,true); save(RECIPE_STORAGE,saved);
   }
   if (!load(RECIPE_DEFAULTS_MIGRATION.key,false)) {
@@ -15446,6 +15549,12 @@ function mergeRecipesWithDefaults(saved0){
       const left=[...c]; const ings=r.ings.map(ing=>{ const k=left.findIndex(([fk,oldG])=>fk===ing.fk&&Math.abs((ing.g||0)-oldG)<0.01); if(k<0) return ing; const nG=left[k][2]; left.splice(k,1); return {...ing,g:nG}; });
       return {...r,ings}; });
     save(RECIPE_UNITS_MIGRATION.key,true); save(RECIPE_STORAGE,saved);
+  }
+  if (!load(RECIPE_LEU_MIGRATION.key,false)) {
+    saved=saved.map(r=>{ const c=RECIPE_LEU_MIGRATION.changes[r.id]; if(!c||!Array.isArray(r.ings)) return r; let hit=false;
+      const ings=r.ings.map(ing=>{ const k=c.find(([fk,oldG])=>fk===ing.fk&&Math.abs((ing.g||0)-oldG)<0.01); if(!k) return ing; hit=true; return {...ing,g:k[2]}; });
+      const d=DEF_RECIPES.find(x=>x.id===r.id); return hit&&d?{...r,ings,instructions:d.instructions}:{...r,ings}; });
+    save(RECIPE_LEU_MIGRATION.key,true); save(RECIPE_STORAGE,saved);
   }
   const savedIds=new Set(saved.map(r=>r.id));
   const deleted=new Set(load(DELETED_RECIPES_STORAGE,[]));
@@ -15541,7 +15650,7 @@ const DEF_RECIPES=[
 {id:"op04pl",name:"פסטה מלאה ברוטב עדשים ועגבניות",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"wholeWPasta",g:700},{fk:"redLentils",g:650},{fk:"tomatoSauce",g:70},{fk:"tomato",g:400},{fk:"onion",g:200},{fk:"carrot",g:200},{fk:"garlic",g:10},{fk:"oliveOil",g:30},{fk:"basil",g:20},{fk:"saltIodized",g:3}],instructions:"מאדים בצל, גזר מגורר ושום בשמן זית. מוסיפים רסק, עגבניות קצוצות ועדשים אדומות מבושלות, ומבשלים כ-15 דקות. מערבבים עם הפסטה המבושלת ומוסיפים ריחן."},
 {id:"op05pl",name:"קוסקוס מלא עם ירקות וחומוס",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"couscousCooked",g:600},{fk:"chickpeas",g:650},{fk:"pumpkin",g:300},{fk:"carrot",g:250},{fk:"zucchini",g:300},{fk:"onion",g:200},{fk:"celery",g:100},{fk:"turmericGround",g:3},{fk:"oliveOil",g:30},{fk:"saltIodized",g:4}],instructions:"מבשלים בצל, גזר, סלרי, דלעת וקישוא בשמן זית עם כורכום ומעט מים, כ-30 דקות, עד שהירקות רכים. מוסיפים את החומוס. מגישים על הקוסקוס עם הרוטב."},
 {id:"op06pl",name:"מוקפץ טופו, כוסמת וירקות",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"buckwheatCooked",g:650},{fk:"tofu",g:500},{fk:"broccoli",g:300},{fk:"bokChoy",g:300},{fk:"redPepper",g:200},{fk:"mushroom",g:200},{fk:"gingerRoot",g:15},{fk:"garlic",g:10},{fk:"sesame",g:20},{fk:"canolaOil",g:25},{fk:"saltIodized",g:3}],instructions:"מקפיצים את הטופו בקוביות בשמן עד הזהבה ומוציאים. מקפיצים ג'ינג'ר, שום, פטריות, פלפל, ברוקולי וכרוב סיני כ-5 דקות. מחזירים את הטופו, מוסיפים את הכוסמת, ומפזרים שומשום."},
-{id:"op07pl",name:"מרק עדשים וגריסים סמיך עם פיתה מלאה",servings:4,type:"מרק",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"redLentils",g:700},{fk:"pearlBarleyCooked",g:400},{fk:"carrot",g:250},{fk:"celery",g:150},{fk:"onion",g:200},{fk:"tomato",g:300},{fk:"oliveOil",g:25},{fk:"turmericGround",g:3},{fk:"lemon",g:50},{fk:"wholePita",g:240},{fk:"saltIodized",g:4}],instructions:"מאדים בצל, גזר וסלרי בשמן זית. מוסיפים עגבנייה, כורכום, עדשים וגריסים מבושלים ומים לכיסוי, ומבשלים כ-20 דקות. מסיימים בלימון. מגישים עם פיתה מלאה."},
+{id:"op07pl",name:"מרק עדשים וגריסים סמיך",servings:4,type:"מרק",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"redLentils",g:700},{fk:"pearlBarleyCooked",g:400},{fk:"carrot",g:250},{fk:"celery",g:150},{fk:"onion",g:200},{fk:"tomato",g:300},{fk:"oliveOil",g:25},{fk:"turmericGround",g:3},{fk:"lemon",g:50},{fk:"saltIodized",g:4}],instructions:"מאדים בצל, גזר וסלרי בשמן זית. מוסיפים עגבנייה, כורכום, עדשים וגריסים מבושלים ומים לכיסוי, ומבשלים כ-20 דקות. מסיימים בלימון."},
 {id:"op08pl",name:"קערת קינואה, שעועית שחורה, בטטה ואבוקדו",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"quinoaCooked",g:600},{fk:"blackBeans",g:650},{fk:"sweetPotatoCooked",g:500},{fk:"cabbageRed",g:200},{fk:"cucumber",g:200},{fk:"avocado",g:200},{fk:"lemon",g:50},{fk:"pumpkinS",g:30},{fk:"oliveOil",g:15},{fk:"saltIodized",g:3}],instructions:"מסדרים בקערות קינואה, שעועית שחורה, קוביות בטטה אפויה, כרוב אדום ומלפפון קצוצים ואבוקדו. מתבלים בלימון, שמן זית ומלח, ומפזרים גרעיני דלעת."},
 {id:"op09pl",name:"אורז מלא עם אפונת גן, חומוס וגזר וסלט ירקות",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"pisumPeas",g:500},{fk:"chickpeas",g:350},{fk:"brownRiceCooked",g:650},{fk:"carrot",g:300},{fk:"onion",g:200},{fk:"tomatoSauce",g:50},{fk:"turmericGround",g:3},{fk:"oliveOil",g:30},{fk:"cucumber",g:250},{fk:"tomato",g:250},{fk:"saltIodized",g:3}],instructions:"מאדים בצל וגזר בשמן זית, מוסיפים רסק וכורכום, אפונה, חומוס ואורז מבושל, ומחממים יחד כ-10 דקות. מגישים עם סלט מלפפון ועגבנייה."},
 {id:"op10pl",name:"פריקה עם עדשים ירוקות, דלורית ואגוזי מלך",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"freekeh",g:600},{fk:"greenLentils",g:650},{fk:"butternut",g:500},{fk:"onion",g:200},{fk:"spinach",g:200},{fk:"oliveOil",g:30},{fk:"lemon",g:40},{fk:"walnuts",g:40},{fk:"saltIodized",g:3}],instructions:"מאדים בצל בשמן זית, מוסיפים תרד עד שהוא מתרכך. מערבבים עם הפריקה, העדשים וקוביות דלורית אפויה. מתבלים בלימון ומלח, ומפזרים אגוזי מלך קצוצים."},
@@ -15552,7 +15661,7 @@ const DEF_RECIPES=[
 {id:"op15pl",name:"סלט קינואה, עדשים שחורות וירקות",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"quinoaCooked",g:600},{fk:"blackLentils",g:700},{fk:"cucumber",g:300},{fk:"redPepper",g:300},{fk:"tomato",g:300},{fk:"arugula",g:100},{fk:"pumpkinS",g:30},{fk:"oliveOil",g:30},{fk:"lemon",g:60},{fk:"saltIodized",g:3}],instructions:"מערבבים קינואה ועדשים שחורות מקוררות עם מלפפון, פלפל ועגבנייה קצוצים ורוקט. מתבלים בשמן זית, לימון ומלח, ומפזרים גרעיני דלעת. מתאים גם לקופסת אוכל."},
 {id:"op16pl",name:"טמפה עם אורז חום וירקות מוקפצים",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"tempeh",g:400},{fk:"brownRiceCooked",g:650},{fk:"broccoli",g:300},{fk:"carrot",g:200},{fk:"zucchini",g:300},{fk:"gingerRoot",g:15},{fk:"garlic",g:10},{fk:"sesame",g:20},{fk:"canolaOil",g:25},{fk:"saltIodized",g:3}],instructions:"מקפיצים פרוסות טמפה בשמן עד הזהבה ומוציאים. מקפיצים ג'ינג'ר, שום, גזר, קישוא וברוקולי כ-5 דקות. מחזירים את הטמפה, מגישים על אורז חום ומפזרים שומשום."},
 {id:"op17pl",name:"לוביה ברוטב עגבניות עם אורז חום ותרד",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"blackEyedPeas",g:800},{fk:"brownRiceCooked",g:650},{fk:"tomatoSauce",g:60},{fk:"onion",g:200},{fk:"garlic",g:10},{fk:"oliveOil",g:25},{fk:"lemon",g:40},{fk:"spinach",g:300},{fk:"saltIodized",g:3}],instructions:"מאדים בצל ושום בשמן זית, מוסיפים רסק ומעט מים, ואת הלוביה. מבשלים כ-20 דקות. בסוף מוסיפים תרד עד שהוא מתרכך, וסוחטים לימון. מגישים על אורז חום."},
-{id:"op18pl",name:"מרק אפונה צהובה סמיך עם כוסמין ולחם שיפון",servings:4,type:"מרק",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"splitPeas",g:600},{fk:"speltCooked",g:400},{fk:"carrot",g:300},{fk:"onion",g:200},{fk:"celeryRoot",g:200},{fk:"oliveOil",g:25},{fk:"ryeBread",g:160},{fk:"saltIodized",g:4}],instructions:"מאדים בצל, גזר ושורש סלרי בשמן זית. מוסיפים את האפונה הצהובה המבושלת ומים, ומבשלים כ-30 דקות עד שהמרק סמיך. מוסיפים את הכוסמין. מגישים עם פרוסת לחם שיפון."},
+{id:"op18pl",name:"מרק אפונה צהובה סמיך עם כוסמין",servings:4,type:"מרק",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"splitPeas",g:600},{fk:"speltCooked",g:400},{fk:"carrot",g:300},{fk:"onion",g:200},{fk:"celeryRoot",g:200},{fk:"oliveOil",g:25},{fk:"saltIodized",g:4}],instructions:"מאדים בצל, גזר ושורש סלרי בשמן זית. מוסיפים את האפונה הצהובה המבושלת ומים, ומבשלים כ-30 דקות עד שהמרק סמיך. מוסיפים את הכוסמין."},
 {id:"op19pl",name:"דוחן עם פולי סויה וירקות",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"soybeansCooked",g:400},{fk:"milletCooked",g:650},{fk:"zucchini",g:300},{fk:"redPepper",g:300},{fk:"onion",g:150},{fk:"tomato",g:300},{fk:"oliveOil",g:25},{fk:"saltIodized",g:3}],instructions:"מאדים בצל, פלפל וקישוא בשמן זית, מוסיפים עגבנייה קצוצה ומבשלים כ-10 דקות. מערבבים עם הדוחן ופולי הסויה המבושלים ומחממים יחד."},
 {id:"op20pl",name:"אורז חום עם פול ושמיר, יוגורט סויה וסלט מלפפונים",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"broadBeans",g:700},{fk:"soyYogurtPlain",g:400},{fk:"brownRiceCooked",g:650},{fk:"dill",g:40},{fk:"onion",g:200},{fk:"oliveOil",g:30},{fk:"garlic",g:10},{fk:"cucumber",g:400},{fk:"lemon",g:40},{fk:"saltIodized",g:3}],instructions:"מאדים בצל ושום בשמן זית, מוסיפים פול ושמיר קצוץ, ומערבבים עם האורז. מגישים עם יוגורט סויה, וסלט מלפפונים עם לימון."},
 {id:"op21pl",name:"כוסמת עם שעועית מאש וכרוב",servings:4,type:"תבשיל",preferredMeal:"lunch",foodGroup:"",onePlate:true,ings:[{fk:"mungBeans",g:750},{fk:"buckwheatCooked",g:650},{fk:"cabbageWhite",g:400},{fk:"carrot",g:200},{fk:"onion",g:200},{fk:"canolaOil",g:25},{fk:"tahiniRaw",g:40},{fk:"parsley",g:30},{fk:"saltIodized",g:3}],instructions:"מאדים בצל, כרוב פרוס וגזר בשמן כ-15 דקות עד שהם רכים. מערבבים עם הכוסמת ושעועית המאש המבושלות, מתבלים במלח ופטרוזיליה, ומזלפים טחינה."},
@@ -15574,7 +15683,7 @@ const DEF_RECIPES=[
 {id:"op37pl",name:"חביתת קמח חומוס ותרד עם לחם שיפון ועגבנייה",servings:1,type:"תבשיל",preferredMeal:"breakfast",foodGroup:"",onePlate:true,ings:[{fk:"chickpeaFlour",g:80},{fk:"spinach",g:80},{fk:"onion",g:40},{fk:"oliveOil",g:8},{fk:"ryeBread",g:64},{fk:"tomato",g:100},{fk:"pumpkinS",g:10},{fk:"saltIodized",g:0.5}],instructions:"מערבבים קמח חומוס עם מים לבלילה, מוסיפים תרד ובצל קצוצים. מטגנים במחבת עם מעט שמן זית משני הצדדים. מגישים עם לחם שיפון ועגבנייה, ומפזרים גרעיני דלעת."},
 {id:"op38pl",name:"דייסת שיבולת שועל עם משקה סויה, פשתן, אגוזים ופרי",servings:1,type:"תבשיל",preferredMeal:"breakfast",foodGroup:"",onePlate:true,ings:[{fk:"oatsThickRaw",g:50},{fk:"soymilkFortified",g:300},{fk:"flaxseed",g:7},{fk:"walnuts",g:15},{fk:"pumpkinS",g:15},{fk:"soyYogurtPlain",g:100},{fk:"banana",g:100},{fk:"blueberry",g:70},{fk:"cinnamon",g:1}],instructions:"מבשלים את שיבולת השועל במשקה הסויה כ-5 דקות. מוסיפים קינמון ופשתן טחון, ומעל בננה פרוסה, אוכמניות, אגוזי מלך, גרעיני דלעת וכף יוגורט סויה."},
 {id:"op39pl",name:"כריך מלא עם חומוס ביתי וירקות",servings:1,type:"תבשיל",preferredMeal:"breakfast",foodGroup:"",onePlate:true,ings:[{fk:"wholeWheatBread",g:96},{fk:"chickpeas",g:160},{fk:"tahiniRaw",g:15},{fk:"lemon",g:10},{fk:"tomato",g:100},{fk:"cucumber",g:100},{fk:"saltIodized",g:0.5}],instructions:"טוחנים את החומוס עם הטחינה והלימון לממרח. מורחים על פרוסות לחם מלא ומוסיפים עגבנייה ומלפפון פרוסים."},
-{id:"op40pl",name:"קערת יוגורט סויה, שיבולת שועל, שקדים ופרי",servings:1,type:"תבשיל",preferredMeal:"breakfast",foodGroup:"",onePlate:true,ings:[{fk:"soyYogurtPlain",g:300},{fk:"oatsThinRaw",g:40},{fk:"almonds",g:15},{fk:"chiaseeds",g:12},{fk:"pumpkinS",g:15},{fk:"strawberry",g:150},{fk:"dateSilan",g:10}],instructions:"מערבבים יוגורט סויה עם שיבולת שועל וצ'יה, ומשאירים 10 דקות (או לילה במקרר). מעל: תותים, שקדים קצוצים, גרעיני דלעת ומעט סילאן."},
+{id:"op40pl",name:"קערת יוגורט סויה, שיבולת שועל, שקדים ופרי",servings:1,type:"תבשיל",preferredMeal:"breakfast",foodGroup:"",onePlate:true,ings:[{fk:"soyYogurtPlain",g:300},{fk:"oatsThinRaw",g:40},{fk:"almonds",g:15},{fk:"chiaseeds",g:12},{fk:"pumpkinS",g:25},{fk:"strawberry",g:150},{fk:"dateSilan",g:10}],instructions:"מערבבים יוגורט סויה עם שיבולת שועל וצ'יה, ומשאירים 10 דקות (או לילה במקרר). מעל: תותים, שקדים קצוצים, גרעיני דלעת ומעט סילאן."},
 {id:"op41pl",name:"טופו מקושקש עם לחם מלא וירקות",servings:1,type:"תבשיל",preferredMeal:"breakfast",foodGroup:"",onePlate:true,ings:[{fk:"tofu",g:150},{fk:"turmericGround",g:1},{fk:"oliveOil",g:5},{fk:"spinach",g:50},{fk:"tomato",g:100},{fk:"wholeWheatBread",g:96},{fk:"avocado",g:50},{fk:"saltIodized",g:0.5}],instructions:"מפוררים את הטופו ומטגנים בשמן זית עם כורכום ומלח כ-5 דקות, ומוסיפים תרד עד שהוא מתרכך. מגישים עם לחם מלא, עגבנייה ואבוקדו."},
 {id:"op42pl",name:"פנקייק קמח חומוס וקישואים עם טחינה וירקות",servings:1,type:"תבשיל",preferredMeal:"breakfast",foodGroup:"",onePlate:true,ings:[{fk:"chickpeaFlour",g:70},{fk:"zucchini",g:100},{fk:"onion",g:40},{fk:"oliveOil",g:8},{fk:"tahiniRaw",g:15},{fk:"tomato",g:100},{fk:"cucumber",g:100},{fk:"wholePita",g:60},{fk:"pumpkinS",g:10},{fk:"saltIodized",g:0.5}],instructions:"מערבבים קמח חומוס עם מים לבלילה סמיכה, מוסיפים קישוא מגורר ובצל קצוץ. מטגנים במחבת עם מעט שמן זית משני הצדדים. מגישים עם טחינה, ירקות חתוכים וחצי פיתה."},
 {id:"cpajz3x",name:"מרק קישוא ונענע",servings:4,type:"מרק",preferredMeal:"any",foodGroup:"ירק",ings:[{fk:"zucchini",g:392},{fk:"onion",g:110},{fk:"garlic",g:9},{fk:"oliveOil",g:15},{fk:"mintLeaf",g:5}],instructions:"מאדים בצל ושום, מוסיפים קישואים פרוסים ומים לכיסוי, מבשלים 15 דק'. מרסקים למרק חלק ומוסיפים נענע קצוצה."},
@@ -15628,7 +15737,7 @@ const DEF_RECIPES=[
 {id:"5c1acio",name:"סלט ארוחה קטן",servings:1,type:"תבשיל",preferredMeal:"any",foodGroup:"",ings:[{fk:"carrot",g:30.5},{fk:"tomato",g:100},{fk:"redPepper",g:50},{fk:"cabbageWhite",g:17.5},{fk:"cabbageRed",g:17.5},{fk:"cucumber",g:119},{fk:"mushroom",g:10},{fk:"onion",g:55},{fk:"sweetPotatoRaw",g:65},{fk:"springOnion",g:15},{fk:"broadBeans",g:85},{fk:"avocado",g:50},{fk:"lemon",g:25},{fk:"bokChoy",g:35}],instructions:""},
 {id:"e48dyxr",name:"סלט ארוחה בינוני",servings:1,type:"תבשיל",preferredMeal:"any",foodGroup:"",ings:[{fk:"carrot",g:30.5},{fk:"tomato",g:200},{fk:"redPepper",g:50},{fk:"cabbageWhite",g:35},{fk:"cabbageRed",g:35},{fk:"cucumber",g:119},{fk:"zucchini",g:98},{fk:"mushroom",g:20},{fk:"onion",g:110},{fk:"sweetPotatoRaw",g:130},{fk:"radish",g:50},{fk:"springOnion",g:15},{fk:"broadBeans",g:127.5},{fk:"avocado",g:50},{fk:"lemon",g:25},{fk:"bokChoy",g:70}],instructions:""},
 {id:"ylrg98s",name:"חביתת קמח חומוס",servings:2,type:"חביתה",ings:[{fk:"onion",g:110},{fk:"parsley",g:40},{fk:"dill",g:10},{fk:"springOnion",g:60},{fk:"mushroom",g:15},{fk:"chickpeaFlour",g:92}],instructions:"מערבבים את הקמח עם מעט מים ובוחשים לרמת בלילה. מוסיפים את שאר הרכיבים ובוחשים. מטגנים על מחבת נון סטיק בחלוקה ל 3 מנות."},
-{id:"l76qu9i",name:"קערת יוגורט סויה, שיבולת שועל וזרעי פשתן",servings:1,type:"קערה",foodGroup:"דגן",ings:[{fk:"soyYogurtPlain",g:250},{fk:"flaxseed",g:14},{fk:"oatsThickRaw",g:40},{fk:"blueberry",g:20},{fk:"pumpkinS",g:15}],instructions:" מפזרים מעל כף גרעיני דלעת."},
+{id:"l76qu9i",name:"קערת יוגורט סויה, שיבולת שועל וזרעי פשתן",servings:1,type:"קערה",foodGroup:"דגן",ings:[{fk:"soyYogurtPlain",g:250},{fk:"flaxseed",g:14},{fk:"oatsThickRaw",g:40},{fk:"blueberry",g:20},{fk:"pumpkinS",g:25}],instructions:" מפזרים מעל 2½ כפות גרעיני דלעת."},
 {id:"hp4mbks",name:"תבשיל בורגול ועדשים",servings:4,type:"תבשיל",ings:[{fk:"bulgurDry",g:140},{fk:"blackLentils",g:396},{fk:"onion",g:220},{fk:"mushroom",g:70},{fk:"oliveOil",g:15},{fk:"saltIodized",g:3},{fk:"blackPepperGround",g:0.57},{fk:"turmericGround",g:0.55}],instructions:"כמו בתבשיל שעועית לבנה (ללא רוטב עגבניות)"},
 {id:"6259jvr",name:"תבשיל שעועית לבנה",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"",ings:[{fk:"onion",g:220},{fk:"whiteBeans",g:330},{fk:"tomatoSauce",g:85},{fk:"celery",g:100},{fk:"saltIodized",g:3},{fk:"blackPepperGround",g:0.57},{fk:"turmericGround",g:1.1},{fk:"oliveOil",g:15}],instructions:"לבשל את הבצלים הקצוצים על מים וכשנעשים שקופים להוסיף כף שמן זית. לתבל. להוסיף את שאר הרכיבים. להשתמש בשעועית לבנה שהושרתה, עדיף בבית, והוקפאה או טריה."},
 {id:"vxym8et",name:"סלט כרובים ובוטנים",servings:4,type:"תבשיל",ings:[{fk:"cabbageWhite",g:280},{fk:"cabbageRed",g:280},{fk:"peanuts",g:56},{fk:"lemon",g:50},{fk:"appleCiderVinegar",g:3.75},{fk:"dateSilan",g:20},{fk:"saltIodized",g:3},{fk:"blackPepperGround",g:2.3}],instructions:"לגרור הכרובים לרצועות דקות. לסחוט לימון שלם. להכין רוטב מאוחד בקערית. לקלות ללא שמן בוטנים עד שישחימו קלות. ניתן להוסיף כפית שמן זית כתית מעולה לרוטב. בתאבון!"},
@@ -15735,7 +15844,12 @@ const DEF_RECIPES=[
 {id:"wg01por",name:"דייסת שיבולת שועל, תפוח ונבט חיטה",servings:2,type:"דייסה",preferredMeal:"breakfast",foodGroup:"דגן",ings:[{fk:"oatsMedRaw",g:80},{fk:"soymilkFortified",g:400},{fk:"apple",g:120},{fk:"wheatGerm",g:14},{fk:"walnuts",g:14},{fk:"cinnamon",g:1},{fk:"pumpkinS",g:30}],instructions:"מביאים לרתיחה משקה סויה עם חצי כוס מים. מוסיפים שיבולת שועל ותפוח מגורר ומבשלים 5 דקות תוך ערבוב. מורידים מהאש, מפזרים נבט חיטה, אגוזי מלך קצוצים וקינמון. מבשלים במשקה הסויה (כוס ושני שליש) ומפזרים מעל גרעיני דלעת."},
 {id:"wg02sal",name:"סלט עגבניות, מלפפון ונבט חיטה",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"tomato",g:200},{fk:"cucumber",g:238},{fk:"springOnion",g:30},{fk:"parsley",g:8},{fk:"lemon",g:25},{fk:"oliveOil",g:7.5},{fk:"wheatGerm",g:14}],instructions:"קוצצים עגבניות, מלפפונים, בצל ירוק ופטרוזיליה. מתבלים במיץ לימון ושמן זית. מפזרים נבט חיטה ממש לפני ההגשה, כדי שיישאר פריך."},
 {id:"wg03lat",name:"לביבות עדשים ונבט חיטה",servings:4,type:"חביתה",preferredMeal:"any",foodGroup:"קטנית",ings:[{fk:"redLentils",g:330},{fk:"oatFlour",g:46},{fk:"wheatGerm",g:28},{fk:"onion",g:110},{fk:"garlic",g:6},{fk:"parsley",g:16},{fk:"oliveOil",g:15},{fk:"turmericGround",g:2},{fk:"blackPepperGround",g:1}],instructions:"מועכים עדשים אדומות מבושלות. מוסיפים בצל ושום קצוצים דק, פטרוזיליה, קמח שיבולת שועל, נבט חיטה, כורכום ופלפל, ולשים לעיסה אחידה. יוצרים 8 לביבות ומטגנים במחבת מוברשת בשמן זית, 3–4 דקות מכל צד."},
-{id:"wg04bwl",name:"קערת יוגורט סויה, פירות יער ונבט חיטה",servings:1,type:"קערה",preferredMeal:"breakfast",foodGroup:"חלבון",ings:[{fk:"soyYogurtPlain",g:250},{fk:"blueberry",g:74},{fk:"banana",g:60},{fk:"wheatGerm",g:7},{fk:"flaxseed",g:7},{fk:"pumpkinS",g:15}],instructions:"שמים יוגורט סויה בקערה. מוסיפים אוכמניות וחצי בננה פרוסה. מפזרים מעל נבט חיטה וזרעי פשתן טחונים. מפזרים מעל כף גרעיני דלעת."},
+{id:"wg04bwl",name:"קערת יוגורט סויה, פירות יער ונבט חיטה",servings:1,type:"קערה",preferredMeal:"breakfast",foodGroup:"חלבון",ings:[{fk:"soyYogurtPlain",g:250},{fk:"blueberry",g:74},{fk:"banana",g:60},{fk:"wheatGerm",g:14},{fk:"flaxseed",g:7},{fk:"pumpkinS",g:25}],instructions:"שמים יוגורט סויה בקערה. מוסיפים אוכמניות וחצי בננה פרוסה. מפזרים מעל 2 כפות נבט חיטה וזרעי פשתן טחונים. מפזרים מעל 2½ כפות גרעיני דלעת."},
+// מאפים קטנים לארוחת ביניים (לבקשת המשתמש: "עוד עוגיות ומאפים מתאימים ליד פרי") — 64–86 קק"ל ליחידה, מרכיבי משרד הבריאות
+{id:"sb01tc",name:"עוגיות טחינה ושיבולת שועל",servings:20,type:"מאפה",preferredMeal:"snack",foodGroup:"דגן",ings:[{fk:"oatsMedRaw",g:200},{fk:"tahiniRaw",g:90},{fk:"dateSilan",g:80},{fk:"cinnamon",g:2}],instructions:"מערבבים שיבולת שועל, טחינה גולמית, סילאן וקינמון לבצק דביק. יוצרים 20 כדורים, משטחים על תבנית עם נייר אפייה ואופים ב-180°C כ-12–14 דקות. מצננים לפני ההגשה."},
+{id:"sb02bn",name:"עוגיות בננה, שיבולת שועל וצימוקים",servings:18,type:"מאפה",preferredMeal:"snack",foodGroup:"דגן",ings:[{fk:"banana",g:240},{fk:"oatsMedRaw",g:200},{fk:"raisins",g:60},{fk:"cinnamon",g:2}],instructions:"מועכים את הבננות, מוסיפים שיבולת שועל, צימוקים וקינמון ומערבבים. יוצרים 18 עוגיות על תבנית עם נייר אפייה ואופים ב-180°C כ-15 דקות, עד הזהבה."},
+{id:"sb03pb",name:"עוגיות חמאת בוטנים ותמרים",servings:20,type:"מאפה",preferredMeal:"snack",foodGroup:"דגן",ings:[{fk:"oatsMedRaw",g:180},{fk:"peanutButter",g:100},{fk:"medjoolDate",g:144},{fk:"cinnamon",g:2}],instructions:"טוחנים את התמרים לממרח, מוסיפים חמאת בוטנים, שיבולת שועל וקינמון ומערבבים. יוצרים 20 עוגיות ואופים ב-175°C כ-12 דקות."},
+{id:"sb04cm",name:"מיני מאפינס גזר ואגוזים",servings:20,type:"מאפה",preferredMeal:"snack",foodGroup:"דגן",ings:[{fk:"oatFlour",g:150},{fk:"carrot",g:150},{fk:"medjoolDate",g:96},{fk:"walnuts",g:40},{fk:"flaxseed",g:14},{fk:"cinnamon",g:2}],instructions:"מערבבים זרעי פשתן טחונים עם 3 כפות מים ומניחים 5 דקות. מגררים גזר, קוצצים תמרים ואגוזים, ומערבבים עם קמח שיבולת שועל, קינמון והפשתן וכ-100 מ\"ל מים. ממלאים 20 תבניות מיני מאפינס ואופים ב-180°C כ-18 דקות."},
 ];
 // ארוחות בצלחת אחת (לבקשת המשתמש): עד 400 קק"ל למנה, ולכל היותר 2 מנות (אוכלים אותן לכל היותר יומיים ברצף) —
 // הכמויות מוקטנות באופן יחסי ומעוגלות (5 גר' מעל 20 גר', גרם שלם מתחת; תבלינים — חצאי גרם)
