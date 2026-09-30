@@ -18046,8 +18046,9 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <span style={{fontSize:12,color:"#1E3A2B",fontWeight:700}}>{icons[mealKey]} {tx[mealKey]}{note&&<span style={{fontSize:11,fontWeight:700,color:"#8C6D53",marginInlineStart:6}}>{note}</span>}</span>
-          <input type="time" value={time||""} onChange={e=>onTimeChange(e.target.value)}
-            style={{background:"#F5F2EB",border:"1px solid #E2DED4",borderRadius:7,color:"#1E3A2B",fontSize:11,padding:"2px 5px",outline:"none",width:82}}/>
+          {/* שעת אכילה — שדה צר (לבקשת המשתמש: "ארוך מאוד") */}
+          <input type="time" className="pv-time" value={time||""} onChange={e=>onTimeChange(e.target.value)}
+            style={{background:"#F5F2EB",border:"1px solid #E2DED4",borderRadius:7,color:"#1E3A2B",fontSize:11,padding:"1px 3px",outline:"none",width:68,minWidth:0,maxWidth:68,flex:"0 0 auto",boxSizing:"border-box"}}/>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           {/* סיכום קלורי של הארוחה — מוצג בכל תצוגה (לבקשת המשתמש), כדי שאפשר לחבר ולבדוק מול הסיכום היומי */}
@@ -22478,7 +22479,7 @@ function AppInner(){
     </div>); };
   return(
     <div style={{minHeight:"100vh",width:"100%",boxSizing:"border-box",background:"#FBF8F3",color:"#1E3A2B",fontFamily:"Segoe UI,system-ui,sans-serif",maxWidth:contentMaxWidth,margin:"0 auto",paddingBottom:isDesktop?24:100,paddingInline:isDesktop?24:0,transition:"max-width .15s ease"}}>
-      <style>{`.pv-full{zoom:1.12}.pv-full [style*="color: rgb(107, 124, 114)"],.pv-full [style*="color: rgb(90, 107, 95)"]{color:#34443b!important}@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}input[type=number]::-webkit-inner-spin-button{opacity:1}html,body{margin:0;padding:0;width:100%;display:block!important;place-items:initial!important}#root{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;text-align:initial!important}.profile-num-input::placeholder{color:#B8B0A2!important;font-weight:400!important;opacity:1}`}</style>
+      <style>{`.pv-time::-webkit-calendar-picker-indicator{margin:0;padding:0;width:10px;height:10px}.pv-time::-webkit-datetime-edit{padding:0}.pv-time::-webkit-datetime-edit-fields-wrapper{padding:0}.pv-full{zoom:1.12}.pv-full [style*="color: rgb(107, 124, 114)"],.pv-full [style*="color: rgb(90, 107, 95)"]{color:#34443b!important}@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}input[type=number]::-webkit-inner-spin-button{opacity:1}html,body{margin:0;padding:0;width:100%;display:block!important;place-items:initial!important}#root{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;text-align:initial!important}.profile-num-input::placeholder{color:#B8B0A2!important;font-weight:400!important;opacity:1}`}</style>
 
       {/* Header */}
       <div style={{padding:"14px 16px 8px",background:isDesktop?"#DCEAD9":"#FFFFFF",position:"sticky",top:0,zIndex:50,borderBottom:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)"}}>
