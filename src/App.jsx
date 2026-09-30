@@ -9188,6 +9188,7 @@ function* generateMixedWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=
 // עיקרית; משקל כפול לסידן כשהיעד 1,200 מ"ג (נשים מגיל 51, גברים מגיל 71). אחר כך: פשתן לאומגה 3, גרעיני דלעת ללאוצין
 // שחסר, ומלח מיודד ליוד (אלא אם מסומן תוסף יוד) — כולם בתוך תקרת הנתרן והקלוריות. ההתאמה נבדקה בסימולציה לפני הבנייה
 const SIMPLE_MAIN_CAP=4, SIMPLE_SNACK_CAP=2;
+const FAV_BONUS=1; // נקודות לכל מתכון מועדף ביום בבחירת התפריט הפשוט
 const SIMPLE_ADDON_FKS=new Set(["flaxseed","chiaseeds","pumpkinS","sunflowerS","saltIodized","wakame","tahiniFullRaw"]);
 const simpleCount=items=>(items||[]).filter(it=>!SIMPLE_ADDON_FKS.has(it.fk)&&FDB[it.fk]?.cat!=="פרי").length; // פרי לא נספר (לבקשת המשתמש)
 function simplePools(recipes, excl){
@@ -9203,6 +9204,7 @@ function simplePools(recipes, excl){
     bfast: ids(reg.filter(r=>["דייסות","קערות"].includes(cat(r))||(r.preferredMeal==="breakfast"&&cat(r)!=="משקאות"&&kc(r)>=150))),
     spread: ids(reg.filter(r=>cat(r)==="ממרחים")),
     cookie: ids(reg.filter(r=>/עוגי/.test(r.name))),
+    fav: new Set(rs.filter(r=>r.fav).map(r=>r.id)), // מתכונים מועדפים (☆) — העדפה עדינה בבחירת היום
     stew: ids(reg.filter(r=>["תבשילי קטניות","תבשילי דגנים"].includes(cat(r)))),
     grainStew: ids(reg.filter(r=>cat(r)==="תבשילי דגנים")),
     // ליד תבשיל דגנים: פשטידה, או מרק עשיר בחלבון (קטניות/טופו — לפחות 0.45 גר' לאוצין למנה)
@@ -9223,7 +9225,9 @@ function simplePools(recipes, excl){
 }
 function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, excludedFks=new Set(), opts={}){
   dri=planDRI(dri)||dri||{}; const P=opts.pools||simplePools(recipes,excludedFks);
-  const rnd=opts.rnd||Math.random; const pick=a=>a&&a.length?a[Math.floor(rnd()*a.length)]:null;
+  const rnd=opts.rnd||Math.random; const pick0=a=>a&&a.length?a[Math.floor(rnd()*a.length)]:null;
+  // מועדפים נכנסים יותר לצירופים המוצעים (20% מהבחירות, כשיש מועדף באפשרויות); הבחירה הסופית — לפי הניקוד
+  const pick=a=>{ if (a&&a.length&&P.fav&&P.fav.size&&rnd()<0.2){ const f=a.filter(x=>P.fav.has(x)&&((opts.used||{})[x]||0)<2); if (f.length) return pick0(f); } return pick0(a); }; // עד פעמיים בשבוע לכל מועדף
   const svG=id=>TEMP_FDB[id]?._servingG||200; const rec=(id,m=1)=>id?{fk:id,g:Math.round(svG(id)*m*10)/10}:null;
   const unitG=fk=>{ const su=getServingUnit(fk,FDB[fk],"he"); return su?.g||100; };
   // פרי: שונה בכל ארוחה של אותו יום; לא נספר במכסת 4 הרכיבים (לבקשת המשתמש)
@@ -9235,15 +9239,17 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   const VEG=()=>{ const fk=pick(["tomato","cucumber","redPepper","yellowPepper","carrot","kohlrabi"].filter(P.ok)); return fk?it(fk,unitG(fk)):null; };
   const SAVORY=/חבית|מקושקש|שקשוק|פריטט/; const isSavory=id=>SAVORY.test(TEMP_FDB[id]?.he||"");
   const SPR=P.spread.filter(id=>svG(id)<=130); // ממרח לפרוסה — לא דיפ או מחית בגודל מנה
-  const spreadOrYog=(soy)=>(SPR.length&&(soy||rnd()<0.6))?rec(pick(SPR)):(P.ok("soyYogurtPlain")?it("soyYogurtPlain",170):null);
+  const spreadOrYog=(soy)=>(SPR.length&&(soy||rnd()<0.6))?rec(pick(lim(SPR))):(P.ok("soyYogurtPlain")?it("soyYogurtPlain",170):null);
   const clean=a=>a.filter(Boolean);
   // מתכון שכבר יש בו סויה (משקה, יוגורט, טופו) — בלי משקה/יוגורט סויה לידו; מתכון שיש בו ירק — בלי ירק נוסף
   const ingsOf=id=>TEMP_FDB[id]?._ings||[]; const perSv=(id,f)=>{ const I=ingsOf(id); const tot=I.reduce((a,i)=>a+(i.g||0),0)||1; return I.filter(f).reduce((a,i)=>a+(i.g||0),0)/tot*svG(id); };
   const hasSoy=id=>ingsOf(id).some(i=>SOY_FKS_ALL.has(i.fk)); const hasVeg=id=>perSv(id,i=>["ירק","עלים"].includes(FDB[i.fk]?.cat))>=40;
   const used=opts.used||{}; const newBOk=opts.newBreakfastOk!==false;
   const fixed=opts.existing||{}; const isFixed=mk=>(fixed[mk]||[]).length>0;
-  const npChoices=opts.onePlate?[opts.onePlate]:(P.oneL.filter(id=>(used[id]||0)<2).length?P.oneL.filter(id=>(used[id]||0)<2):P.oneL);
+  const npBase=opts.onePlate?[opts.onePlate]:(P.oneL.filter(id=>(used[id]||0)<2).length?P.oneL.filter(id=>(used[id]||0)<2):P.oneL);
+  const npChoices=opts.onePlate?npBase:[...npBase,...npBase.filter(id=>P.fav&&P.fav.has(id)),...npBase.filter(id=>P.fav&&P.fav.has(id))]; // ארוחה בצלחת אחת מועדפת — משקל כפול
   const reUsedOk=id=>(used[id]||0)<2;
+  const lim=a=>{ const b=(a||[]).filter(reUsedOk); return b.length?b:a; }; // כל מתכון (גם סלט, ממרח, עוגייה) — עד פעמיים בשבוע
   function breakfast(){ const r=rnd();
     // בכל ארוחת בוקר יש ירק (לבקשת המשתמש) — אלא אם המנה כבר כוללת ירקות
     const sweet=id=>clean([rec(id), hasSoy(id)?null:PROT(), hasVeg(id)?null:VEG(), FR()]);
@@ -9251,19 +9257,19 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     if (newBOk && P.oneB.length && r<0.35) { const id=pick(P.oneB); return clean([rec(id,pick(small?[0.5,0.75]:[0.75,1,1])), hasVeg(id)?null:VEG(), rnd()<0.5?FR():null]); }
     const bf=P.bfast.filter(reUsedOk);
     if (bf.length && r<0.8) { const id=pick(bf); return isSavory(id)?salty(id):sweet(id); }
-    if (SPR.length) return clean([rec(pick(SPR)), bread(small?1:2), VEG(), PROT()]);
+    if (SPR.length) return clean([rec(pick(lim(SPR))), bread(small?1:2), VEG(), PROT()]);
     { const id=pick(bf.length?bf:P.bfast); return isSavory(id)?salty(id):sweet(id); } }
   function lunch(np){ if (!np) return dinner(true);
     const m=pick(small?[0.5,0.75,0.75,1]:[0.75,1,1,1.25]); const out=[rec(np,m)];
-    if (P.vegSal.length) out.push(rec(pick(P.vegSal))); if (rnd()<0.6&&!hasSoy(np)) out.push(PROT());
+    if (P.vegSal.length) out.push(rec(pick(lim(P.vegSal)))); if (rnd()<0.6&&!hasSoy(np)) out.push(PROT());
     return [...clean(out).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="dinner"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   function dinner(){ const r=rnd(); const st=P.stew.filter(reUsedOk), so=P.soup.filter(reUsedOk), ls=P.legSal.filter(reUsedOk); let m;
     // תבשיל דגנים (לבקשת המשתמש: "גדוש דגנים") — בלי דגן נוסף לידו; במקומו פשטידה או מרק עשיר בחלבון. תבשיל קטניות — עם דגן
     const side=id=>{ if (P.grainStew.includes(id)) { const o=[...P.pash,...P.protSoup].filter(reUsedOk); return o.length?rec(pick(o)):null; } const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); };
-    if (st.length && r<0.45) { const id=pick(st); m=[rec(id), side(id), rec(pick(P.vegSal))]; }
-    else if (so.length && r<0.7) m=[rec(pick(so)), bread(), rec(pick(P.vegSal))];
-    else if (ls.length) m=[rec(pick(ls)), bread(), rec(pick(P.vegSal))];
-    else { const id=pick(st.length?st:P.stew); m=[rec(id), side(id), rec(pick(P.vegSal))]; }
+    if (st.length && r<0.45) { const id=pick(st); m=[rec(id), side(id), rec(pick(lim(P.vegSal)))]; }
+    else if (so.length && r<0.7) m=[rec(pick(so)), bread(), rec(pick(lim(P.vegSal)))];
+    else if (ls.length) m=[rec(pick(ls)), bread(), rec(pick(lim(P.vegSal)))];
+    else { const id=pick(st.length?st:P.stew); m=[rec(id), side(id), rec(pick(lim(P.vegSal)))]; }
     if (rnd()<0.6&&!(m[0]&&hasSoy(m[0].fk))) m.push(PROT());
     return [...clean(m).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="lunch"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   // ביניים (לבקשת המשתמש): כ-6% מהיום — פרי ועוגייה, או שני פירות שונים; נבחר הצירוף הקרוב ביותר ל-6%
@@ -9271,7 +9277,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   function snack(){ const goal=target*0.06, kOf=kOfC;
     const frs=P.fruit.filter(f=>!dayFr.has(f)); const cands=[];
     for (let i=0;i<8;i++){ const f1=pick(frs.length?frs:P.fruit); if (!f1) break; const a=it(f1,unitG(f1));
-      if (P.cookie.length && rnd()<0.5) cands.push([a, rec(pick(P.cookie))]);
+      if (P.cookie.length && rnd()<0.5) cands.push([a, rec(pick(lim(P.cookie)))]);
       else { const f2=pick((frs.length?frs:P.fruit).filter(f=>f!==f1)); if (f2) cands.push([a, it(f2,unitG(f2))]); } }
     if (!cands.length) return clean([FR()]);
     const best=cands.map(c=>clean(c)).sort((x,y)=>Math.abs(x.reduce((q,z)=>q+kOf(z),0)-goal)-Math.abs(y.reduce((q,z)=>q+kOf(z),0)-goal))[0];
@@ -9290,7 +9296,9 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     // צהריים עד 36% וערב עד 34% — לפני התוספות (זרעים, טחינה), שמוסיפות לצהריים ולערב עוד כ-2%
     // תמהיל (לבקשת המשתמש): ביניים 6% והיתרה לארוחות העיקריות — כ-31% לכל אחת (טווח 25%–36%), ועונש על כל סטייה
     const sh=mk=>nutOf(plan[mk]).kcal/k;
-    for (const mk of ["breakfast","lunch","dinner"]) { if (isFixed(mk)) continue; const x=sh(mk); if (x<0.25||x>0.36) return null; sc-=Math.abs(x-0.313)*40; } // היתרה אחרי ביניים של 6% — כ-31% לכל ארוחה עיקרית
+    for (const mk of ["breakfast","lunch","dinner"]) { if (isFixed(mk)) continue; const x=sh(mk); if (x<0.25||x>0.36) return null; sc-=Math.abs(x-0.313)*40; }
+    // מועדפים (לבקשת המשתמש): תוספת קטנה לכל מתכון מועדף ביום (עד 2) — מכריעה בין צירופים דומים, לא גוברת על היעדים
+    if (P.fav&&P.fav.size) { const f=new Set(["breakfast","snack","lunch","dinner"].filter(mk=>!isFixed(mk)).flatMap(mk=>(plan[mk]||[]).map(x=>x.fk)).filter(fk=>P.fav.has(fk)&&(used[fk]||0)<2)); sc+=Math.min(2,f.size)*FAV_BONUS; } // היתרה אחרי ביניים של 6% — כ-31% לכל ארוחה עיקרית
     return sc; }
   const tries=opts.tries||700; let best=null, bestSc=-1e9;
   for (let i=0;i<tries;i++){ const np=npChoices.length?npChoices[i%npChoices.length]:null;
@@ -16196,7 +16204,7 @@ function RecipeBookModal({recipes,lang,onClose,profile}){
         <div style={paperStyle}>
           <div style={{fontSize:16,fontWeight:800,marginBottom:14,textAlign:"center",borderBottom:"2px solid #3a2f2233",paddingBottom:8}}>{lang==="he"?"תוכן עניינים":"Table of Contents"}</div>
           {/* הסבר על מועדפים בפתח הספר (לבקשת המשתמש) */}
-          <div style={{fontSize:12,lineHeight:1.6,color:"#5a4a30",background:"#f1e6b855",border:"1px solid #d8c68a",borderRadius:8,padding:"7px 9px",marginBottom:12}}>{lang==="he"?"⭐ מועדפים: בתצוגת הניהול (הכפתור ״📋 עבור לתצוגת הניהול״ למטה) לוחצים על ☆ ליד מתכון כדי לסמן אותו כמועדף. אחר כך הכפתור ״☆ מועדפים״ ליד החיפוש מציג רק אותם, וכפתור ״🖨️ הדפסה״ מדפיס או שומר אותם כ-PDF. הסימון הוא לנוחות בלבד — הוא לא משנה את הצעות התפריט.":"⭐ Favorites: in the management view (the \"📋 Switch to management view\" button below), tap ☆ next to a recipe to mark it as a favorite. Then the \"☆ Favorites\" button next to the search shows only those, and \"🖨️ Print\" prints or saves them as PDF. Marking is for convenience only — it does not change the menu suggestions."}</div>
+          <div style={{fontSize:12,lineHeight:1.6,color:"#5a4a30",background:"#f1e6b855",border:"1px solid #d8c68a",borderRadius:8,padding:"7px 9px",marginBottom:12}}>{lang==="he"?"⭐ מועדפים: בתצוגת הניהול (הכפתור ״📋 עבור לתצוגת הניהול״ למטה) לוחצים על ☆ ליד מתכון כדי לסמן אותו כמועדף. אחר כך הכפתור ״☆ מועדפים״ ליד החיפוש מציג רק אותם, וכפתור ״🖨️ הדפסה״ מדפיס או שומר אותם כ-PDF. במצב ״פשוט״ מתכון מועדף גם מוצע בתפריט קצת יותר — כל עוד הוא מתאים ליעדים התזונתיים, ועד פעמיים בשבוע.":"⭐ Favorites: in the management view (the \"📋 Switch to management view\" button below), tap ☆ next to a recipe to mark it as a favorite. Then the \"☆ Favorites\" button next to the search shows only those, and \"🖨️ Print\" prints or saves them as PDF. In \"Simple\" mode a favorite is also suggested a little more often in the menu — as long as it fits the nutrition targets, and up to twice a week."}</div>
           {tocEntries.length===0 && <div style={{textAlign:"center",fontSize:12,opacity:.6,marginTop:20}}>{lang==="he"?"אין עדיין מתכונים":"No recipes yet"}</div>}
           {tocEntries.map(({cat,entries})=>(
             <div key={cat} style={{marginBottom:14}}>
@@ -20747,7 +20755,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop}){
         </button>
       )}
       {bookOpen&&<RecipeBookModal recipes={recipes} lang={lang} profile={profile} onClose={()=>setBookOpen(false)}/>}
-      {recipes.length>0&&<div style={{fontSize:12,color:"#5a4a30",background:"#f1e6b833",border:"1px solid #e8d9a0",borderRadius:9,padding:"6px 9px",marginBottom:8,lineHeight:1.5}}>{lang==="he"?"⭐ לוחצים על ☆ ליד מתכון כדי לסמן אותו כמועדף — ״☆ מועדפים״ מציג רק אותם, ו״🖨️ הדפסה״ מדפיס אותם. לא משנה את הצעות התפריט.":"⭐ Tap ☆ next to a recipe to mark it as a favorite — \"☆ Favorites\" shows only those, and \"🖨️ Print\" prints them. It does not change the menu suggestions."}</div>}
+      {recipes.length>0&&<div style={{fontSize:12,color:"#5a4a30",background:"#f1e6b833",border:"1px solid #e8d9a0",borderRadius:9,padding:"6px 9px",marginBottom:8,lineHeight:1.5}}>{lang==="he"?"⭐ לוחצים על ☆ ליד מתכון כדי לסמן אותו כמועדף — ״☆ מועדפים״ מציג רק אותם, ו״🖨️ הדפסה״ מדפיס אותם. במצב ״פשוט״ הם גם מוצעים בתפריט קצת יותר.":"⭐ Tap ☆ next to a recipe to mark it as a favorite — \"☆ Favorites\" shows only those, and \"🖨️ Print\" prints them. In \"Simple\" mode they are also suggested a little more often."}</div>}
       {viewId&&(()=>{ const r=recipes.find(x=>x.id===viewId); if(!r) return null;
         const entry=recipeToFdbEntry(r); const sg=entry._servingG||100; const kcal=Math.round(calcKcalActual(ALL_KEYS.reduce((a,k)=>{a[k]=(entry.per100[k]||0)*sg/100;return a;},{})));
         const closeView=()=>{ setViewId(null); scrollBackToRecipe(); };
