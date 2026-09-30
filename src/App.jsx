@@ -9199,6 +9199,27 @@ const SIMPLE_MAIN_CAP=5, SIMPLE_SNACK_CAP=2; // עד 5 רכיבים כשיש צ�
 const FAV_BONUS=1; // נקודות לכל מתכון מועדף ביום בבחירת התפריט הפשוט
 const SIMPLE_ADDON_FKS=new Set(["flaxseed","chiaseeds","pumpkinS","sunflowerS","saltIodized","wakame","tahiniFullRaw"]);
 const simpleCount=items=>(items||[]).filter(it=>!SIMPLE_ADDON_FKS.has(it.fk)&&FDB[it.fk]?.cat!=="פרי").length; // פרי לא נספר (לבקשת המשתמש)
+// השלמת לאוצין בהחלפה (לבקשת המשתמש: "לאוצין ירוד מאוד אצל בני 55 פלוס"): ארוחה עיקרית מתחת ליעד מקבלת מקור מרוכז —
+// תורמוס, יוגורט סויה, אדממה, משקה סויה במקום משקה שיבולת שועל, או רבע מנה נוספת מהמנה העיקרית — ובמקום הקלוריות
+// תוספת הדגן או הלחם (הכי מעט לאוצין לקלוריה) קטנה ברבע, עד מחצית. נשמר רק אם היום נשאר עד 105% והלאוצין עלה
+function simpleLeuSwap(plan, mk, LEU, target, ok){
+  const all=()=>["breakfast","snack","lunch","dinner"].flatMap(m=>plan[m]||[]); const nut=a=>sumNuts(a.map(x=>ingNut(x.fk,x.g,x.soaked)));
+  const dayK=()=>nut(all()).kcal, leu=()=>nut(plan[mk]||[]).leucine||0; if (!(plan[mk]||[]).length) return;
+  const ingsOf=fk=>TEMP_FDB[fk]?._ings||[]; const has=fks=>plan[mk].some(x=>fks.has(x.fk)||ingsOf(x.fk).some(i=>fks.has(i.fk)));
+  const soyIn=()=>has(SOY_FKS_ALL), lupIn=()=>has(new Set(["lupinBeansCooked"]));
+  const acts=[
+    ()=>mk!=="breakfast"&&!lupIn()&&ok("lupinBeansCooked")&&simpleCount(plan[mk])<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:"lupinBeansCooked",g:60}),true),
+    ()=>{ const y=ok("soyYogurtOrgPlain")?"soyYogurtOrgPlain":"soyYogurtPlain"; return !soyIn()&&ok(y)&&simpleCount(plan[mk])<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:y,g:170}),true); }, // הקנוי — עשיר בסידן
+    ()=>mk!=="breakfast"&&!soyIn()&&ok("edamame")&&simpleCount(plan[mk])<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:"edamame",g:80}),true),
+    ()=>{ const o=plan[mk].find(x=>x.fk==="oatMilk"); if (!o||!ok("soymilkFortified")) return false; const rest=plan[mk].filter(x=>x!==o);
+      if (rest.some(x=>SOY_FKS_ALL.has(x.fk)||ingsOf(x.fk).some(i=>SOY_FKS_ALL.has(i.fk)))) return false; o.fk="soymilkFortified"; return true; }, // לא סויה כפולה, גם בתוך מתכון
+    ()=>{ const m=plan[mk].filter(x=>TEMP_FDB[x.fk]?._isRecipe).sort((a,b)=>(ingNut(b.fk,100).leucine||0)/(ingNut(b.fk,100).kcal||1)-(ingNut(a.fk,100).leucine||0)/(ingNut(a.fk,100).kcal||1))[0];
+      if (!m) return false; const sv=TEMP_FDB[m.fk]._servingG||200; if (m.g+sv*0.25>sv*1.5+0.01) return false; m.g=Math.round((m.g+sv*0.25)*10)/10; return true; } ];
+  for (const act of acts) { if (leu()>=LEU) break; const snap=plan[mk].map(x=>({...x})), l0=leu();
+    if (!act()) { plan[mk]=snap; continue; }
+    const grains=plan[mk].filter(x=>!TEMP_FDB[x.fk]?._isRecipe&&FDB[x.fk]?.cat==="דגן").map(x=>[x,x.g]);
+    for (let r=0; r<2 && dayK()>target*1.05; r++) grains.forEach(([x,g0])=>{ if (dayK()>target*1.05&&x.g-g0*0.25>=g0*0.5-0.01) x.g=Math.round((x.g-g0*0.25)*10)/10; });
+    if (dayK()>target*1.05||leu()<l0+0.1) plan[mk]=snap; } }
 function simplePools(recipes, excl){
   const ok=fk=>!!FDB[fk]&&!(excl&&excl.has(fk));
   const rs=(recipes||[]).filter(r=>r&&r.ings&&!r.ings.some(i=>excl&&excl.has(i.fk)));
@@ -9350,6 +9371,8 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     // עדיין חסר — "מנה גדולה" (1.25) של המנה העיקרית, אם יש מקום קלורי
     const main=plan[mk].find(x=>TEMP_FDB[x.fk]?._isRecipe); if (main && leuOf(plan[mk])<LEU && main.g<=svG(main.fk)*1.01) { const add=svG(main.fk)*0.25;
       if (dayK()+ingNut(main.fk,add).kcal<=target*1.05) main.g=Math.round((main.g+add)*10)/10; } });
+  // החלפה ללאוצין כשאין מקום קלורי להוספה (לבקשת המשתמש)
+  ["breakfast","lunch","dinner"].forEach(mk=>{ if (!isFixed(mk)&&leuOf(plan[mk]||[])<LEU) simpleLeuSwap(plan,mk,LEU,target,P.ok); });
   // ירקות (לבקשת המשתמש): לפחות 7 יחידות ביום — ירק טרי לצהריים/ערב (הארוחה הדלה יותר בירקות), בתוך מכסת 5 הרכיבים ועד 105% קלוריות
   { const dayVeg=()=>["breakfast","snack","lunch","dinner"].reduce((a,mk)=>a+simpleVegUnits(plan[mk]),0);
     for (let g=0; g<6 && dayVeg()<SIMPLE_VEG_MIN; g++){ const mk=["lunch","dinner","breakfast"].filter(m=>!isFixed(m)&&(plan[m]||[]).length&&simpleCount(plan[m])<SIMPLE_MAIN_CAP).sort((a,b)=>simpleVegUnits(plan[a])-simpleVegUnits(plan[b]))[0];
@@ -9399,48 +9422,57 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
     Object.values(day).flat().forEach(x=>{ if (TEMP_FDB[x.fk]?._isRecipe) used[x.fk]=(used[x.fk]||0)+1; });
     if ((day.breakfast||[]).some(x=>P.oneB.includes(x.fk))) newB++;
     week[`d${d}`]=day; }
-  // סידן שבועי לפחות 100% מהיעד (לבקשת המשתמש): בימים הדלים ביותר — פשטידה מוחלפת במשקה סויה מועשר (300 מ"ג), יוגורט סויה
-  // ביתי (כ-40 מ"ג) מוחלף במשקה, או מתווסף משקה לארוחה עיקרית בלי סויה (עד 5 רכיבים, עד 105% קלוריות), ולבסוף טחינה מלאה
-  { const caT=dri?.calcium?.weekDri||dri?.calcium?.dri||1000; const all=d=>["breakfast","snack","lunch","dinner"].flatMap(m=>d[m]||[]);
+  // סידן שבועי לפחות 100% מהיעד (לבקשת המשתמש), בלי לפגוע בלאוצין: בימים הדלים ביותר מנסים לפי הסדר — פשטידה → משקה
+  // סויה מועשר, יוגורט סויה → משקה סויה, משקה סויה לארוחה בלי סויה, פרי הבוקר → משקה, משקה שיבולת שועל, משקה לארוחת
+  // הביניים. כל שינוי נבדק: ארוחה שהייתה ביעד הלאוצין לא יורדת ממנו (וארוחה מתחתיו לא מאבדת), היום נשאר עם 7 יחידות
+  // ירק לפחות ועד 105% קלוריות — אחרת השינוי מבוטל ומנסים את הבא
+  { const caT=dri?.calcium?.weekDri||dri?.calcium?.dri||1000; const MEALS=["breakfast","snack","lunch","dinner"], MAIN=["breakfast","lunch","dinner"];
+    const LEU=((dri&&dri._age)||35)>=65?2.5:2; const all=d=>MEALS.flatMap(m=>d[m]||[]);
     const dN=d=>sumNuts(all(d).map(x=>ingNut(x.fk,x.g,x.soaked))); const days=Object.keys(week);
+    const leuM=a=>sumNuts((a||[]).map(x=>ingNut(x.fk,x.g,x.soaked))).leucine||0;
     const avgCa=()=>days.reduce((a,k)=>a+(dN(week[k]).calcium||0),0)/days.length;
     const soyIn=a=>(a||[]).some(x=>SOY_FKS_ALL.has(x.fk)||(TEMP_FDB[x.fk]?._ings||[]).some(i=>SOY_FKS_ALL.has(i.fk)));
-    const okDrink=!!FDB.soymilkFortified&&!(excludedFks&&excludedFks.has("soymilkFortified"));
-    // מקום קלורי למשקה: אם היום יעבור 105% — המנה העיקרית בארוחה קטנה ברבע מנה (עד ¾ מנה לפחות); המשקה מחזיר חלבון ולאוצין
-    // אם אין מקום בארוחה עצמה — מנה עיקרית בארוחה אחרת באותו יום, ואחר כך תוספת דגן מבושל (עד 75% מהכמות, לא פחות מ-100 גרם)
-    const vegOk=d=>["breakfast","snack","lunch","dinner"].reduce((x,mk)=>x+simpleVegUnits(d[mk]),0)>=SIMPLE_VEG_MIN-0.01; // הקטנה לא מורידה מתחת ל-7 יחידות ירק
+    const okDrink=P.ok("soymilkFortified"), okOat=P.ok("oatMilk"), hasDrink=a=>a.some(x=>x.fk==="oatMilk"||x.fk==="soymilkFortified");
+    const vegOk=d=>MEALS.reduce((x,mk)=>x+simpleVegUnits(d[mk]),0)>=SIMPLE_VEG_MIN-0.01;
+    // מקום קלורי: קודם תוספת דגן מבושל (עד 75%, לא פחות מ-100 גר'), אחר כך רבע מנה ממנה עיקרית (עד ¾ מנה)
     const fits=(d,a,addK)=>{ if (dN(d).kcal+addK<=target*1.05) return true; const orig=[];
-      const cand=[...[...a].filter(x=>TEMP_FDB[x.fk]?._isRecipe).sort((x,y)=>ingNut(y.fk,y.g).kcal-ingNut(x.fk,x.g).kcal),
-        ...["lunch","dinner","breakfast"].flatMap(m=>(d[m]||[]).filter(x=>!a.includes(x)&&TEMP_FDB[x.fk]?._isRecipe)),
-        ...["lunch","dinner"].flatMap(m=>(d[m]||[]).filter(x=>!TEMP_FDB[x.fk]?._isRecipe&&FDB[x.fk]?.cat==="דגן"&&x.g>=130))];
+      const cand=[...["lunch","dinner"].flatMap(m=>(d[m]||[]).filter(x=>!TEMP_FDB[x.fk]?._isRecipe&&FDB[x.fk]?.cat==="דגן"&&x.g>=130)),
+        ...[...a].filter(x=>TEMP_FDB[x.fk]?._isRecipe), ...MAIN.flatMap(m=>(d[m]||[]).filter(x=>!a.includes(x)&&TEMP_FDB[x.fk]?._isRecipe))];
       for (const m of cand) { const isR=!!TEMP_FDB[m.fk]?._isRecipe; const sv=isR?(TEMP_FDB[m.fk]._servingG||200):m.g;
-        const ng=Math.round((m.g-sv*0.25)*10)/10; if (isR?ng<sv*0.75-0.01:ng<100) continue; orig.push([m,m.g]); m.g=ng;
-        if (vegOk(d)&&dN(d).kcal+addK<=target*1.05) return true; }
+        const ng=Math.round((m.g-sv*0.25)*10)/10; if (isR?ng<sv*0.75-0.01:ng<100) continue;
+        const home=MAIN.find(mm=>(d[mm]||[]).includes(m)); const g0=m.g; m.g=ng;
+        if (isR&&home&&!a.includes(m)&&leuM(d[home])<LEU) { m.g=g0; continue; } // בארוחה אחרת — רק אם נשארת ביעד הלאוצין (בארוחה עצמה הבדיקה אחרי ההוספה)
+        orig.push([m,g0]); if (dN(d).kcal+addK<=target*1.05) return true; }
       orig.forEach(([m,g])=>{ m.g=g; }); return false; };
-    const skip=new Set();
-    for (let g=0; g<40 && avgCa()<caT; g++){ let done=false, reverted=false;
-      for (const k of [...days].sort((a,b)=>(dN(week[a]).calcium||0)-(dN(week[b]).calcium||0))){ if (skip.has(k)) continue; const d=week[k];
-        const snap=JSON.stringify(d), wasOk=vegOk(d);
-        for (const mk of ["dinner","lunch"]) { if (done||!okDrink) break; const a=d[mk]||[]; const i=a.findIndex(x=>P.pash.includes(x.fk)); if (i>=0&&!soyIn(a.filter((x,j)=>j!==i))) { a[i]={fk:"soymilkFortified",g:250}; done=true; } } // בודקים סויה בלי הפשטידה עצמה
-        for (const mk of ["breakfast","lunch","dinner","snack"]) { if (done||!okDrink) break; const a=d[mk]||[]; const i=a.findIndex(x=>x.fk==="soyYogurtPlain"); if (i>=0&&!a.some(x=>x.fk==="soymilkFortified")) { a[i]={fk:"soymilkFortified",g:250}; done=true; } }
-        for (const mk of ["dinner","lunch","breakfast"]) { if (done||!okDrink) break; const a=d[mk]||[]; if (a.length&&!soyIn(a)&&simpleCount(a)<SIMPLE_MAIN_CAP&&fits(d,a,115)) { a.push({fk:"soymilkFortified",g:250}); done=true; } }
-        // פשטידה בארוחה שיש בה מנת סויה — מוחלפת במשקה שיבולת שועל מועשר (לא סויה כפולה, וגם קל יותר)
-        for (const mk of ["dinner","lunch"]) { if (done||!FDB.oatMilk||(excludedFks&&excludedFks.has("oatMilk"))) break; const a=d[mk]||[]; const i=a.findIndex(x=>P.pash.includes(x.fk)); if (i>=0&&!a.some(x=>x.fk==="oatMilk"||x.fk==="soymilkFortified")) { a[i]={fk:"oatMilk",g:250}; done=true; } }
-        // ארוחת בוקר: הפרי (שאינו חובה בבוקר) מוחלף במשקה מועשר — סויה, או שיבולת שועל כשיש סויה במנה
-        if (!done) { const a=d.breakfast||[]; const i=a.findIndex(x=>FDB[x.fk]?.cat==="פרי"); if (i>=0&&!a.some(x=>x.fk==="soymilkFortified"||x.fk==="oatMilk")) { const fk=(!soyIn(a)&&okDrink)?"soymilkFortified":(FDB.oatMilk&&!(excludedFks&&excludedFks.has("oatMilk"))?"oatMilk":null);
-          if (fk) { const f0=a[i]; a[i]={fk,g:250}; if (dN(d).kcal<=target*1.05||fits(d,a,0)) done=true; else a[i]=f0; } } }
-        // ארוחה שכבר יש בה סויה — משקה שיבולת שועל מועשר (300 מ"ג סידן) במקום משקה סויה
-        const okOat=!!FDB.oatMilk&&!(excludedFks&&excludedFks.has("oatMilk"));
-        for (const mk of ["dinner","lunch","breakfast"]) { if (done||!okOat) break; const a=d[mk]||[]; if (a.length&&!a.some(x=>x.fk==="oatMilk"||x.fk==="soymilkFortified")&&simpleCount(a)<SIMPLE_MAIN_CAP&&fits(d,a,110)) { a.push({fk:"oatMilk",g:250}); done=true; } }
-        for (const mk of ["dinner","lunch"]) { if (done||!FDB.tahiniFullRaw||(excludedFks&&excludedFks.has("tahiniFullRaw"))) break; const a=d[mk]||[]; const ex=a.find(x=>x.fk==="tahiniFullRaw"); if (a.length&&(!ex||ex.g<30)&&fits(d,a,93)) { if (ex) ex.g+=15; else a.push({fk:"tahiniFullRaw",g:15}); done=true; } }
-        // אחרון: משקה מועשר לארוחת הביניים (סויה, או שיבולת שועל כשכבר יש סויה ביום); המקום הקלורי — מהצהריים
-        if (!done) { const a=d.snack||[]; const fk=okDrink&&!soyIn(a)?"soymilkFortified":okOat?"oatMilk":null;
-          if (fk&&a.length&&!a.some(x=>x.fk==="oatMilk"||x.fk==="soymilkFortified")&&fits(d,d.lunch||[],110)) { a.push({fk,g:250}); done=true; } }
-        // שינוי שהוריד את היום מתחת ל-7 יחידות ירק (פשטידת ירקות שהוחלפה) — מבוטל, והיום לא נוגעים בו עוד
-        if (done&&wasOk&&!vegOk(d)) { week[k]=JSON.parse(snap); skip.add(k); done=false; reverted=true; break; }
+    const pashI=a=>a.findIndex(x=>P.pash.includes(x.fk));
+    const acts=[
+      // יוגורט סויה ביתי (38 מ"ג סידן) → יוגורט סויה אורגני קנוי (204 מ"ג), אותו לאוצין
+      d=>P.ok("soyYogurtOrgPlain")&&MEALS.some(mk=>{ const x=(d[mk]||[]).find(x=>x.fk==="soyYogurtPlain"); if (!x) return false; x.fk="soyYogurtOrgPlain"; return true; }),
+      d=>["dinner","lunch"].some(mk=>{ const a=d[mk]||[], i=pashI(a); if (!okDrink||i<0||soyIn(a.filter((x,j)=>j!==i))) return false; a[i]={fk:"soymilkFortified",g:250}; return true; }),
+      d=>MEALS.some(mk=>{ const a=d[mk]||[], i=a.findIndex(x=>x.fk==="soyYogurtPlain"||x.fk==="soyYogurtOrgPlain"); if (!okDrink||i<0||hasDrink(a)) return false; a[i]={fk:"soymilkFortified",g:250}; return true; }),
+      d=>["dinner","lunch","breakfast"].some(mk=>{ const a=d[mk]||[]; if (!okDrink||!a.length||soyIn(a)||hasDrink(a)||simpleCount(a)>=SIMPLE_MAIN_CAP||!fits(d,a,115)) return false; a.push({fk:"soymilkFortified",g:250}); return true; }),
+      d=>{ const a=d.breakfast||[], i=a.findIndex(x=>FDB[x.fk]?.cat==="פרי"); if (i<0||hasDrink(a)) return false; const fk=!soyIn(a)&&okDrink?"soymilkFortified":okOat?"oatMilk":null; if (!fk) return false;
+        const f0=a[i]; a[i]={fk,g:250}; if (dN(d).kcal<=target*1.05||fits(d,a,0)) return true; a[i]=f0; return false; },
+      d=>["dinner","lunch","breakfast"].some(mk=>{ const a=d[mk]||[]; if (!okOat||!a.length||hasDrink(a)||simpleCount(a)>=SIMPLE_MAIN_CAP||!fits(d,a,110)) return false; a.push({fk:"oatMilk",g:250}); return true; }),
+      // ארוחת ביניים: אחד משני הפירות (הקטן בקלוריות) מוחלף במשקה, או משקה ליד הפרי והעוגייה
+      d=>{ const a=d.snack||[]; const fk=okDrink&&!soyIn(a)?"soymilkFortified":okOat?"oatMilk":null; if (!fk||!a.length||hasDrink(a)) return false;
+        const fr=a.filter(x=>FDB[x.fk]?.cat==="פרי"); if (fr.length>=2) { const f=fr.sort((x,y)=>ingNut(x.fk,x.g).kcal-ingNut(y.fk,y.g).kcal)[0], i=a.indexOf(f);
+          a[i]={fk,g:250}; if (fits(d,[],0)) return true; a[i]=f; return false; }
+        if (!fits(d,[],110)) return false; a.push({fk,g:250}); return true; } ];
+    const blocked=new Set(); // "יום:פעולה" שנכשלו בבדיקה — לא מנסים שוב
+    for (let g=0; g<60 && avgCa()<caT; g++){ let done=false;
+      for (const k of [...days].sort((a,b)=>(dN(week[a]).calcium||0)-(dN(week[b]).calcium||0))){
+        for (let ai=0; ai<acts.length && !done; ai++) { if (blocked.has(k+":"+ai)) continue; const snap=JSON.stringify(week[k]); const d=week[k];
+          const vOk=vegOk(d), l0=Object.fromEntries(MAIN.map(m=>[m,leuM(d[m])])), c0=dN(d).calcium||0;
+          if (!acts[ai](d)) { week[k]=JSON.parse(snap); blocked.add(k+":"+ai); continue; }
+          const bad=(vOk&&!vegOk(d))||dN(d).kcal>target*1.05+1||(dN(d).calcium||0)<=c0+20||MAIN.some(m=>{ const l=leuM(d[m]); return l0[m]>=LEU?l<LEU:l<l0[m]-0.05; });
+          if (bad) { week[k]=JSON.parse(snap); blocked.add(k+":"+ai); } else done=true; }
         if (done) break; }
-      if (!done&&!reverted) break; }
-    // ההחלפות לא מוציאות יום מטווח הקלוריות (95%-105%): עודף — מקטינים מנה; חוסר (פשטידה שהוחלפה במשקה) — רבע מנה נוספת
+      if (!done) break; }
+    // השלמת לאוצין בסוף השבוע (אחרי שינויי הסידן) — בהחלפה, בלי לעבור 105% ובלי להוריד סידן
+    for (const k of days) { const d=week[k]; for (const mk of MAIN) { if (leuM(d[mk])>=LEU) continue; const snap=JSON.stringify(d), c0=avgCa();
+      simpleLeuSwap(d,mk,LEU,target,P.ok); if (avgCa()<Math.min(c0,caT)-0.01||(!vegOk(d)&&vegOk(JSON.parse(snap)))) week[k]=JSON.parse(snap); } }
+    // טווח הקלוריות (95%-105%): עודף — מקטינים; חוסר — רבע מנה נוספת מהמנה העיקרית בצהריים/ערב
     for (const k of days) { const d=week[k]; if (dN(d).kcal>target*1.05) fits(d,[],0);
       for (let r=0; r<4 && dN(d).kcal<target*0.95; r++) { const m=["lunch","dinner"].flatMap(mk=>(d[mk]||[]).filter(x=>TEMP_FDB[x.fk]?._isRecipe))
           .filter(x=>x.g+(TEMP_FDB[x.fk]._servingG||200)*0.25<=(TEMP_FDB[x.fk]._servingG||200)*1.5).sort((x,y)=>x.g/(TEMP_FDB[x.fk]._servingG||200)-y.g/(TEMP_FDB[y.fk]._servingG||200))[0];
