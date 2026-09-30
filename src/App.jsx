@@ -9204,9 +9204,14 @@ function simplePools(recipes, excl){
     spread: ids(reg.filter(r=>cat(r)==="ממרחים")),
     cookie: ids(reg.filter(r=>/עוגי/.test(r.name))),
     stew: ids(reg.filter(r=>["תבשילי קטניות","תבשילי דגנים"].includes(cat(r)))),
+    grainStew: ids(reg.filter(r=>cat(r)==="תבשילי דגנים")),
+    // ליד תבשיל דגנים: פשטידה, או מרק עשיר בחלבון (קטניות/טופו — לפחות 0.45 גר' לאוצין למנה)
+    pash: ids(reg.filter(r=>cat(r)==="פשטידות")),
+    protSoup: ids(reg.filter(r=>cat(r)==="מרקים"&&(ingNut(r.id,TEMP_FDB[r.id]._servingG).leucine||0)>=0.45)),
     soup: ids(reg.filter(r=>cat(r)==="מרקים")),
     legSal: ids(reg.filter(r=>cat(r)==="סלטי קטניות")),
-    vegSal: ids(reg.filter(r=>cat(r)==="סלטי ירקות")),
+    // סלט ירקות בלי דגן משמעותי (לא סלט קינואה/בורגול) — בכל ארוחה עיקרית כבר יש דגן, לחם או תבשיל דגנים
+    vegSal: ids(reg.filter(r=>{ if (cat(r)!=="סלטי ירקות") return false; const tot=r.ings.reduce((a,i)=>a+(i.g||0),0)||1; return r.ings.filter(i=>FDB[i.fk]?.cat==="דגן").reduce((a,i)=>a+(i.g||0),0)/tot<0.15; })),
     fruit: ["apple","orange","banana","pear","kiwi","clementine","grapes","mango","peach","strawberry","persimmon","pomegranate","plum","nectarine","grapefruit","pineapple"].filter(ok),
     nuts: ["almonds","walnuts","cashews","pistachio","hazelnuts","pecans"].filter(ok),
     grain: COOKED_GRAIN_FKS.filter(fk=>ok(fk)&&fk!=="wholeWPasta"),
@@ -9253,10 +9258,12 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     if (P.vegSal.length) out.push(rec(pick(P.vegSal))); if (rnd()<0.6&&!hasSoy(np)) out.push(PROT());
     return [...clean(out).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="dinner"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   function dinner(){ const r=rnd(); const st=P.stew.filter(reUsedOk), so=P.soup.filter(reUsedOk), ls=P.legSal.filter(reUsedOk); let m;
-    if (st.length && r<0.45) m=[rec(pick(st)), (()=>{ const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); })(), rec(pick(P.vegSal))];
+    // תבשיל דגנים (לבקשת המשתמש: "גדוש דגנים") — בלי דגן נוסף לידו; במקומו פשטידה או מרק עשיר בחלבון. תבשיל קטניות — עם דגן
+    const side=id=>{ if (P.grainStew.includes(id)) { const o=[...P.pash,...P.protSoup].filter(reUsedOk); return o.length?rec(pick(o)):null; } const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); };
+    if (st.length && r<0.45) { const id=pick(st); m=[rec(id), side(id), rec(pick(P.vegSal))]; }
     else if (so.length && r<0.7) m=[rec(pick(so)), bread(), rec(pick(P.vegSal))];
     else if (ls.length) m=[rec(pick(ls)), bread(), rec(pick(P.vegSal))];
-    else m=[rec(pick(st.length?st:P.stew)), (()=>{ const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); })(), rec(pick(P.vegSal))];
+    else { const id=pick(st.length?st:P.stew); m=[rec(id), side(id), rec(pick(P.vegSal))]; }
     if (rnd()<0.6&&!(m[0]&&hasSoy(m[0].fk))) m.push(PROT());
     return [...clean(m).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="lunch"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   // ביניים (לבקשת המשתמש): כ-6% מהיום — פרי ועוגייה, או שני פירות שונים; נבחר הצירוף הקרוב ביותר ל-6%
