@@ -9294,15 +9294,19 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   const npChoices=opts.onePlate?npBase:[...npBase,...npBase.filter(id=>P.fav&&P.fav.has(id)),...npBase.filter(id=>P.fav&&P.fav.has(id))]; // ארוחה בצלחת אחת מועדפת — משקל כפול
   const reUsedOk=id=>(used[id]||0)<2;
   const lim=a=>{ const b=(a||[]).filter(reUsedOk); return b.length?b:a; }; // כל מתכון (גם סלט, ממרח, עוגייה) — עד פעמיים בשבוע
+  // מגיל 65 (יעד 2.5 גר' לאוצין, לבקשת המשתמש — "אפשרות א"): ארוחת הבוקר נבחרת מהמחצית העשירה יותר בלאוצין לקלוריה
+  // (חביתת טופו, טופו מקושקש, טוסט אבוקדו וטופו, קערות יוגורט סויה...), וממרח עם לחם רק כשהוא עשיר בחלבון
+  const leuD=id=>{ const n=ingNut(id,100); return (n.leucine||0)/(n.kcal||1); };
+  const topLeu=a=>{ if (LEU<2.5||!a||a.length<3) return a; const v=a.map(leuD).sort((x,y)=>x-y), med=v[Math.floor(v.length/2)]; const b=a.filter(id=>leuD(id)>=med); return b.length?b:a; };
   function breakfast(){ const r=rnd();
     // בכל ארוחת בוקר יש ירק (לבקשת המשתמש) — אלא אם המנה כבר כוללת ירקות
     const sweet=id=>clean([rec(id), hasSoy(id)?null:PROT(), ...(hasVeg(id)?[]:VEG2()), FR()]); // שני ירקות טריים (רכיב חמישי כשצריך)
     const salty=id=>clean([rec(id), bread(small?1:2), ...VEG2(), spreadOrYog(hasSoy(id))]); // חביתה — תמיד עם ירק טרי בצד
-    if (newBOk && P.oneB.length && r<0.35) { const id=pick(P.oneB); return clean([rec(id,pick(small?[0.5,0.75]:[0.75,1,1])), hasVeg(id)?null:VEG(), rnd()<0.5?FR():null]); }
-    const bf=P.bfast.filter(reUsedOk);
-    if (bf.length && r<0.8) { const id=pick(bf); return isSavory(id)?salty(id):sweet(id); }
+    if (newBOk && P.oneB.length && r<0.35) { const id=pick(topLeu(P.oneB)); return clean([rec(id,pick(small?[0.5,0.75]:[0.75,1,1])), hasVeg(id)?null:VEG(), rnd()<0.5?FR():null]); }
+    const bf=topLeu(P.bfast.filter(reUsedOk));
+    if (bf.length && (r<0.8||LEU>=2.5)) { const id=pick(bf); return isSavory(id)?salty(id):sweet(id); }
     if (SPR.length) return clean([rec(pick(lim(SPR))), bread(small?1:2), ...VEG2(), PROT()]);
-    { const id=pick(bf.length?bf:P.bfast); return isSavory(id)?salty(id):sweet(id); } }
+    { const id=pick(bf.length?bf:topLeu(P.bfast)); return isSavory(id)?salty(id):sweet(id); } }
   function lunch(np){ if (!np) return dinner(true);
     const m=small?pick([0.75,1]):1; const out=[rec(np,m)]; // מנה אחת (ביעד נמוך — ¾): שתי מנות המתכון מספיקות ליומיים
     if (P.vegSal.length) out.push(rec(pick(lim(P.vegSal))));
