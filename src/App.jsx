@@ -19595,7 +19595,7 @@ function WeeklyOmegaModal({plannedTotals,actualTotals,lang,onClose}){
 // מרוכזים עכשיו מאחורי כפתור-מניפה אחד ליד בורר הימים. סדר מכוון: קודם "השלם יום"+"נקה" (למי שכבר בנה חלק
 // מהארוחות ידנית ורוצה רק להשלים את החסר), אחר-כך שני כפתורי המתכונים (יום/שבוע), אחר-כך המנגנון הכללי
 // (עדיין מאחורי אישור נפרד, כמו קודם), ולבסוף אופטימיזציה — שמטבעה משנה ארוחות קיימות, לא בונה חדשות
-function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,onSuggestRecipesNSFWeekPlan,onSuggestWeekPlan,onSuggestMixedDayPlan,onSuggestMixedWeekPlan,alwaysOpen}){
+function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,onSuggestRecipesNSFWeekPlan,onSuggestWeekPlan,onSuggestMixedDayPlan,onSuggestMixedWeekPlan,alwaysOpen,mealStyle,onMealStyle}){
   const tx=T[lang];
   const [open,setOpen]=useState(false);
   const [generalConfirming, setGeneralConfirming] = useState(false);
@@ -19614,6 +19614,13 @@ function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,o
       )}
       {isOpen && (
         <div style={alwaysOpen?{width:"100%"}:{marginTop:8,background:"#FFFFFF",borderRadius:14,padding:10,border:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.08)"}}>
+          {onMealStyle&&<div style={{marginBottom:6}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#6B7C72",marginBottom:4}}>{lang==="he"?"סגנון ארוחות:":"Meal style:"}</div>
+            <div style={{display:"flex",gap:6}}>
+              {[["simple",lang==="he"?"🍽 פשוט — עד 4 רכיבים":"🍽 Simple — up to 4 items"],["full",lang==="he"?"📊 מלא — דיוק מרבי":"📊 Full — max precision"]].map(([k,l])=>{ const on=(mealStyle||"full")===k; return (
+                <button key={k} onClick={()=>onMealStyle(k)} style={{flex:1,padding:"7px 4px",borderRadius:10,border:on?"2px solid #2e7d32":"1px solid #D9D3C5",background:on?"#E8F5E9":"#FFFFFF",color:"#1E3A2B",fontSize:12,fontWeight:on?800:500,cursor:"pointer"}}>{on?"✓ ":""}{l}</button>); })}
+            </div>
+          </div>}
           <button onClick={()=>{onSuggestRecipesNSFDayPlan();setOpen(false);}}
             style={{width:"100%",marginTop:alwaysOpen?0:6,padding:"10px 0",borderRadius:12,border:"1px solid #e3b8c9",background:"#FBEFF3",color:"#a1477a",fontSize:13,fontWeight:700,cursor:"pointer"}}>
             {tx.recipesNSFDayPlanBtn}
@@ -21833,7 +21840,7 @@ function AppInner(){
     </div>
   );
   const autoPlanNode=(
-    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ document.getElementById("onboard-profile")?.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} }}/>:<AutoPlanMenu lang={lang} onSwap={()=>setSwapOpen(true)}
+    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ document.getElementById("onboard-profile")?.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} }}/>:<AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
       onSuggestDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("full");setDayPlanOpen(true);})}
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
@@ -21844,7 +21851,7 @@ function AppInner(){
   // גרסה ייעודית לסרגל הצד ב-Desktop (לבקשת המשתמש): האופציות מוצגות ישירות בסרגל עצמו (alwaysOpen), לא בחלון
   // נפתח בלחיצה. "השלם יום" ו"נקה" הוסרו מכאן והועברו לתוך לוח הארוחות עצמו (בין קוביית בוקר לצהריים)
   const autoPlanNodeSidebar=(
-    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ document.getElementById("onboard-profile")?.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} }}/>:<AutoPlanMenu lang={lang} onSwap={()=>setSwapOpen(true)} alwaysOpen
+    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ document.getElementById("onboard-profile")?.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} }}/>:<AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)} alwaysOpen
       onSuggestDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("full");setDayPlanOpen(true);})}
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
@@ -21864,7 +21871,7 @@ function AppInner(){
         {confirmClearWeekMain?(lang==="he"?"⚠️ שוב לאישור":"⚠️ Tap again"):(lang==="he"?"🗑 נקה שבוע":"🗑 Clear Week")}
       </button>
       <button onClick={()=>setPrintWeekHtml(buildWeekMenuPrintHTML(meals,lang))} title={lang==="he"?"הדפסה / PDF של תפריט השבוע":"Print / PDF of this week's menu"}
-        style={{padding:"6px 8px",borderRadius:8,border:"1px solid #bcd4bf",background:"#E8EFE9",color:"#1E3A2B",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>🖨️</button>
+        style={{padding:"6px 8px",borderRadius:8,border:"1px solid #bcd4bf",background:"#E8EFE9",color:"#1E3A2B",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>🖨️ {lang==="he"?"הדפסה":"Print"}</button>
       <div style={{display:"flex",flex:1,background:"#E8EFE9",borderRadius:10,padding:3,border:"1px solid #E2DED4"}}>
         <button onClick={()=>setDashSource("planned")}
           style={{flex:1,padding:"6px 4px",borderRadius:8,border:"none",background:dashSource==="planned"?"#1E3A2B":"transparent",color:dashSource==="planned"?"white":"#6B7C72",fontSize:11,cursor:"pointer",fontWeight:dashSource==="planned"?700:500,whiteSpace:"nowrap"}}>
