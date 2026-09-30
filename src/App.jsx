@@ -9214,12 +9214,19 @@ function simpleLeuSwap(plan, mk, LEU, target, ok){
     ()=>{ const o=plan[mk].find(x=>x.fk==="oatMilk"); if (!o||!ok("soymilkFortified")) return false; const rest=plan[mk].filter(x=>x!==o);
       if (rest.some(x=>SOY_FKS_ALL.has(x.fk)||ingsOf(x.fk).some(i=>SOY_FKS_ALL.has(i.fk)))) return false; o.fk="soymilkFortified"; return true; }, // לא סויה כפולה, גם בתוך מתכון
     ()=>{ const m=plan[mk].filter(x=>TEMP_FDB[x.fk]?._isRecipe).sort((a,b)=>(ingNut(b.fk,100).leucine||0)/(ingNut(b.fk,100).kcal||1)-(ingNut(a.fk,100).leucine||0)/(ingNut(a.fk,100).kcal||1))[0];
-      if (!m) return false; const sv=TEMP_FDB[m.fk]._servingG||200; if (m.g+sv*0.25>sv*1.5+0.01) return false; m.g=Math.round((m.g+sv*0.25)*10)/10; return true; } ];
+      if (!m) return false; const sv=TEMP_FDB[m.fk]._servingG||200; if (m.g+sv*0.25>sv*1.5+0.01) return false; m.g=Math.round((m.g+sv*0.25)*10)/10; return true; },
+    // מתחת לרף של 2 גר' — גרעיני דלעת עד 3 כפות (30 גר') במקום 2
+    ()=>{ if (leu()>=2||!ok("pumpkinS")) return false; let x=plan[mk].find(x=>x.fk==="pumpkinS"); if (x&&x.g>=30) return false;
+      if (!x) { x={fk:"pumpkinS",g:0}; plan[mk].push(x); } while (leu()<2&&x.g<30) x.g=Math.round((x.g+2.5)*10)/10; return true; } ];
   for (const act of acts) { if (leu()>=LEU) break; const snap=plan[mk].map(x=>({...x})), l0=leu();
     if (!act()) { plan[mk]=snap; continue; }
     const grains=plan[mk].filter(x=>!TEMP_FDB[x.fk]?._isRecipe&&FDB[x.fk]?.cat==="דגן").map(x=>[x,x.g]);
     for (let r=0; r<2 && dayK()>target*1.05; r++) grains.forEach(([x,g0])=>{ if (dayK()>target*1.05&&x.g-g0*0.25>=g0*0.5-0.01) x.g=Math.round((x.g-g0*0.25)*10)/10; });
-    if (dayK()>target*1.05||leu()<l0+0.1) plan[mk]=snap; } }
+    // עדיין אין מקום (בעיקר בבוקר, שאין בו תוספת דגן) — מתוספת הדגן בצהריים/ערב, רק אם הארוחה ההיא נשארת מעל 2 גר' לאוצין
+    const other=[]; for (const om of ["lunch","dinner"].filter(m=>m!==mk)) for (const x of (plan[om]||[]).filter(x=>!TEMP_FDB[x.fk]?._isRecipe&&FDB[x.fk]?.cat==="דגן"&&x.g>=100)) {
+      if (dayK()<=target*1.05) break; const g0=x.g; x.g=Math.round(g0*0.75*10)/10; if ((nut(plan[om]).leucine||0)<2) x.g=g0; else other.push([x,g0]); }
+    const gain=leu()>=l0+0.1||(l0<2&&leu()>=2)||(l0<LEU&&leu()>=LEU); // עלייה של 0.1 לפחות, או חציית הרף/היעד
+    if (dayK()>target*1.05||!gain) { plan[mk]=snap; other.forEach(([x,g0])=>{ x.g=g0; }); } } }
 function simplePools(recipes, excl){
   const ok=fk=>!!FDB[fk]&&!(excl&&excl.has(fk));
   const rs=(recipes||[]).filter(r=>r&&r.ings&&!r.ings.some(i=>excl&&excl.has(i.fk)));
@@ -9428,6 +9435,9 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
   // ירק לפחות ועד 105% קלוריות — אחרת השינוי מבוטל ומנסים את הבא
   { const caT=dri?.calcium?.weekDri||dri?.calcium?.dri||1000; const MEALS=["breakfast","snack","lunch","dinner"], MAIN=["breakfast","lunch","dinner"];
     const LEU=((dri&&dri._age)||35)>=65?2.5:2; const all=d=>MEALS.flatMap(m=>d[m]||[]);
+    // רף תחתון (לבקשת המשתמש, "אפשרות א"): היעד מגיל 65 נשאר 2.5 גר' לארוחה, אבל שינויי הסידן רק לא מורידים ארוחה
+    // מתחת ל-2 גר' (ההמלצה הרשמית היא יומית — 42 מ"ג לק"ג; 2.5 לארוחה היא המלצת מומחים)
+    const LEU_FLOOR=2;
     const dN=d=>sumNuts(all(d).map(x=>ingNut(x.fk,x.g,x.soaked))); const days=Object.keys(week);
     const leuM=a=>sumNuts((a||[]).map(x=>ingNut(x.fk,x.g,x.soaked))).leucine||0;
     const avgCa=()=>days.reduce((a,k)=>a+(dN(week[k]).calcium||0),0)/days.length;
@@ -9441,7 +9451,7 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
       for (const m of cand) { const isR=!!TEMP_FDB[m.fk]?._isRecipe; const sv=isR?(TEMP_FDB[m.fk]._servingG||200):m.g;
         const ng=Math.round((m.g-sv*0.25)*10)/10; if (isR?ng<sv*0.75-0.01:ng<100) continue;
         const home=MAIN.find(mm=>(d[mm]||[]).includes(m)); const g0=m.g; m.g=ng;
-        if (isR&&home&&!a.includes(m)&&leuM(d[home])<LEU) { m.g=g0; continue; } // בארוחה אחרת — רק אם נשארת ביעד הלאוצין (בארוחה עצמה הבדיקה אחרי ההוספה)
+        if (isR&&home&&!a.includes(m)&&leuM(d[home])<LEU_FLOOR) { m.g=g0; continue; } // בארוחה אחרת — רק אם נשארת מעל הרף התחתון (בארוחה עצמה הבדיקה אחרי ההוספה)
         orig.push([m,g0]); if (dN(d).kcal+addK<=target*1.05) return true; }
       orig.forEach(([m,g])=>{ m.g=g; }); return false; };
     const pashI=a=>a.findIndex(x=>P.pash.includes(x.fk));
@@ -9465,7 +9475,7 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
         for (let ai=0; ai<acts.length && !done; ai++) { if (blocked.has(k+":"+ai)) continue; const snap=JSON.stringify(week[k]); const d=week[k];
           const vOk=vegOk(d), l0=Object.fromEntries(MAIN.map(m=>[m,leuM(d[m])])), c0=dN(d).calcium||0;
           if (!acts[ai](d)) { week[k]=JSON.parse(snap); blocked.add(k+":"+ai); continue; }
-          const bad=(vOk&&!vegOk(d))||dN(d).kcal>target*1.05+1||(dN(d).calcium||0)<=c0+20||MAIN.some(m=>{ const l=leuM(d[m]); return l0[m]>=LEU?l<LEU:l<l0[m]-0.05; });
+          const bad=(vOk&&!vegOk(d))||dN(d).kcal>target*1.05+1||(dN(d).calcium||0)<=c0+20||MAIN.some(m=>{ const l=leuM(d[m]); return l0[m]>=LEU_FLOOR?l<LEU_FLOOR:l<l0[m]-0.05; });
           if (bad) { week[k]=JSON.parse(snap); blocked.add(k+":"+ai); } else done=true; }
         if (done) break; }
       if (!done) break; }
