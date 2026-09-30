@@ -9202,6 +9202,7 @@ function simplePools(recipes, excl){
     oneB: ids(rs.filter(r=>r.onePlate&&r.preferredMeal==="breakfast")),
     bfast: ids(reg.filter(r=>["דייסות","קערות"].includes(cat(r))||(r.preferredMeal==="breakfast"&&cat(r)!=="משקאות"&&kc(r)>=150))),
     spread: ids(reg.filter(r=>cat(r)==="ממרחים")),
+    cookie: ids(reg.filter(r=>/עוגי/.test(r.name))),
     stew: ids(reg.filter(r=>["תבשילי קטניות","תבשילי דגנים"].includes(cat(r)))),
     soup: ids(reg.filter(r=>cat(r)==="מרקים")),
     legSal: ids(reg.filter(r=>cat(r)==="סלטי קטניות")),
@@ -9258,15 +9259,16 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     else m=[rec(pick(st.length?st:P.stew)), (()=>{ const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); })(), rec(pick(P.vegSal))];
     if (rnd()<0.6&&!(m[0]&&hasSoy(m[0].fk))) m.push(PROT());
     return [...clean(m).slice(0,SIMPLE_MAIN_CAP), ...clean([frMk!=="lunch"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
-  // ביניים: יש כבר פרי בצהריים ובערב — לכן בעיקר משקה/יוגורט סויה או אגוזים (חלבון, לאוצין וסידן), ופרי רק לפעמים
-  function snack(){ const r=rnd(); const nut=pick(P.nuts);
-    const NUT=()=>nut?it(nut,NUT_MAX_G[nut]||14):null; // עד כ-12 שקדים (לבקשת המשתמש)
-    // ביניים כ-10% מהיום: ביעד רגיל — שני פריטים, ביעד נמוך — לרוב אחד
-    const two=!small;
-    if (r<(caHigh?0.45:0.3) && P.caDrink.length) return clean([it(P.caDrink[0],250), two?NUT():null]);
-    if (r<0.6 && nut) return clean([NUT(), two?FR():null]);
-    if (r<0.85) return clean([PROT(), two?(rnd()<0.5?NUT():FR()):null]);
-    return clean([FR(), two?NUT():null]); }
+  // ביניים (לבקשת המשתמש): כ-6% מהיום — פרי ועוגייה, או שני פירות שונים; נבחר הצירוף הקרוב ביותר ל-6%
+  const __kc=new Map(); const kOfC=x=>{ const key=x.fk+"|"+x.g; let v=__kc.get(key); if (v==null){ v=ingNut(x.fk,x.g).kcal; __kc.set(key,v); } return v; };
+  function snack(){ const goal=target*0.06, kOf=kOfC;
+    const frs=P.fruit.filter(f=>!dayFr.has(f)); const cands=[];
+    for (let i=0;i<8;i++){ const f1=pick(frs.length?frs:P.fruit); if (!f1) break; const a=it(f1,unitG(f1));
+      if (P.cookie.length && rnd()<0.5) cands.push([a, rec(pick(P.cookie))]);
+      else { const f2=pick((frs.length?frs:P.fruit).filter(f=>f!==f1)); if (f2) cands.push([a, it(f2,unitG(f2))]); } }
+    if (!cands.length) return clean([FR()]);
+    const best=cands.map(c=>clean(c)).sort((x,y)=>Math.abs(x.reduce((q,z)=>q+kOf(z),0)-goal)-Math.abs(y.reduce((q,z)=>q+kOf(z),0)-goal))[0];
+    best.forEach(x=>{ if (FDB[x.fk]?.cat==="פרי") dayFr.add(x.fk); }); return best; }
   const KEYS=["protein","fiber","calcium","iron","zinc","magnesium","potassium","vitA","vitC","vitE","vitK","vitB1","vitB2","vitB3","vitB6","vitB9","selenium","iodine","choline","copper","vitB5"];
   const caW=caHigh?2:1; const naCap=dri._naCap||hp?.sodiumMax||2300;
   const nutOf=items=>sumNuts((items||[]).map(x=>ingNut(x.fk,x.g,x.soaked)));
@@ -9279,9 +9281,9 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     const v=mealShareViolation(plan); if (v>0.03) return null; sc-=v*25;
     // חלוקה מאוזנת בין הארוחות (לבקשת המשתמש: "מעט קלוריות בבוקר, הרבה מאוד בצהריים ובערב"): בוקר לפחות 24%,
     // צהריים עד 36% וערב עד 34% — לפני התוספות (זרעים, טחינה), שמוסיפות לצהריים ולערב עוד כ-2%
-    // תמהיל (לבקשת המשתמש): כ-30% בכל ארוחה עיקרית — טווח 26%–34% לפני התוספות, ועונש על כל סטייה מ-30%
+    // תמהיל (לבקשת המשתמש): ביניים 6% והיתרה לארוחות העיקריות — כ-31% לכל אחת (טווח 25%–36%), ועונש על כל סטייה
     const sh=mk=>nutOf(plan[mk]).kcal/k;
-    for (const mk of ["breakfast","lunch","dinner"]) { if (isFixed(mk)) continue; const x=sh(mk); if (x<0.25||x>0.35) return null; sc-=Math.abs(x-0.30)*40; }
+    for (const mk of ["breakfast","lunch","dinner"]) { if (isFixed(mk)) continue; const x=sh(mk); if (x<0.25||x>0.36) return null; sc-=Math.abs(x-0.313)*40; } // היתרה אחרי ביניים של 6% — כ-31% לכל ארוחה עיקרית
     return sc; }
   const tries=opts.tries||700; let best=null, bestSc=-1e9;
   for (let i=0;i<tries;i++){ const np=npChoices.length?npChoices[i%npChoices.length]:null;
@@ -9332,7 +9334,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   // איזון תמהיל אחרון: התוספות (זרעים, יוגורט ללאוצין) הזיזו ארוחה אל מחוץ ל-25%–35% — מגדילים/מקטינים את המנה
   // העיקרית ברבע מנה, כל עוד היום נשאר בטווח 95%–105%
   for (let g=0; g<6; g++) { const tot=dayK(); const shr=mk=>nutOf(plan[mk]).kcal/tot;
-    const hi=["breakfast","lunch","dinner"].filter(mk=>!isFixed(mk)&&shr(mk)>0.35).sort((a,b)=>shr(b)-shr(a))[0];
+    const hi=["breakfast","lunch","dinner"].filter(mk=>!isFixed(mk)&&shr(mk)>0.36).sort((a,b)=>shr(b)-shr(a))[0];
     const lo=["breakfast","lunch","dinner"].filter(mk=>!isFixed(mk)&&shr(mk)<0.25).sort((a,b)=>shr(a)-shr(b))[0]; if (!hi&&!lo) break;
     let moved=false;
     if (hi) { const m=plan[hi].find(x=>TEMP_FDB[x.fk]?._isRecipe); const q=m?svG(m.fk)*0.25:0; if (m&&m.g-q>=svG(m.fk)*0.5-0.01&&dayK()-ingNut(m.fk,q).kcal>=target*0.95) { const g0=m.g, l0=leuOf(plan[hi]); m.g=Math.round((m.g-q)*10)/10; if (l0>=2&&leuOf(plan[hi])<2) m.g=g0; else moved=true; } } // לא מורידים ארוחה מתחת ל-2 גר' לאוצין
