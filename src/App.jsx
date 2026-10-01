@@ -9486,6 +9486,28 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
           if (bad) { week[k]=JSON.parse(snap); blocked.add(k+":"+ai); } else done=true; }
         if (done) break; }
       if (!done) break; }
+    // כולין שבועי (לבקשת המשתמש): היעד (AI) הוא 550 מ"ג לגבר ו-425 לאישה — המטרה 90% לגברים ו-100% לנשים. בימים הדלים
+    // מוסיפים לפי הסדר: נבט חיטה (2 כפות) לדייסה או לקערה בבוקר, תורמוס, אדממה או אפונה בצהריים/ערב. אותן בדיקות כמו בסידן, וגם הסידן
+    // השבועי לא יורד
+    { const choT=dri?.choline?.weekDri||dri?.choline?.dri||0; const goal=choT>=500?choT*0.9:choT;
+      const avgCh=()=>days.reduce((a,k)=>a+(dN(week[k]).choline||0),0)/days.length;
+      const hasIn=(a,fk)=>(a||[]).some(x=>x.fk===fk||(TEMP_FDB[x.fk]?._ings||[]).some(i=>i.fk===fk&&(i.g||0)>=10));
+      const addTo=(d,mk,fk,g,addK,cond)=>{ const a=d[mk]||[]; if (!P.ok(fk)||!a.length||!cond(a)||simpleCount(a)>=SIMPLE_MAIN_CAP||!fits(d,a,addK)) return false; a.push({fk,g}); return true; };
+      const cActs=[
+        d=>addTo(d,"breakfast","wheatGerm",14,55,a=>!hasIn(a,"wheatGerm")&&a.some(x=>TEMP_FDB[x.fk]?._isRecipe&&/דייס|קער|שייק/.test(TEMP_FDB[x.fk].he||""))),
+        d=>["dinner","lunch"].some(mk=>addTo(d,mk,"lupinBeansCooked",60,75,a=>!hasIn(a,"lupinBeansCooked"))),
+        d=>["dinner","lunch"].some(mk=>addTo(d,mk,"edamame",80,100,a=>!soyIn(a))),
+        d=>["dinner","lunch"].some(mk=>addTo(d,mk,"pisumPeas",80,60,a=>!hasIn(a,"pisumPeas"))) ];
+      const cBlocked=new Set();
+      for (let g=0; g<40 && goal && avgCh()<goal; g++){ let done=false;
+        for (const k of [...days].sort((a,b)=>(dN(week[a]).choline||0)-(dN(week[b]).choline||0))){
+          for (let ai=0; ai<cActs.length && !done; ai++) { if (cBlocked.has(k+":"+ai)) continue; const snap=JSON.stringify(week[k]); const d=week[k];
+            const vOk=vegOk(d), l0=Object.fromEntries(MAIN.map(m=>[m,leuM(d[m])])), h0=dN(d).choline||0, ca0=avgCa();
+            if (!cActs[ai](d)) { week[k]=JSON.parse(snap); cBlocked.add(k+":"+ai); continue; }
+            const bad=(vOk&&!vegOk(d))||dN(d).kcal>target*1.05+1||(dN(d).choline||0)<=h0+10||avgCa()<Math.min(ca0,caT)-0.01||MAIN.some(m=>{ const l=leuM(d[m]); return l0[m]>=LEU_FLOOR?l<LEU_FLOOR:l<l0[m]-0.05; });
+            if (bad) { week[k]=JSON.parse(snap); cBlocked.add(k+":"+ai); } else done=true; }
+          if (done) break; }
+        if (!done) break; } }
     // השלמת לאוצין בסוף השבוע (אחרי שינויי הסידן) — בהחלפה, בלי לעבור 105% ובלי להוריד סידן
     for (const k of days) { const d=week[k]; for (const mk of MAIN) { if (leuM(d[mk])>=LEU) continue; const snap=JSON.stringify(d), c0=avgCa();
       simpleLeuSwap(d,mk,LEU,target,P.ok); if (avgCa()<Math.min(c0,caT)-0.01||(!vegOk(d)&&vegOk(JSON.parse(snap)))) week[k]=JSON.parse(snap); } }
@@ -19562,6 +19584,11 @@ function WeeklyMicroModal({plannedTotals,actualTotals,profile,lang,onClose}){
                   :`~Est. absorbed: planned ${fmtN(plannedTotals.calciumAbsorbedEst,0)}mg · actual ${fmtN(actualTotals.calciumAbsorbedEst||0,0)}mg per week (non-binding estimate, rough reference range ~1750-2450mg/week)`}
               </div>
             )}
+            {r.key==="choline"&&(
+              <div style={{fontSize:12,color:"#1E3A2B",marginTop:8,lineHeight:1.4,borderTop:"1px dashed #E2DED4",paddingTop:5}}>
+                {lang==="he"?"היעד לכולין הוא המלצה משוערת (AI), לא דרישה שנקבעה במחקר; באירופה ממליצים על 400 מ\"ג למבוגר, ורוב האנשים לא מגיעים ליעד. מקורות טובים: סויה, תורמוס, נבט חיטה, אדממה, כרובית, ברוקולי ופטריות.":"The choline target is an Adequate Intake (AI), not a requirement set by research; Europe recommends 400 mg for adults, and most people fall short of it. Good sources: soy, lupin beans, wheat germ, edamame, cauliflower, broccoli and mushrooms."}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -20468,6 +20495,7 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals,wee
             : r.isCeiling ? `${fmtN(r.val,0)}/${r.dri}${r.unit} (${lang==="he"?"תקרה":"ceiling"})`
             : r.naCap!=null ? `${fmtN(r.val,0)}${r.unit} (${lang==="he"?"טווח":"range"} ${r.dri}–${r.naCap})`
             : r.ul!=null ? `${fmtN(r.val,1)}/${r.dri}${r.unit} (EAR ${r.warnPct}% · UL ${r.ul}${r.unit})`
+            : r.k==="choline" ? `${fmtN(r.val,1)}/${r.dri}${r.unit} (${lang==="he"?"סף מינימלי":"min. threshold"} ${r.warnPct}%)` // לכולין אין EAR רשמי — זה סף פנימי
             : `${fmtN(r.val,1)}/${r.dri}${r.unit} (EAR ${r.warnPct}%)`;
           return(
             <div key={r.k} style={{background:r.isSkip?"#F5F2EB":"#FBFAF7",borderRadius:9,padding:"6px 8px",border:`1px solid ${color}${r.isSkip?"55":"33"}`}}>
@@ -20492,6 +20520,11 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals,wee
                   {lang==="he"
                     ?`~ספיגה משוערת: ${fmtN(totals.calciumAbsorbedEst,0)}מ"ג נספג (הערכה לא-מחייבת${totals.calciumAbsorbedHasEstimate?", כוללת קירוב":""})`
                     :`~Est. absorbed: ${fmtN(totals.calciumAbsorbedEst,0)}mg (non-binding estimate${totals.calciumAbsorbedHasEstimate?", includes approximation":""})`}
+                </div>
+              )}
+              {r.k==="choline"&&!r.isSkip&&( // הסבר ליד הכולין (לבקשת המשתמש): היעד הוא המלצה משוערת, ומה המקורות הטובים
+                <div style={{fontSize:12,color:"#1E3A2B",marginTop:3,lineHeight:1.4,borderTop:"1px dashed #E2DED4",paddingTop:3}}>
+                  {lang==="he"?"היעד לכולין הוא המלצה משוערת (AI), לא דרישה שנקבעה במחקר; באירופה ממליצים על 400 מ\"ג למבוגר, ורוב האנשים לא מגיעים ליעד. מקורות טובים: סויה, תורמוס, נבט חיטה, אדממה, כרובית, ברוקולי ופטריות.":"The choline target is an Adequate Intake (AI), not a requirement set by research; Europe recommends 400 mg for adults, and most people fall short of it. Good sources: soy, lupin beans, wheat germ, edamame, cauliflower, broccoli and mushrooms."}
                 </div>
               )}
             </div>
