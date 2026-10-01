@@ -6804,6 +6804,7 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
   const addItem = (mk,fk,gOverride)=>{
     if (usedFks.has(fk)) return false;
     const fd = FDB[fk]||TEMP_FDB[fk]; if(!fd) return false;
+    if (fd._isRecipe && dishSig(fk) && ["breakfast","lunch","dinner"].some(m=>m!==mk && (plan[m]||[]).some(x=>x&&dishSig(x.fk)===dishSig(fk)))) return false; // אותה מנה בארוחה אחרת היום (לבקשת המשתמש)
     if (STANDALONE_VEG_EXCLUDE.has(fk) && !fd._isRecipe) return false;
     if (NEVER_STANDALONE_FKS.has(fk) && !fd._isRecipe) return false;
     if (legumeCapReached(mk,fk)) return false;
@@ -9217,7 +9218,8 @@ const __dishSig=new Map();
 function dishSig(fk){ if (__dishSig.has(fk)) return __dishSig.get(fk); const fd=TEMP_FDB[fk]; let sig=null;
   if (fd&&fd._isRecipe) { const SKIP=new Set(["שומן","תבלינים","זרעים","אגוזים","עלים"]);
     const parts=(fd._ings||[]).map(i=>{ const f=FDB[i.fk]; if (!f||SKIP.has(f.cat)||isVegNonStarchy(i.fk)) return null;
-      const k=String(f.he||i.fk).split(/[\s,(/]/)[0]; if (/^(לימון|ליים|מים|מלח)/.test(k)) return null; // תיבול, לא בסיס המנה
+      const w=String(f.he||i.fk).split(/[\s,(/]+/); let k=w[0]; if (/^(לימון|ליים|מים|מלח)/.test(k)) return null; // תיבול, לא בסיס המנה
+      if (/^(קמח|משקה|יוגורט|חמאת|גבינה|גבינת)$/.test(k)&&w[1]) k+=" "+w[1]; // קמח חומוס ≠ קמח מלא
       return [k, ingNut(i.fk,i.g||0).kcal||0]; }).filter(Boolean);
     const by={}; parts.forEach(([k,v])=>{ by[k]=(by[k]||0)+v; });
     const top=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>x[0]); if (top.length) sig=top.sort().join("+"); }
@@ -11594,6 +11596,7 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
   function tryAdd(mk, fk, budgetMult){
     if (usedFks.has(fk)) return false;
     const fd = FDB[fk]||TEMP_FDB[fk]; if(!fd) return false;
+    if (fd._isRecipe && dishSig(fk) && ["breakfast","lunch","dinner"].some(m=>m!==mk && (plan[m]||[]).some(x=>x&&dishSig(x.fk)===dishSig(fk)))) return false; // אותה מנה בארוחה אחרת היום (לבקשת המשתמש)
     if (budgetMult==null) budgetMult = fd._isRecipe ? 0.9 : 1.25;
     // כלל 7 (מתוקן): פריטי "אגוזים" מוגבלים לכל היותר ל-10 גרם (15 גרם לאגוזי מלך) — אבל במקום לגזור ישירות
     // כמות גרם שרירותית (שיכולה ליצור חלקי-יחידה מוזרים כמו "17.5 פיסטוקים"), התקרה עצמה מוגדרת כיחידה-שלמה
