@@ -21557,6 +21557,9 @@ const APP_PASSWORD_SALT = "fa9ca7529bb6b01c42c9d1e222524cd9"; // ⬅️ salt (he
 const APP_PASSWORD_HASH = "3db56954a7b39ca5265dee36d840c86ea59b41abe5ebf028b9731954e5db143b"; // ⬅️ PBKDF2 hash (hex) — של הסיסמה ללא רווחים
 const APP_PASSWORD_ITERATIONS = 200000;
 const APP_UNLOCK_KEY = "wfpb_unlocked_v1";
+// דילוג על הסיסמה מהכניסה השנייה (לבקשת המשתמש): אחרי כניסה ראשונה עם סיסמה נכונה המכשיר נזכר (localStorage),
+// ובכניסות הבאות מופיע כפתור "דלג על הסיסמה"
+const APP_KNOWN_DEVICE_KEY = "wfpb_pw_ok_device";
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 30000;
 
@@ -21579,6 +21582,8 @@ function PasswordGate({children}){
   const[attempts,setAttempts]=useState(0);
   const[lockedUntil,setLockedUntil]=useState(0);
   const[nowTick,setNowTick]=useState(Date.now());
+  const knownDevice=(()=>{ try{ return localStorage.getItem(APP_KNOWN_DEVICE_KEY)==="1"; }catch{ return false; } })();
+  function skipPw(){ try{ sessionStorage.setItem(APP_UNLOCK_KEY,"1"); }catch{} setUnlocked(true); }
   useEffect(()=>{
     if(!lockedUntil) return;
     const iv=setInterval(()=>setNowTick(Date.now()),500);
@@ -21595,7 +21600,7 @@ function PasswordGate({children}){
     const hash = await pbkdf2Hex(normalizedInput, APP_PASSWORD_SALT, APP_PASSWORD_ITERATIONS, 32);
     setChecking(false);
     if(hash===APP_PASSWORD_HASH){
-      try{ sessionStorage.setItem(APP_UNLOCK_KEY,"1"); }catch{}
+      try{ sessionStorage.setItem(APP_UNLOCK_KEY,"1"); localStorage.setItem(APP_KNOWN_DEVICE_KEY,"1"); }catch{}
       setUnlocked(true);
     } else {
       setError(true);
@@ -21631,6 +21636,12 @@ function PasswordGate({children}){
           style={{width:"100%",padding:"10px 0",borderRadius:10,border:"none",background:isLocked||checking||!input?"#B8B0A2":"#1E3A2B",color:"white",fontSize:14,fontWeight:700,cursor:isLocked||checking||!input?"default":"pointer"}}>
           {checking?"⏳":"כניסה"}
         </button>
+        {knownDevice&&(
+          <button type="button" onClick={skipPw}
+            style={{width:"100%",marginTop:10,padding:"10px 0",borderRadius:10,border:"1px solid #bcd4bf",background:"#E8EFE9",color:"#2e7d32",fontSize:14,fontWeight:700,cursor:"pointer"}}>
+            דלג על הסיסמה
+          </button>
+        )}
       </div>
     </div>
   );
