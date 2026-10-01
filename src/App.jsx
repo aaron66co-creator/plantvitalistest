@@ -9607,7 +9607,15 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
             const bad=(vOk&&!vegOk(d))||dN(d).kcal>target*1.05+1||(dN(d).choline||0)<=h0+10||avgCa()<Math.min(ca0,caT)-0.01||MAIN.some(m=>{ const l=leuM(d[m]); return l0[m]>=LEU_FLOOR?l<LEU_FLOOR:l<l0[m]-0.05; });
             if (bad) { week[k]=JSON.parse(snap); cBlocked.add(k+":"+ai); } else done=true; }
           if (done) break; }
-        if (!done) break; } }
+        if (!done) break; }
+      // לאוצין (לבקשת המשתמש, "אפשרות ב'"): אחרי שמטרת הכולין ירדה לסף, תורמוס, אדממה או אפונה נכנסים לצהריים/ערב
+      // שמתחת ליעד הלאוצין — בשביל הלאוצין עצמו. אותן בדיקות: עד 105% קלוריות, ירקות, סידן שבועי, ולא פוגעים בארוחה אחרת
+      const lActs=[["lupinBeansCooked",60,75,a=>!hasIn(a,"lupinBeansCooked")],["edamame",80,100,a=>!soyIn(a)],["pisumPeas",80,60,a=>!hasIn(a,"pisumPeas")]];
+      for (const k of days) { const d=week[k]; for (const mk of ["dinner","lunch"]) { const l0m=leuM(d[mk]); if (!(d[mk]||[]).length||l0m>=LEU) continue;
+        for (const [fk,g,addK,cond] of lActs) { const snap=JSON.stringify(d); const vOk=vegOk(d), l0=Object.fromEntries(MAIN.map(m=>[m,leuM(d[m])])), ca0=avgCa();
+          const ok=addTo(d,mk,fk,g,addK,a=>cond(a.concat((d.__fx||{})[mk]||[]))&&!hasLooseLegume(a.concat((d.__fx||{})[mk]||[])));
+          const bad=!ok||(vOk&&!vegOk(d))||dN(d).kcal>target*1.05+1||leuM(d[mk])<l0m+0.15||avgCa()<Math.min(ca0,caT)-0.01||MAIN.some(m=>m!==mk&&(l0[m]>=LEU_FLOOR?leuM(d[m])<LEU_FLOOR:leuM(d[m])<l0[m]-0.05));
+          if (bad) { week[k]=JSON.parse(snap); Object.assign(d,week[k]); week[k]=d; } else break; } } } }
     // השלמת לאוצין בסוף השבוע (אחרי שינויי הסידן) — בהחלפה, בלי לעבור 105% ובלי להוריד סידן
     for (const k of days) { const d=week[k]; for (const mk of MAIN) { if (leuM(d[mk])>=LEU) continue; const snap=JSON.stringify(d), c0=avgCa();
       simpleLeuSwap(d,mk,LEU,target,P.ok); if (avgCa()<Math.min(c0,caT)-0.01||(!vegOk(d)&&vegOk(JSON.parse(snap)))) week[k]=JSON.parse(snap); } }
