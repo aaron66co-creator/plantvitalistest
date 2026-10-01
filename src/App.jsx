@@ -22280,6 +22280,13 @@ function AppInner(){
       Object.entries(sr).forEach(([d,r])=>{ if(d<=t&&r&&+r.weight>0&&wl[d]==null) wl[d]=Math.round(+r.weight*10)/10; }); save("wfpb_weight_log",wl); save("wfpb_sr_weight_synced",true); }
     return wl; });
   const trackToday=todayKey();
+  // תצלום התפריט של היום, ביום עצמו (לבקשת המשתמש — שורש הבעיה: התפריט הוא תבנית שבועית, ו"הצע תפריט לשבוע" ממלא
+  // גם את היום של אתמול; לכן תזכורת "לא תיעדת את אתמול" וחישוב "לפי התפריט" נשענים רק על מה שהיה מתוכנן באותו יום)
+  const [planSnap,setPlanSnap]=useState(()=>load("wfpb_plan_snap",{})||{});
+  useEffect(()=>{ const pd=meals[`d${weekdayOfDateKey(trackToday)}`]||{}; const items=Object.fromEntries(MEAL_KEYS.map(mk=>[mk,(pd[mk]||[]).map(x=>({fk:x.fk,g:x.g,...(x.soaked?{soaked:x.soaked}:{})}))]));
+    const has=MEAL_KEYS.some(mk=>items[mk].length);
+    setPlanSnap(prev=>{ const cur=prev[trackToday]; if (!has) return prev; const nx={...prev,[trackToday]:{items}}; if (cur&&JSON.stringify(cur)===JSON.stringify(nx[trackToday])) return prev;
+      const keys=Object.keys(nx).sort(); keys.slice(0,Math.max(0,keys.length-60)).forEach(k=>delete nx[k]); save("wfpb_plan_snap",nx); return nx; }); },[meals,trackToday]);
   useEffect(()=>{
     setTrackHist(prev=>{
       const next={...prev}; let changed=false;
@@ -22289,7 +22296,7 @@ function AppInner(){
       cand.forEach(dk=>{
         if (!isDayDocumented(actualIntake,dk)) {
           // "ימים שלא תיעדתי — לחשב לפי התפריט" (לבקשת המשתמש): יום שעבר, יש לו תפריט ולא תועד — נרשם כמתוכנן, ומסומן
-          const pd=meals[`d${weekdayOfDateKey(dk)}`]||{}; const has=MEAL_KEYS.some(mk=>(pd[mk]||[]).length);
+          const pd=planSnap[dk]?.items||{}; const has=MEAL_KEYS.some(mk=>(pd[mk]||[]).length);
           if (profile.assumePlanned&&dk<trackToday&&has) { const t=trackTotalsOf(MEAL_KEYS.flatMap(mk=>pd[mk]||[])); const c=Math.round(dayCost(pd,priceOverrides)*100)/100; const nr={p:t,cp:c,a:t,ca:c,sig:"assumed",as:1};
             if (JSON.stringify(nr)!==JSON.stringify(next[dk])) { next[dk]=nr; changed=true; } return; }
           if (next[dk]) { delete next[dk]; changed=true; } return; }
@@ -22308,7 +22315,7 @@ function AppInner(){
       if (!changed) return prev;
       save(TRACK_HISTORY_STORAGE,next); return next;
     });
-  },[actualIntake,meals,logDate,priceOverrides,trackToday,profile.assumePlanned]);
+  },[actualIntake,meals,logDate,priceOverrides,trackToday,profile.assumePlanned,planSnap]);
   const trackCur=useMemo(()=>trackWeekSummary(trackHist,weekStartKey(trackToday),trackToday),[trackHist,trackToday]);
   const trackAlertList=useMemo(()=>trackAlerts(trackCur,dri),[trackCur,dri]);
   // עיקר הפער ביום נתון (שבוע נוכחי): הארוחה שבה הבפועל הכי נמוך מהמתוכנן ברכיב k
@@ -23229,12 +23236,12 @@ function AppInner(){
           <div id="onboard-dayselector-mobile">{daySelectorNode}</div>
           {(tab==="meals"||tab==="micro")&&<div id="onboard-autoplan-mobile">{autoPlanNode}</div>}
           {/* תזכורת עדינה (לבקשת המשתמש): אתמול היה תפריט ולא תועד — לחיצה אחת "אכלתי כמתוכנן", או מעבר ליומן */}
-          {tab==="meals"&&!planBlock&&!profile.assumePlanned&&(()=>{ const y=shiftDateKey(todayKey(),-1); const pd=meals[`d${weekdayOfDateKey(y)}`]||{}; const mks=MEAL_KEYS.filter(mk=>(pd[mk]||[]).length);
+          {tab==="meals"&&!planBlock&&!profile.assumePlanned&&(()=>{ const y=shiftDateKey(todayKey(),-1); const pd=planSnap[y]?.items||{}; const mks=MEAL_KEYS.filter(mk=>(pd[mk]||[]).length);
             if (!mks.length||isDayDocumented(actualIntake,y)||load("wfpb_ydismiss","")===y) return null; const he=lang==="he";
             return (<div style={{flexBasis:"100%",background:"#FFF8E8",border:"1px solid #ecc98a",borderRadius:12,padding:"8px 10px",fontSize:12.5,color:"#1E3A2B",lineHeight:1.45}}>
               📝 {he?"לא תיעדת מה אכלת אתמול.":"You didn't log what you ate yesterday."}
               <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
-                <button onClick={()=>mks.forEach(mk=>markMealAsPlanned(y,mk))} style={{background:"#2e7d32",border:"none",borderRadius:9,color:"#fff",padding:"6px 10px",fontWeight:800,cursor:"pointer",fontSize:12.5}}>✓ {he?"אכלתי כמתוכנן":"Ate as planned"}</button>
+                <button onClick={()=>mks.forEach(mk=>setActualMealData(y,mk,"logged",(pd[mk]||[]).map(x=>({...x,_id:uid()}))))} style={{background:"#2e7d32",border:"none",borderRadius:9,color:"#fff",padding:"6px 10px",fontWeight:800,cursor:"pointer",fontSize:12.5}}>✓ {he?"אכלתי כמתוכנן":"Ate as planned"}</button>
                 <button onClick={()=>{ setLogDate(y); setLogSub("log"); setTab("log"); }} style={{background:"#FFFFFF",border:"1px solid #D9D3C5",borderRadius:9,color:"#1E3A2B",padding:"6px 10px",fontWeight:700,cursor:"pointer",fontSize:12.5}}>{he?"לתעד ביומן":"Log it"}</button>
                 <button onClick={()=>{ save("wfpb_ydismiss",y); setYdTick(x=>x+1); }} style={{background:"transparent",border:"none",color:"#6B7C72",padding:"6px 8px",cursor:"pointer",fontSize:12}}>{he?"לא עכשיו":"Not now"}</button>
               </div></div>); })()}
