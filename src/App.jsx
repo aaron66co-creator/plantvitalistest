@@ -333,6 +333,8 @@ function idleTooLong(){ try{ const t=+localStorage.getItem(LAST_SEEN_KEY)||0; re
   try{
     if(!sessionStorage.getItem("wfpb_session_active")||idleTooLong()){
       localStorage.removeItem("wfpb_meals");
+      // כניסה חדשה נפתחת ביום הנוכחי (לבקשת המשתמש: נפתח היום האחרון שנצפה) — רענון או חזרה תוך 30 דקות נשארים ביום שנבחר
+      localStorage.removeItem("wfpb_last_dayidx");
       sessionStorage.setItem("wfpb_session_active","1");
     }
     markSeen();
