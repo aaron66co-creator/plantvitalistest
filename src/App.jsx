@@ -9234,19 +9234,22 @@ function mergePeppersToSalad(items, ok){
   const I=fd._ings||[], tot=I.reduce((t,i)=>t+(i.g||0),0)||1, pepShare=I.filter(i=>PEPPER_FKS.has(i.fk)).reduce((t,i)=>t+(i.g||0),0)/tot;
   const g=Math.round(pp.reduce((t,x)=>t+(x.g||0),0)/pepShare);
   const out=a.filter(x=>!pp.includes(x)); out.splice(Math.max(0,a.indexOf(pp[0])-(a.slice(0,a.indexOf(pp[0])).filter(x=>pp.includes(x)).length)),0,{fk:"sal20pp",g}); return out; }
+// קטנית "בודדת" בארוחה (תורמוס, אדממה, אפונה, חומוס — לא בתוך מתכון): לא מוסיפים שנייה (לבקשת המשתמש: בלי ערימת קטניות)
+const hasLooseLegume=a=>(a||[]).some(x=>x&&!TEMP_FDB[x.fk]?._isRecipe&&FDB[x.fk]?.cat==="קטנית"&&!SOY_FKS_ALL.has(x.fk)||x&&(x.fk==="edamame"));
 const simpleCount=items=>(items||[]).filter(it=>!SIMPLE_ADDON_FKS.has(it.fk)&&FDB[it.fk]?.cat!=="פרי").length; // פרי לא נספר (לבקשת המשתמש)
 // השלמת לאוצין בהחלפה (לבקשת המשתמש: "לאוצין ירוד מאוד אצל בני 55 פלוס"): ארוחה עיקרית מתחת ליעד מקבלת מקור מרוכז —
 // תורמוס, יוגורט סויה, אדממה, משקה סויה במקום משקה שיבולת שועל, או רבע מנה נוספת מהמנה העיקרית — ובמקום הקלוריות
 // תוספת הדגן או הלחם (הכי מעט לאוצין לקלוריה) קטנה ברבע, עד מחצית. נשמר רק אם היום נשאר עד 105% והלאוצין עלה
 function simpleLeuSwap(plan, mk, LEU, target, ok){
   const all=()=>["breakfast","snack","lunch","dinner"].flatMap(m=>plan[m]||[]).concat(Object.values(plan.__fx||{}).flat()); const nut=a=>sumNuts(a.map(x=>ingNut(x.fk,x.g,x.soaked)));
-  const dayK=()=>nut(all()).kcal, leu=()=>nut(plan[mk]||[]).leucine||0; if (!(plan[mk]||[]).length) return;
-  const ingsOf=fk=>TEMP_FDB[fk]?._ings||[]; const has=fks=>plan[mk].some(x=>fks.has(x.fk)||ingsOf(x.fk).some(i=>fks.has(i.fk)));
+  const curM=()=>[...((plan.__fx||{})[mk]||[]),...(plan[mk]||[])]; // כולל פריטי המשתמש (השלם שבוע)
+  const dayK=()=>nut(all()).kcal, leu=()=>nut(curM()).leucine||0; if (!curM().length) return; if (!plan[mk]) plan[mk]=[];
+  const ingsOf=fk=>TEMP_FDB[fk]?._ings||[]; const has=fks=>curM().some(x=>fks.has(x.fk)||ingsOf(x.fk).some(i=>fks.has(i.fk)));
   const soyIn=()=>has(SOY_FKS_ALL), lupIn=()=>has(new Set(["lupinBeansCooked"]));
   const acts=[
-    ()=>mk!=="breakfast"&&!lupIn()&&ok("lupinBeansCooked")&&simpleCount(plan[mk])<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:"lupinBeansCooked",g:60}),true),
-    ()=>{ const y=ok("soyYogurtOrgPlain")?"soyYogurtOrgPlain":"soyYogurtPlain"; return !soyIn()&&ok(y)&&simpleCount(plan[mk])<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:y,g:170}),true); }, // הקנוי — עשיר בסידן
-    ()=>mk!=="breakfast"&&!soyIn()&&ok("edamame")&&simpleCount(plan[mk])<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:"edamame",g:80}),true),
+    ()=>mk!=="breakfast"&&!lupIn()&&!hasLooseLegume(curM())&&ok("lupinBeansCooked")&&simpleCount(curM())<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:"lupinBeansCooked",g:60}),true),
+    ()=>{ const y=ok("soyYogurtOrgPlain")?"soyYogurtOrgPlain":"soyYogurtPlain"; return !soyIn()&&ok(y)&&simpleCount(curM())<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:y,g:170}),true); }, // הקנוי — עשיר בסידן
+    ()=>mk!=="breakfast"&&!soyIn()&&!hasLooseLegume(curM())&&ok("edamame")&&simpleCount(curM())<SIMPLE_MAIN_CAP&&(plan[mk].push({fk:"edamame",g:80}),true),
     ()=>{ const o=plan[mk].find(x=>x.fk==="oatMilk"); if (!o||!ok("soymilkFortified")) return false; const rest=plan[mk].filter(x=>x!==o);
       if (rest.some(x=>SOY_FKS_ALL.has(x.fk)||ingsOf(x.fk).some(i=>SOY_FKS_ALL.has(i.fk)))) return false; o.fk="soymilkFortified"; return true; }, // לא סויה כפולה, גם בתוך מתכון
     ()=>{ const m=plan[mk].filter(x=>TEMP_FDB[x.fk]?._isRecipe).sort((a,b)=>(ingNut(b.fk,100).leucine||0)/(ingNut(b.fk,100).kcal||1)-(ingNut(a.fk,100).leucine||0)/(ingNut(a.fk,100).kcal||1))[0];
@@ -9496,6 +9499,27 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
   // ארוחות המשתמש ("השלם שבוע") עוברות הצידה (__fx) לשלבים השבועיים: נספרות בסיכומי היום, אבל אף שלב לא משנה אותן
   for (let d=0; d<7; d++){ const ex=exOf(d), day=week[`d${d}`]; if (!ex||!day) continue; day.__fx={};
     for (const mk of ["breakfast","snack","lunch","dinner"]) if ((ex[mk]||[]).length) { day.__fx[mk]=day[mk]; day[mk]=[]; } }
+  // "השלם שבוע" — קודם כל יום לכ-100% מהיעד הקלורי (לבקשת המשתמש: "שלא יישארו ימים עם עודף ניכר לעומת חוסר ניכר"):
+  // יום שהמשתמש בנה ועדיין מתחת ל-97% מקבל תוספות לצד הפריטים שלו (שלא משתנים) — בארוחה הדלה ביותר יחסית לחלקה ביום,
+  // מקורות חלבון/סידן קודם (יוגורט סויה, תורמוס, חומוס), אחר כך דגן, פרי ואגוזים. עד 105%
+  { const M4=["breakfast","snack","lunch","dinner"], SH={breakfast:0.31,snack:0.06,lunch:0.31,dinner:0.31};
+    const itemsOf=(day,mk)=>[...((day.__fx||{})[mk]||[]),...(day[mk]||[])];
+    const kOfA=a=>sumNuts(a.map(x=>ingNut(x.fk,x.g,x.soaked))).kcal||0, dayK=day=>M4.reduce((t,mk)=>t+kOfA(itemsOf(day,mk)),0);
+    const soyInA=a=>a.some(x=>SOY_FKS_ALL.has(x.fk)||(TEMP_FDB[x.fk]?._ings||[]).some(i=>SOY_FKS_ALL.has(i.fk)));
+    const grpOf=fk=>{ const fd=FDB[fk]||TEMP_FDB[fk]; if (!fd) return null; if (fd._isRecipe) return isLegumeDominantGlobal(fd)?"leg":isGrainDominantGlobal(fd)?"grain":null;
+      return {"קטנית":"leg","דגן":"grain","פרי":"fruit","אגוזים":"nut","זרעים":"nut"}[fd.cat]||(fk==="soyYogurtOrgPlain"||fk==="soyYogurtPlain"?"leg":null); };
+    const ADD={breakfast:[["soyYogurtOrgPlain",170,"soy"],["wholeWheatBread",32],["banana",120],["pumpkinS",10],["peanutButter",15]],
+      lunch:[["lupinBeansCooked",60],["chickpeas",80],["edamame",80,"soy"],["brownRiceCooked",150],["quinoaCooked",160],["wholePita",60],["avocado",50],["pumpkinS",10]],
+      snack:[["apple",150],["banana",120],["almonds",14],["medjoolDate",24]]}; ADD.dinner=ADD.lunch;
+    for (let d=0; d<7; d++){ const day=week[`d${d}`]; if (!day||!day.__fx) continue;
+      for (let g=0; g<10 && dayK(day)<target*0.97; g++){ const tot=dayK(day);
+        const order=M4.map(mk=>[mk,kOfA(itemsOf(day,mk))/target-SH[mk]]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]); let added=false;
+        for (const mk of order){ const cur=itemsOf(day,mk); if ((day[mk]||[]).length>=2) continue; // עד 2 תוספות לארוחה — מתפזרות בין הארוחות
+          for (const [fk,gr,tag] of ADD[mk]){ if (!P.ok(fk)||cur.some(x=>x.fk===fk)||(tag==="soy"&&soyInA(cur))) continue;
+            const grp=grpOf(fk); if (grp&&cur.some(x=>grpOf(x.fk)===grp)) continue; // לא קטנית שנייה / דגן שני / פרי שני בארוחה
+            const k=ingNut(fk,gr).kcal||0; if (tot+k>target*1.05) continue; (day[mk]=day[mk]||[]).push({fk,g:gr}); added=true; break; }
+          if (added) break; }
+        if (!added) break; } } }
   // סידן שבועי לפחות 100% מהיעד (לבקשת המשתמש), בלי לפגוע בלאוצין: בימים הדלים ביותר מנסים לפי הסדר — פשטידה → משקה
   // סויה מועשר, יוגורט סויה → משקה סויה, משקה סויה לארוחה בלי סויה, פרי הבוקר → משקה, משקה שיבולת שועל, משקה לארוחת
   // הביניים. כל שינוי נבדק: ארוחה שהייתה ביעד הלאוצין לא יורדת ממנו (וארוחה מתחתיו לא מאבדת), היום נשאר עם 7 יחידות
@@ -9555,9 +9579,9 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
       const addTo=(d,mk,fk,g,addK,cond)=>{ const a=d[mk]||[]; if (!P.ok(fk)||!a.length||!cond(a)||simpleCount(a)>=SIMPLE_MAIN_CAP||!fits(d,a,addK)) return false; a.push({fk,g}); return true; };
       const cActs=[
         d=>addTo(d,"breakfast","wheatGerm",14,55,a=>!hasIn(a,"wheatGerm")&&a.some(x=>TEMP_FDB[x.fk]?._isRecipe&&/דייס|קער|שייק/.test(TEMP_FDB[x.fk].he||""))),
-        d=>["dinner","lunch"].some(mk=>addTo(d,mk,"lupinBeansCooked",60,75,a=>!hasIn(a,"lupinBeansCooked"))),
-        d=>["dinner","lunch"].some(mk=>addTo(d,mk,"edamame",80,100,a=>!soyIn(a))),
-        d=>["dinner","lunch"].some(mk=>addTo(d,mk,"pisumPeas",80,60,a=>!hasIn(a,"pisumPeas"))) ];
+        d=>["dinner","lunch"].some(mk=>addTo(d,mk,"lupinBeansCooked",60,75,a=>!hasIn(a,"lupinBeansCooked")&&!hasLooseLegume(a.concat((d.__fx||{})[mk]||[])))),
+        d=>["dinner","lunch"].some(mk=>addTo(d,mk,"edamame",80,100,a=>!soyIn(a.concat((d.__fx||{})[mk]||[]))&&!hasLooseLegume(a.concat((d.__fx||{})[mk]||[])))),
+        d=>["dinner","lunch"].some(mk=>addTo(d,mk,"pisumPeas",80,60,a=>!hasIn(a,"pisumPeas")&&!hasLooseLegume(a.concat((d.__fx||{})[mk]||[])))) ];
       const cBlocked=new Set();
       for (let g=0; g<40 && goal && avgCh()<goal; g++){ let done=false;
         for (const k of [...days].sort((a,b)=>(dN(week[a]).choline||0)-(dN(week[b]).choline||0))){
@@ -9576,7 +9600,7 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
       for (let r=0; r<4 && dN(d).kcal<target*0.95; r++) { const m=["lunch","dinner"].flatMap(mk=>(d[mk]||[]).filter(x=>TEMP_FDB[x.fk]?._isRecipe))
           .filter(x=>x.g+(TEMP_FDB[x.fk]._servingG||200)*0.25<=(TEMP_FDB[x.fk]._servingG||200)*1.5).sort((x,y)=>x.g/(TEMP_FDB[x.fk]._servingG||200)-y.g/(TEMP_FDB[y.fk]._servingG||200))[0];
         if (!m) break; const sv=TEMP_FDB[m.fk]._servingG||200; m.g=Math.round((m.g+sv*0.25)*10)/10; if (dN(d).kcal>target*1.05) { m.g=Math.round((m.g-sv*0.25)*10)/10; break; } } } }
-  for (const k of Object.keys(week)) { const day=week[k]; if (!day.__fx) continue; Object.entries(day.__fx).forEach(([mk,a])=>{ day[mk]=a; }); delete day.__fx; } // ארוחות המשתמש חוזרות למקומן
+  for (const k of Object.keys(week)) { const day=week[k]; if (!day.__fx) continue; Object.entries(day.__fx).forEach(([mk,a])=>{ day[mk]=[...a,...(day[mk]||[])]; }); delete day.__fx; } // ארוחות המשתמש חוזרות למקומן (ותוספות ההשלמה אחריהן)
   return week;
 }
 
@@ -17043,7 +17067,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
           <button onClick={onClose} style={{background:"#E8EFE9",border:"none",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",cursor:"pointer"}}>✕</button>
         </div>
         <BudgetBadge lang={lang} budget={budget} kind="week" cost={budget?weeklyCostValue:null}/>
-        <div style={{fontSize:10,color:"#6B7C72",marginBottom:10}}>{mode==="completeWeek"?(lang==="he"?"מה שבנית נשאר בדיוק כמו שהוא — נוספו רק הארוחות החסרות. אפשר לפתוח כל יום ולבדוק.":"What you built stays exactly as it is — only the missing meals were added. Open any day to check."):isSimpleWk?(lang==="he"?"אפשר לפתוח כל יום ולראות מה בו. אם מתאים — לוחצים \"החל על כל השבוע\".":"Open any day to see what's in it. If it suits you, tap \"Apply to the whole week\"."):mode==="recipesNSF"?tx.recipesNSFDayPlanSubtitle:tx.weekPlanSubtitle}</div>
+        <div style={{fontSize:10,color:"#6B7C72",marginBottom:10}}>{mode==="completeWeek"?(lang==="he"?"מה שבחרת נשאר בדיוק כמו שהוא — נוספו ארוחות חסרות, ותוספות ליום שחסרו בו קלוריות. אפשר לפתוח כל יום ולבדוק.":"What you chose stays exactly as it is — missing meals were added, plus extras on days short of calories. Open any day to check."):isSimpleWk?(lang==="he"?"אפשר לפתוח כל יום ולראות מה בו. אם מתאים — לוחצים \"החל על כל השבוע\".":"Open any day to see what's in it. If it suits you, tap \"Apply to the whole week\"."):mode==="recipesNSF"?tx.recipesNSFDayPlanSubtitle:tx.weekPlanSubtitle}</div>
         {note&&<div style={{fontSize:12,color:"#1E3A2B",background:"#F3F7F1",border:"1px solid #D6E4D2",borderRadius:8,padding:"6px 8px",marginBottom:8,lineHeight:1.45}}>{note}</div>}
         <div style={{fontSize:10,fontWeight:700,color:"#1E3A2B",marginBottom:5}}>📊 {tx.weekPlanWeekly}</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr",gap:5,marginBottom:10}}>
@@ -21900,8 +21924,12 @@ function AppInner(){
     if (pct<95&&lowUser.length) t+=he?` הימים שבנית (${lowUser.join(", ")}) דלים בסידן — כדאי להוסיף להם כוס משקה סויה מועשר או יוגורט סויה.`:` The days you built (${lowUser.join(", ")}) are low in calcium — consider adding a glass of fortified soy drink or soy yogurt.`;
     // ימים שהמשתמש בנה במלואם רחוק מהיעד הקלורי — לא מפצים בימים אחרים (לא בריא), רק מציינים
     const kOf=d=>sumNuts(MEAL_KEYS.flatMap(mk=>(d?.[mk]||[])).map(x=>ingNut(x.fk,x.g,x.soaked))).kcal||0;
-    const off=[0,1,2,3,4,5,6].filter(i=>MEAL_KEYS.every(mk=>(meals[`d${i}`]?.[mk]||[]).length)).map(i=>[i,Math.round(kOf(meals[`d${i}`])/(target||2000)*100)]).filter(([,q])=>q<85||q>115);
-    if (off.length) t+=" "+off.map(([i,q])=>he?`יום ${DN[i]} שבנית: ${q}% מהיעד הקלורי.`:`${DN[i]} as you built it: ${q}% of the calorie target.`).join(" ");
+    // ימים שהמשתמש בנה במלואם: נוספו להם פריטים עד היעד הקלורי (הפריטים שלו לא השתנו); יום שנשאר מעל 110% — מציינים
+    const full=[0,1,2,3,4,5,6].filter(i=>MEAL_KEYS.every(mk=>(meals[`d${i}`]?.[mk]||[]).length));
+    const topped=full.filter(i=>kOf(w[`d${i}`])>kOf(meals[`d${i}`])+1).map(i=>DN[i]);
+    const over=full.map(i=>[i,Math.round(kOf(w[`d${i}`])/(target||2000)*100)]).filter(([,q])=>q>110);
+    if (topped.length) t+=he?` לימים שבנית (${topped.join(", ")}) נוספו פריטים כדי להגיע ליעד הקלורי — מה שבחרת לא השתנה.`:` Items were added to the days you built (${topped.join(", ")}) to reach the calorie target — your choices are unchanged.`;
+    if (over.length) t+=" "+over.map(([i,q])=>he?`יום ${DN[i]} שבנית: ${q}% מהיעד הקלורי.`:`${DN[i]} as you built it: ${q}% of the calorie target.`).join(" ");
     return t; };
   const existingWeekNow=()=>Object.fromEntries([0,1,2,3,4,5,6].map(i=>[`d${i}`,Object.fromEntries(MEAL_KEYS.map(mk=>[mk,(meals[`d${i}`]?.[mk]||[]).map(it=>({fk:it.fk,g:it.g,...(it.soaked?{soaked:it.soaked}:{})}))]))]));
   const simpleDay=(mode)=>{ const d=generateSimpleDayPlan(target,recipes,dri,wKg,hp,excludedFks,{...simpleOpts(),existing:mode==="personal"?allDayMeals:null}); delete d.__onePlate; return d; };
