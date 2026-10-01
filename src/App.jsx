@@ -14457,6 +14457,17 @@ function fullModeDedupWeek(week, recipeIds, excl){
       if (!fixed) break; } }
   return week;
 }
+// "השלם שבוע" במצב המלא (לבקשת המשתמש): השבוע נבנה כרגיל (גיוון ומכסות שבועיות), ואז כל יום שהמשתמש בנה בו משהו
+// מוחלף בהשלמת "השלם יום" של המצב המלא — הפריטים שלו נשארים כמו שהם (_user), הארוחות החסרות מתמלאות והיום מאוזן
+// ליעד הקלורי. בסוף — שוב בלי מנה כפולה ביום, וסידן שבועי (שניהם לא נוגעים בפריטי המשתמש)
+function completeWeekFull(week, existingWeek, target, recipes, recipeIds, dri, wKg, hp, excl){
+  if (!week) return week;
+  for (let i=0; i<7; i++){ const dk=`d${i}`, ex=existingWeek&&existingWeek[dk];
+    if (ex&&Object.values(ex).some(a=>(a||[]).length)) { const day=generatePersonalDayPlan(target, recipes, ex, dri, wKg, hp, excl); if (day) week[dk]=day; } }
+  fullModeDedupWeek(week, recipeIds, excl);
+  fullModeCalciumWeek(week, target, planDRI(dri), excl);
+  return week;
+}
 function fullModeCalciumWeek(week, target, dri, excl){
   if (!week||!target||!dri) return week; const caT=dri.calcium?.weekDri||dri.calcium?.dri||1000;
   const MEALS=["breakfast","lunch","snack","dinner"], MAIN=["breakfast","lunch","dinner"], days=Object.keys(week);
@@ -21629,7 +21640,33 @@ function AppInner(){
   // מחדש לבלתי-מורגשת: שומרים את הלשונית והיום-הנבחר, וכשהאפליקציה עולה מחדש היא חוזרת בדיוק לאותו מקום
   // במקום לאפס ל-ברירת-המחדל — כך שגם אם הדף "נטען מחדש", זה מרגיש כמו "חזרתי לאותו מקום", לא כמו "ברח לי"
   const[tab,setTabRaw]=useState(()=>load("wfpb_last_tab","meals"));
-  const setTab = t => { setTabRaw(t); save("wfpb_last_tab", t); };
+  // היסטוריית לשוניות לכפתור "חזור" של הטלפון (לבקשת המשתמש: "חזור" זרק אותו מהאפליקציה) — חזרה ללשונית הקודמת
+  const tabHist=useRef([]); const tabNow=useRef(tab); tabNow.current=tab;
+  const setTab = t => { if (t!==tabNow.current) { tabHist.current=[...tabHist.current.slice(-19),tabNow.current]; } setTabRaw(t); save("wfpb_last_tab", t); };
+  const[exitHint,setExitHint]=useState(false);
+  useEffect(()=>{
+    // "חזור": קודם סוגרים חלון פתוח (כמו לחיצה על ✕ / מחוץ לחלון), אחר כך חוזרים ללשונית הקודמת, ואחר כך ללשונית
+    // הארוחות. רק במסך הראשי, בלי היסטוריה — הודעה, ולחיצה נוספת יוצאת מהאפליקציה
+    const guard=()=>{ try{ window.history.pushState({pvGuard:1},""); }catch{ /* ignore */ } };
+    const closeTopOverlay=()=>{
+      const W=window.innerWidth, H=window.innerHeight;
+      const ov=[...document.querySelectorAll("body div")].filter(el=>{ const cs=getComputedStyle(el); if (cs.position!=="fixed"||cs.display==="none"||cs.visibility==="hidden") return false;
+        const r=el.getBoundingClientRect(); return r.width>=W*0.9&&r.height>=H*0.6; });
+      const top=ov[ov.length-1]; if (!top) return false;
+      const btn=[...top.querySelectorAll("button")].find(b=>{ const t=(b.textContent||"").trim(); return t==="✕"||t==="×"||t==="✕ סגור"||/^סגור$/.test(t)||t==="דלג"||t==="Skip"||t==="Close"; });
+      if (btn) { btn.click(); return true; }
+      top.dispatchEvent(new MouseEvent("click",{bubbles:true})); return true; };
+    let armed=false;
+    const onPop=()=>{
+      if (closeTopOverlay()) { guard(); return; }
+      let prev=tabHist.current.pop(); while (prev&&prev===tabNow.current) prev=tabHist.current.pop(); // בלי "חזרה" ללשונית שכבר נמצאים בה
+      if (prev) { setTabRaw(prev); save("wfpb_last_tab",prev); guard(); return; }
+      if (tabNow.current!=="meals") { setTabRaw("meals"); save("wfpb_last_tab","meals"); guard(); return; }
+      if (!armed) { armed=true; setExitHint(true); guard(); setTimeout(()=>{ armed=false; setExitHint(false); },2500); return; }
+      try{ window.history.back(); }catch{ /* ignore */ } }; // לחיצה שנייה תוך 2.5 שניות — יוצאים
+    guard(); window.addEventListener("popstate",onPop);
+    return ()=>window.removeEventListener("popstate",onPop);
+  },[]);
   const[dayIdx,setDayIdxRaw]=useState(()=>load("wfpb_last_dayidx", new Date().getDay()));
   const setDayIdx = d => { setDayIdxRaw(d); save("wfpb_last_dayidx", d); };
   const[dayPickerOpen,setDayPickerOpen]=useState(false);
@@ -21945,6 +21982,7 @@ function AppInner(){
   // recipesNSF, שמריץ את generateRecipesNSFDayPlan (מתכונים+אגוזים/זרעים/פרי בלבד) פעם אחת לכל יום בשבוע
   const generateWeekForMode=(mode)=>{
     if (simpleMode) return generateSimpleWeekPlan(target,recipes,dri,wKg,hp,excludedFks,{...simpleOpts(),...(mode==="completeWeek"?{existingWeek:existingWeekNow()}:{})});
+    if (mode==="completeWeek") return completeWeekFull(generateWeekForMode("full"),existingWeekNow(),target,planRecipes,recipeIds,dri,wKg,hp,excludedFks);
     if (mode!=="recipesNSF") return withBudgetCtx(budgetCtxNow(), ()=>generateWeekPlan(target,wKg,hp,dri,recipeIds,excludedFks));
     // תיקון (לבקשת המשתמש: "בעיה 2 — אין זיכרון בין שבועות") — טוענים את זיכרון-השימוש שנשמר משבועות קודמים,
     // מדעיכים אותו (60% נשמר, לא איפוס-מוחלט ולא זיכרון-קבוע) כדי שמתכון שנעשה בו שימוש לפני זמן-מה "יישכח"
@@ -21960,6 +21998,7 @@ function AppInner(){
   // אותו דבר ברקע (לבקשת המשתמש): מחזיר Promise ומדווח התקדמות — המסך לא קופא בזמן החישוב
   const generateWeekForModeAsync=(mode,onProgress,isCancelled)=>{
     if (simpleMode) return new Promise(res=>setTimeout(()=>res(isCancelled&&isCancelled()?null:generateSimpleWeekPlan(target,recipes,dri,wKg,hp,excludedFks,{...simpleOpts(),...(mode==="completeWeek"?{existingWeek:existingWeekNow()}:{})})),0));
+    if (mode==="completeWeek") { const ex=existingWeekNow(); return generateWeekForModeAsync("full",onProgress,isCancelled).then(w=>(!w||(isCancelled&&isCancelled()))?w:completeWeekFull(w,ex,target,planRecipes,recipeIds,dri,wKg,hp,excludedFks)); }
     if (mode!=="recipesNSF") return generateWeekPlanAsync(onProgress,isCancelled,budgetCtxNow(),target,wKg,hp,dri,recipeIds,excludedFks);
     const rawHistory = load(RECIPE_USAGE_HISTORY_STORAGE, {});
     const decayedSeed = {};
@@ -22409,7 +22448,7 @@ function AppInner(){
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
       onSuggestRecipesNSFWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
-      onCompleteWeek={simpleMode?()=>askBudgetThen("week",()=>{setWeekPlanMode("completeWeek");setWeekPlanOpen(true);}):null}
+      onCompleteWeek={()=>askBudgetThen("week",()=>{setWeekPlanMode("completeWeek");setWeekPlanOpen(true);})}
       onSuggestMixedDayPlan={isVegan?undefined:()=>askBudgetThen("day",()=>setMixedPlanOpen(true))}
       onSuggestMixedWeekPlan={isVegan?undefined:()=>askBudgetThen("week",()=>setMixedWeekPlanOpen(true))}/></>
   );
@@ -22421,7 +22460,7 @@ function AppInner(){
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
       onSuggestRecipesNSFWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
-      onCompleteWeek={simpleMode?()=>askBudgetThen("week",()=>{setWeekPlanMode("completeWeek");setWeekPlanOpen(true);}):null}
+      onCompleteWeek={()=>askBudgetThen("week",()=>{setWeekPlanMode("completeWeek");setWeekPlanOpen(true);})}
       onSuggestMixedDayPlan={isVegan?undefined:()=>askBudgetThen("day",()=>setMixedPlanOpen(true))}
       onSuggestMixedWeekPlan={isVegan?undefined:()=>askBudgetThen("week",()=>setMixedWeekPlanOpen(true))}/></>
   );
@@ -23035,6 +23074,10 @@ function AppInner(){
                 style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #d9c2a3",background:"#F7EFE3",color:"#8C6D53",fontSize:12,fontWeight:700,cursor:"pointer"}}>
                 {lang==="he"?"השלם יום":"Complete Day"}
               </button>
+              <button onClick={()=>askBudgetThen("week",()=>{setWeekPlanMode("completeWeek");setWeekPlanOpen(true);})} /* "השלם שבוע" ליד "השלם יום" (לבקשת המשתמש) */
+                style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #b9d3b4",background:"#EEF6EC",color:"#2e7d32",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                {lang==="he"?"השלם שבוע":"Complete Week"}
+              </button>
               <button onClick={clearWeek}
                 style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #E2DED4",background:"#E8EFE9",color:"#1E3A2B",fontSize:12,fontWeight:700,cursor:"pointer"}}>
                 {lang==="he"?"נקה יום":"Clear Day"}
@@ -23098,6 +23141,10 @@ function AppInner(){
                   <button onClick={()=>askBudgetThen("day",()=>{setDayPlanMode("personal");setDayPlanOpen(true);})}
                     style={{padding:"8px 4px",borderRadius:10,border:"1px solid #d9c2a3",background:"#F7EFE3",color:"#8C6D53",fontSize:11,fontWeight:700,cursor:"pointer",lineHeight:1.3}}>
                     {lang==="he"?"השלם יום":"Complete Day"}
+                  </button>
+                  <button onClick={()=>askBudgetThen("week",()=>{setWeekPlanMode("completeWeek");setWeekPlanOpen(true);})}
+                    style={{padding:"8px 4px",borderRadius:10,border:"1px solid #b9d3b4",background:"#EEF6EC",color:"#2e7d32",fontSize:11,fontWeight:700,cursor:"pointer",lineHeight:1.3}}>
+                    {lang==="he"?"השלם שבוע":"Complete Week"}
                   </button>
                   <button onClick={clearWeek}
                     style={{padding:"8px 4px",borderRadius:10,border:"1px solid #E2DED4",background:"#E8EFE9",color:"#1E3A2B",fontSize:11,fontWeight:700,cursor:"pointer",lineHeight:1.3}}>
@@ -23314,6 +23361,7 @@ function AppInner(){
           onClearWeek={()=>{ clearEntireWeek(); setWeekPlanOpen(false); }}/>
       )}
       {foodSrcOpen&&<FoodSourcesModal lang={lang} onClose={()=>setFoodSrcOpen(false)}/>}
+      {exitHint&&<div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:"#1E3A2B",color:"#fff",padding:"8px 16px",borderRadius:20,fontSize:13,zIndex:99999,boxShadow:"0 2px 8px rgba(0,0,0,.25)",whiteSpace:"nowrap"}}>{lang==="he"?"לחיצה נוספת על ״חזור״ תצא מהאפליקציה":"Press back again to exit"}</div>}
       {planBlockOpen&&<div onClick={()=>setPlanBlockOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:130,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
         <div onClick={e=>e.stopPropagation()} style={{background:"#FFFFFF",borderRadius:14,maxWidth:440,width:"100%",padding:14}}>
           <PlanBlockedNotice block={planBlock} lang={lang}/>
