@@ -9321,19 +9321,24 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     if (bf.length && (r<0.8||LEU>=2.5)) { const id=pick(bf); return isSavory(id)?salty(id):sweet(id); }
     if (SPR.length) return clean([rec(pick(lim(SPR))), bread(small?1:2), ...VEG2(), PROT()]);
     { const id=pick(bf.length?bf:topLeu(P.bfast)); return isSavory(id)?salty(id):sweet(id); } }
+  // לא סויה פעמיים בארוחה (לבקשת המשתמש, ממצא בבדיקה לפני טסט): ליד מנה עם סויה — סלט/פשטידה/מרק בלי סויה
+  const soyR=id=>!!id&&(hasSoy(id)||SOY_FKS_ALL.has(id));
+  const noSoyIf=(list,...refs)=>refs.some(soyR)?(list||[]).filter(id=>!soyR(id)):(list||[]);
   function lunch(np){ if (!np) return dinner(true);
     const m=small?pick([0.75,1]):1; const out=[rec(np,m)]; // מנה אחת (ביעד נמוך — ¾): שתי מנות המתכון מספיקות ליומיים
-    if (P.vegSal.length) out.push(rec(pick(lim(P.vegSal))));
-    if (hasGrainIn(np) && P.pash.length && rnd()<0.5) out.push(rec(pick(lim(P.pash)))); // מרק/תבשיל עם דגן — פשטידה לצד (לא לחם)
+    const salL=P.vegSal.length?rec(pick(noSoyIf(lim(P.vegSal),np))):null; if (salL) out.push(salL);
+    if (hasGrainIn(np) && P.pash.length && rnd()<0.5) out.push(rec(pick(noSoyIf(lim(P.pash),np,salL&&salL.fk)))); // מרק/תבשיל עם דגן — פשטידה לצד (לא לחם)
     if ((caHigh||rnd()<0.6)&&!out.some(x=>x&&(hasSoy(x.fk)||SOY_FKS_ALL.has(x.fk)))) out.push(PROT()); // יעד סידן גבוה — תמיד משקה סויה מועשר (אם אין סויה במנה)
     return [...clean(out).slice(0,4), ...clean([frMk!=="dinner"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   function dinner(){ const r=rnd(); const st=P.stew.filter(reUsedOk), so=P.soup.filter(reUsedOk), ls=P.legSal.filter(reUsedOk); let m;
     // תבשיל דגנים (לבקשת המשתמש: "גדוש דגנים") — בלי דגן נוסף לידו; במקומו פשטידה או מרק עשיר בחלבון. תבשיל קטניות — עם דגן
-    const side=id=>{ if (P.grainStew.includes(id)||hasGrainIn(id)) { const o=[...P.pash,...P.protSoup].filter(reUsedOk); return o.length?rec(pick(o)):null; } const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); };
-    if (st.length && r<0.45) { const id=pick(st); m=[rec(id), side(id), rec(pick(lim(P.vegSal)))]; }
-    else if (so.length && r<0.7) { const id=pick(so); m=[rec(id), hasGrainIn(id)?(P.pash.length?rec(pick(lim(P.pash))):null):bread(), rec(pick(lim(P.vegSal)))]; } // מרק עם דגן — פשטידה, לא לחם
-    else if (ls.length) { const id=pick(ls); m=[rec(id), hasGrainIn(id)?(P.pash.length?rec(pick(lim(P.pash))):null):bread(), rec(pick(lim(P.vegSal)))]; } // סלט קטניות עם דגן — בלי לחם
-    else { const id=pick(st.length?st:P.stew); m=[rec(id), side(id), rec(pick(lim(P.vegSal)))]; }
+    const side=id=>{ if (P.grainStew.includes(id)||hasGrainIn(id)) { const o=noSoyIf([...P.pash,...P.protSoup].filter(reUsedOk),id); return o.length?rec(pick(o)):null; } const gf=pick(P.grain); return gf?it(gf,unitG(gf)):bread(); };
+    const pashOrBread=id=>hasGrainIn(id)?(P.pash.length?rec(pick(noSoyIf(lim(P.pash),id))):null):bread();
+    const sal=(...refs)=>rec(pick(noSoyIf(lim(P.vegSal),...refs.map(x=>x&&x.fk))));
+    if (st.length && r<0.45) { const id=pick(st); const sd=side(id); m=[rec(id), sd, sal({fk:id},sd)]; }
+    else if (so.length && r<0.7) { const id=pick(so); const sd=pashOrBread(id); m=[rec(id), sd, sal({fk:id},sd)]; } // מרק עם דגן — פשטידה, לא לחם
+    else if (ls.length) { const id=pick(ls); const sd=pashOrBread(id); m=[rec(id), sd, sal({fk:id},sd)]; } // סלט קטניות עם דגן — בלי לחם
+    else { const id=pick(st.length?st:P.stew); const sd=side(id); m=[rec(id), sd, sal({fk:id},sd)]; }
     if ((caHigh||rnd()<0.6)&&!m.some(x=>x&&(hasSoy(x.fk)||SOY_FKS_ALL.has(x.fk)))) m.push(PROT()); // לא סויה כפולה — גם סלט/פשטידה עם טופו
     return [...clean(m).slice(0,4), ...clean([frMk!=="lunch"?FR():null])]; } // פרי מחוץ למכסה; ביעד נמוך — רק באחת מהארוחות
   // ביניים (לבקשת המשתמש): כ-6% מהיום — פרי ועוגייה, או שני פירות שונים; נבחר הצירוף הקרוב ביותר ל-6%
@@ -16937,6 +16942,7 @@ function MixedWeekPlanModal({data,target,wKg,hp,profile,lang,recipes,onClose,onA
 // מציג הצעת תפריט לשבוע שלם: כרטיס סיכום שבועי (קלוריות/מאקרו/אומגה מול היעד השבועי = היעד היומי×7),
 // ואקורדיון מתקפל ליום שמאפשר לראות/לבדוק כל יום בנפרד לפני אישור החלה על כל השבוע בבת אחת.
 function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onRegenerate,onClearWeek,mode,budget}){
+  const isSimpleWk=(profile?.mealStyle||"full")==="simple"; // במצב פשוט — כותרת והסבר בשפה פשוטה (לבקשת המשתמש)
   const isDesktop=useIsDesktop();
   const tx=T[lang];
   const [openDay,setOpenDay]=useState(null);
@@ -16962,11 +16968,11 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
     <div style={{position:"fixed",inset:0,background:"#000000cc",zIndex:60,display:"flex",alignItems:isDesktop?"center":"flex-end"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:"#FBF8F3",width:"100%",maxWidth:isDesktop?640:430,margin:"0 auto",borderRadius:isDesktop?16:"18px 18px 0 0",padding:16,maxHeight:"88vh",overflowY:"auto",animation:"slideUp .25s ease"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-          <span style={{fontSize:15,fontWeight:700,color:"#1E3A2B"}}>{mode==="recipesNSF"?tx.recipesNSFWeekPlanBtn:tx.weekPlanTitle}</span>
+          <span style={{fontSize:15,fontWeight:700,color:"#1E3A2B"}}>{isSimpleWk?(lang==="he"?"🍽 התפריט שלך לשבוע":"🍽 Your menu for the week"):mode==="recipesNSF"?tx.recipesNSFWeekPlanBtn:tx.weekPlanTitle}</span>
           <button onClick={onClose} style={{background:"#E8EFE9",border:"none",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",cursor:"pointer"}}>✕</button>
         </div>
         <BudgetBadge lang={lang} budget={budget} kind="week" cost={budget?weeklyCostValue:null}/>
-        <div style={{fontSize:10,color:"#6B7C72",marginBottom:10}}>{mode==="recipesNSF"?tx.recipesNSFDayPlanSubtitle:tx.weekPlanSubtitle}</div>
+        <div style={{fontSize:10,color:"#6B7C72",marginBottom:10}}>{isSimpleWk?(lang==="he"?"אפשר לפתוח כל יום ולראות מה בו. אם מתאים — לוחצים \"החל על כל השבוע\".":"Open any day to see what's in it. If it suits you, tap \"Apply to the whole week\"."):mode==="recipesNSF"?tx.recipesNSFDayPlanSubtitle:tx.weekPlanSubtitle}</div>
         <div style={{fontSize:10,fontWeight:700,color:"#1E3A2B",marginBottom:5}}>📊 {tx.weekPlanWeekly}</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr",gap:5,marginBottom:10}}>
           <div style={{background:"#FFFFFF",borderRadius:9,padding:"6px 3px",textAlign:"center"}}><div style={{fontSize:14,fontWeight:700,color:"#6b4a30"}}>{Math.round(totals.kcal)}</div><div style={{fontSize:9,fontWeight:600,color:"#2f3b34"}}>{tx.calories}{target?` / ${weeklyTarget}`:""}</div></div>
@@ -21528,8 +21534,9 @@ function AppInner(){
   // רק ב-sessionStorage (שורדים רענון של הדף, נמחקים בסגירת הלשונית/הדפדפן), ואפשרות "זכור פרופיל" הוסרה
   // אפשרות "שמור במכשיר" הוחזרה (לבקשת המשתמש) — כבויה כברירת מחדל: כשהיא כבויה הפרופיל נשמר רק לביקור הנוכחי
   // (sessionStorage) ומתאפס בסגירה; כשהיא מופעלת — נשמר במכשיר (localStorage) גם לכניסות הבאות
-  const[rememberProfile,setRememberProfile]=useState(()=>load("wfpb_remember_profile",false));
-  const[profile,setProfile]=useState(()=>{ let sp={}; if(load("wfpb_remember_profile",false)) sp=load("wfpb_profile",{})||{}; else { try{ const v=sessionStorage.getItem(PROFILE_SESSION_STORAGE); if(v) sp=JSON.parse(v)||{}; }catch{ /* ignore */ } }
+  // שמירת הפרופיל במכשיר — פעילה כברירת מחדל (לבקשת המשתמש: בודקים איבדו את הפרופיל בסגירת הדפדפן). מי שכיבה — נשאר כבוי
+  const[rememberProfile,setRememberProfile]=useState(()=>load("wfpb_remember_profile",true));
+  const[profile,setProfile]=useState(()=>{ let sp={}; if(load("wfpb_remember_profile",true)) sp=load("wfpb_profile",{})||{}; else { try{ const v=sessionStorage.getItem(PROFILE_SESSION_STORAGE); if(v) sp=JSON.parse(v)||{}; }catch{ /* ignore */ } }
     // משתמש/ת חדש/ה — "מצב פשוט" כברירת מחדל (לבקשת המשתמש). פרופיל קיים בלי הבחירה — נשאר במצב המלא, כמו עד עכשיו
     return {...DEF_PROFILE,...(Object.keys(sp).length?{}:{mealStyle:"simple"}),...sp}; });
   const[recipes,setRecipes]=useState(()=>{
