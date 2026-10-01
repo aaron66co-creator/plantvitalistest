@@ -16274,6 +16274,9 @@ function GoodSourceTags({list,lang,max}){ const L=(list||[]).slice(0,max||5); if
   return <span style={{display:"inline-flex",flexWrap:"wrap",gap:4}}>{L.map(d=><span key={d.k} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:"#EEF6EE",color:"#2e6b33",fontWeight:700,border:"1px solid #b9dbbc",whiteSpace:"nowrap"}}>{d.icon} {lang==="he"?`מקור טוב ל${d.he}`:`Good source of ${d.en}`}</span>)}</span>; }
 const GOOD_SOURCE_INFO={he:"🏷️ תגי המתכונים — \"מקור טוב ל…\"\n\nתג מופיע ליד מתכון שהוא מקור טוב לאחד מחמשת הנוטריינטים שמאתגרים במיוחד בתזונה צמחית: חלבון, סידן, ברזל, סיבים ואומגה 3. מתכון בלי תג אינו פחות טוב — פשוט אין בו בולטות באחד מחמשת אלה.\n\nהנוסח — ישראלי: \"מקור טוב ל…\" הוא הנוסח המותר בטיוטת התקן הישראלי ת\"י 1145 (2015), סעיף 12.\n\nהנתונים המספריים — אירופיים: הספים לקוחים מתקנה (EC) 1924/2006 של האיחוד האירופי (הרמה High), וערכי הייחוס (NRV) מתקנה (EU) 1169/2011. הם עקביים עם הערכים המזעריים בתקנות הגנה על בריאות הציבור (מזון) (סימון תזונתי), התשע\"ח-2017. טיוטת ת\"י 1145 מציעה ערכי ייחוס גבוהים יותר (למשל סידן 1,200 מ\"ג במקום 800) ועדיין אינה נוסח סופי.\n\nהספים:\n• 💪 חלבון — לפחות 20% מהקלוריות מחלבון.\n• 🦴 סידן — לפחות 240 מ\"ג (30% מ-800).\n• 🩸 ברזל — לפחות 4.2 מ\"ג (30% מ-14).\n• 🌾 סיבים — לפחות 6 גר' ל-100 גר', או 3 גר' ל-100 קק\"ל.\n• 🐟 אומגה 3 — לפחות 0.6 גר' ALA ל-100 גר' וגם ל-100 קק\"ל.\n\nבסיס החישוב: לפי התקנים — ל-100 גר'. בסידן ובברזל גם לפי מנה אחת של המתכון (כלל האפליקציה), כי זה מה שאוכלים בפועל.\n\nלתשומת לב: התג מתאר כמה יש במנה, לא כמה נספג. סידן וברזל ממקורות צמחיים נספגים פחות; ויטמין C בארוחה משפר את ספיגת הברזל.",
   en:"🏷️ Recipe tags — \"Good source of…\"\n\nA tag appears beside a recipe that is a good source of one of five nutrients that are especially challenging on a plant-based diet: protein, calcium, iron, fiber and omega-3. A recipe without a tag is not worse — it just doesn't stand out in one of these five.\n\nThe wording is Israeli: \"Good source of…\" is the wording allowed in the draft Israeli standard SI 1145 (2015), section 12.\n\nThe numbers are European: thresholds from EU Regulation (EC) 1924/2006 (the \"High\" level), reference values (NRV) from Regulation (EU) 1169/2011. They are consistent with the minimum values in the Israeli nutrition labeling regulations (2017). The SI 1145 draft proposes higher reference values (e.g. calcium 1,200 mg instead of 800) and is not final.\n\nThresholds:\n• 💪 Protein — at least 20% of calories from protein.\n• 🦴 Calcium — at least 240 mg (30% of 800).\n• 🩸 Iron — at least 4.2 mg (30% of 14).\n• 🌾 Fiber — at least 6 g per 100 g, or 3 g per 100 kcal.\n• 🐟 Omega-3 — at least 0.6 g ALA per 100 g and per 100 kcal.\n\nBasis: per the standards — per 100 g. For calcium and iron also per one serving of the recipe (the app's rule), since that is what you actually eat.\n\nNote: a tag describes how much is in the dish, not how much is absorbed. Calcium and iron from plants are absorbed less; vitamin C in the meal improves iron absorption."};
+// שתי שכבות בכל חלון מידע (לבקשת המשתמש): שורה פשוטה למעלה, והטקסט המלא תחת "להרחבה" — למי שרוצה להעמיק
+// ולצורך גילוי מקצועי לדיאטנית המטפלת. המדריך ואזהרת השימוש מוצגים במלואם
+const INFO_SIMPLE={he:{macroFormula:"כל גרם חלבון או פחמימה נותן 4 קלוריות, שומן 9, וסיבים 2. כך מחושב כמה מהקלוריות שלך מגיע מכל אחד.",calories:"היעד הקלורי מחושב מגובה, משקל, גיל, מין ורמת פעילות, ומותאם למטרה שבחרת. השקילה השבועית ביומן מדייקת אותו עם הזמן.",fiber:"סיבים — מקטניות, דגנים מלאים, ירקות ופירות — טובים לעיכול ולשובע. חדשים בתזונה צמחית? להעלות בהדרגה ולשתות הרבה מים.",protein:"בתזונה צמחית היעד לחלבון מעט גבוה יותר. קטניות, סויה, טחינה, אגוזים ודגנים מלאים מספקים אותו, והתפריט מחלק אותו בין הארוחות.",omega:"אומגה 3 צמחית נחוצה כל יום. זרעי פשתן טחונים, צ'יה ואגוזי מלך הם המקורות הטובים, והתפריט דואג להם.",micro:"B12 — תוסף יומי לטבעונים. ויטמין D — לפי בדיקת דם. השאר מגיע ממגוון: קטניות, דגנים מלאים, ירקות, אגוזים וזרעים.",wfpb:"הבסיס: דגנים מלאים, קטניות, ירקות, פירות, אגוזים וזרעים, קרוב לצורתם הטבעית. חלב וביצים — רק אם בוחרים בכך.",spices:"תבלינים ועשבי תיבול נותנים טעם בלי קלוריות ועוזרים להשתמש בפחות מלח.",swapExplain:"הכלי מציע החלפות קטנות בארוחות שמשפרות את האיזון התזונתי בלי לשנות את הקלוריות. כל החלפה מאשרים או מדלגים.",bmi:"BMI הוא מדד גס של משקל ביחס לגובה. הוא לא מבחין בין שריר לשומן, ולכן הוא רק נקודת התחלה.",goalLose:"ירידה במשקל בקצב מתון — גירעון קטן — כדי לשמור על שריר ועל אנרגיה.",goalGain:"עלייה במשקל בקצב מתון — עודף קטן — כדי שרוב העלייה תהיה שריר ולא שומן.",weeklyMicro:"הציון מראה כמה טוב השבוע כולו עומד ביעדי הוויטמינים והמינרלים. יום חלש תקין כשהשבוע משלים.",weeklyOmega:"סיכום השבוע של אומגה 3 מול היעד.",kna:"פחות מלח ויותר ירקות, פירות וקטניות — טוב ללחץ הדם. התפריט מגביל מלח ומעשיר באשלגן.",weeklyKna:"סיכום השבוע של מלח ואשלגן מול היעד.",foodLog:"ביומן מסמנים מה אכלת בפועל. '✓ אכלתי כמתוכנן' מספיק ברוב הימים.",activityLevels:"בחר את הרמה שמתארת את רוב השבוע שלך. היא משפיעה על היעד הקלורי.",cap:"לבריאות העצם העיקר הוא מספיק סידן. היחס לזרחן מוצג לידיעה.",satfat:"בגרסה עם חלב וביצים — שומן רווי וכולסטרול נשארים נמוכים. התפריט מגביל אותם.",recipeTags:"תג 'מקור טוב ל…' מסמן מתכון שבולט בחלבון, סידן, ברזל, סיבים או אומגה 3. מתכון בלי תג אינו פחות טוב."},en:{macroFormula:"Each gram of protein or carbs gives 4 calories, fat 9 and fiber 2. That is how the share of your calories from each is worked out.",calories:"Your calorie target comes from height, weight, age, sex and activity, adjusted to your goal. Weekly weigh-ins in the log fine-tune it over time.",fiber:"Fiber — from legumes, whole grains, vegetables and fruit — helps digestion and fullness. New to plant-based eating? Increase it gradually and drink plenty of water.",protein:"On a plant-based diet the protein target is a little higher. Legumes, soy, tahini, nuts and whole grains provide it, and the menu spreads it across meals.",omega:"Plant omega-3 is needed every day. Ground flaxseed, chia and walnuts are good sources, and the menu takes care of them.",micro:"B12 — a daily supplement for vegans. Vitamin D — per a blood test. The rest comes from variety: legumes, whole grains, vegetables, nuts and seeds.",wfpb:"The basis: whole grains, legumes, vegetables, fruit, nuts and seeds, close to their natural form. Dairy and eggs — only if you choose.",spices:"Spices and herbs add flavor without calories and help you use less salt.",swapExplain:"The tool suggests small swaps that improve your nutrient balance without changing calories. You approve or skip each one.",bmi:"BMI is a rough measure of weight relative to height. It doesn't tell muscle from fat, so it is only a starting point.",goalLose:"Weight loss at a gentle pace — a small deficit — to protect muscle and energy.",goalGain:"Weight gain at a gentle pace — a small surplus — so most of it is muscle, not fat.",weeklyMicro:"The score shows how well the whole week meets vitamin and mineral targets. A weak day is fine when the week makes up for it.",weeklyOmega:"The week's omega-3 against the target.",kna:"Less salt and more vegetables, fruit and legumes — good for blood pressure. The menu limits salt and adds potassium.",weeklyKna:"The week's salt and potassium against the target.",foodLog:"In the log you mark what you actually ate. '✓ Ate as planned' is enough on most days.",activityLevels:"Pick the level that describes most of your week. It affects your calorie target.",cap:"For bone health the main thing is enough calcium. The ratio to phosphorus is shown for information.",satfat:"In the version with dairy and eggs, saturated fat and cholesterol stay low. The menu limits them.",recipeTags:"A 'Good source of…' tag marks a recipe that stands out in protein, calcium, iron, fiber or omega-3. A recipe without a tag is not worse."}};
 // חלון מידע "🏷️ תגי המתכונים" גם בתפריט ℹ️ מידע
 INFO_DEFAULTS.he.recipeTags=GOOD_SOURCE_INFO.he; INFO_DEFAULTS.en.recipeTags=GOOD_SOURCE_INFO.en;
 INFO_TITLES.he.recipeTags="תגי המתכונים"; INFO_TITLES.en.recipeTags="Recipe tags"; INFO_ICONS.recipeTags="🏷️"; INFO_COLORS.recipeTags="#2e7d32";
@@ -17920,6 +17923,7 @@ function InfoModal({infoKey,lang,onClose}){
     else { setPinError(true); }
   }
   const color=INFO_COLORS[infoKey]||"#2e7d32";
+  const simpleLine=INFO_SIMPLE[lang==="he"?"he":"en"]?.[infoKey]; const[deep,setDeep]=useState(!simpleLine);
   return(
     <div style={{position:"fixed",inset:0,zIndex:300,background:"#000c",display:"flex",alignItems:isDesktop?"center":"flex-end",justifyContent:"center"}} onClick={()=>{if(!editing&&!pinPrompting)onClose();}}>
       <div onClick={e=>e.stopPropagation()} style={{background:"#FBF8F3",borderRadius:isDesktop?16:"22px 22px 0 0",width:"100%",maxWidth:isDesktop?640:430,maxHeight:"85vh",display:"flex",flexDirection:"column",border:`1px solid ${color}44`,animation:"slideUp .25s ease",direction:tx.dir}}>
@@ -17961,7 +17965,13 @@ function InfoModal({infoKey,lang,onClose}){
         <div style={{flex:1,overflowY:"auto",padding:"0 18px 24px"}}>
           {editing
             ?<textarea value={draft} onChange={e=>setDraft(e.target.value)} style={{width:"100%",minHeight:320,background:"#FFFFFF",border:`1px solid ${color}44`,borderRadius:12,padding:14,color:"#1E3A2B",fontSize:13,lineHeight:1.7,outline:"none",resize:"vertical",boxSizing:"border-box",direction:tx.dir,fontFamily:"Segoe UI,sans-serif"}} placeholder={tx.infoPlaceholder}/>
-            :<div style={{fontSize:13,color:"#1E3A2B",lineHeight:1.8,whiteSpace:"pre-wrap",paddingTop:4}}>{text}</div>
+            :<>
+              {simpleLine&&<div style={{fontSize:14,color:"#1E3A2B",lineHeight:1.7,background:color+"12",border:`1px solid ${color}33`,borderRadius:12,padding:"10px 12px",marginTop:4,fontWeight:600}}>{lang==="he"?"בקצרה: ":"In short: "}{simpleLine}</div>}
+              {simpleLine&&<button onClick={()=>setDeep(d=>!d)} aria-expanded={deep} style={{width:"100%",marginTop:10,padding:"8px 10px",borderRadius:10,border:"1px dashed #B8B0A2",background:"transparent",color:"#4A5A50",fontSize:12,fontWeight:700,cursor:"pointer",textAlign:"start",lineHeight:1.5}}>
+                {deep?"▲":"▼"} 📚 {lang==="he"?"להרחבה — למי שרוצה להעמיק, וכמידע מקצועי לדיאטנית המטפלת":"Read more — for those who want to go deeper, and as professional detail for your dietitian"}
+              </button>}
+              {deep&&<div style={{fontSize:13,color:"#1E3A2B",lineHeight:1.8,whiteSpace:"pre-wrap",paddingTop:8}}>{text}</div>}
+            </>
           }
         </div>
       </div>
@@ -20212,6 +20222,8 @@ function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,o
   const [open,setOpen]=useState(false);
   const [generalConfirming, setGeneralConfirming] = useState(false);
   const [generalRevealed, setGeneralRevealed] = useState(false);
+  // פישוט (לבקשת המשתמש): גלויים רק סגנון הארוחות, תפריט לשבוע, תפריט ליום והשלמת השבוע; השאר — תחת "אפשרויות נוספות"
+  const [more, setMore] = useState(false);
   const isOpen = alwaysOpen || open;
   return(
     <div style={alwaysOpen?{width:"100%"}:undefined}>
@@ -20233,13 +20245,13 @@ function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,o
                 <button key={k} onClick={()=>onMealStyle(k)} style={{flex:1,padding:"7px 4px",borderRadius:10,border:on?"2px solid #2e7d32":"1px solid #D9D3C5",background:on?"#E8F5E9":"#FFFFFF",color:"#1E3A2B",fontSize:12,fontWeight:on?800:500,cursor:"pointer"}}>{on?"✓ ":""}{l}</button>); })}
             </div>
           </div>}
-          <button onClick={()=>{onSuggestRecipesNSFDayPlan();setOpen(false);}}
-            style={{width:"100%",marginTop:alwaysOpen?0:6,padding:"10px 0",borderRadius:12,border:"1px solid #e3b8c9",background:"#FBEFF3",color:"#a1477a",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-            {tx.recipesNSFDayPlanBtn}
-          </button>
           <button onClick={()=>{onSuggestRecipesNSFWeekPlan();setOpen(false);}}
-            style={{width:"100%",marginTop:6,padding:"10px 0",borderRadius:12,border:"1px solid #e3b8c9",background:"#FBEFF3",color:"#a1477a",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-            {tx.recipesNSFWeekPlanBtn}
+            style={{width:"100%",marginTop:alwaysOpen?0:6,padding:"11px 0",borderRadius:12,border:"1px solid #2e7d32",background:"#2e7d32",color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer"}}>
+            🗓️ {lang==="he"?"הצע תפריט לשבוע":"Suggest a week"}
+          </button>
+          <button onClick={()=>{onSuggestRecipesNSFDayPlan();setOpen(false);}}
+            style={{width:"100%",marginTop:6,padding:"10px 0",borderRadius:12,border:"1px solid #bcd4bf",background:"#E8EFE9",color:"#2e7d32",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+            📅 {lang==="he"?"הצע תפריט ליום":"Suggest a day"}
           </button>
           {onCompleteWeek && ( /* "השלם שבוע" (לבקשת המשתמש): משאיר את מה שנבנה ומשלים את הארוחות החסרות, עם איזון שבועי */
             <button onClick={()=>{onCompleteWeek();setOpen(false);}}
@@ -20248,6 +20260,11 @@ function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,o
               <div style={{fontSize:10.5,fontWeight:500,color:"#4A5A50"}}>{lang==="he"?"משאיר את מה שבנית ומשלים רק את החסר":"Keeps what you built, fills only the gaps"}</div>
             </button>
           )}
+          <button onClick={()=>setMore(m=>!m)} aria-expanded={more}
+            style={{width:"100%",marginTop:8,padding:"7px 0",borderRadius:12,border:"1px dashed #B8B0A2",background:"transparent",color:"#6B7C72",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+            {more?"▲":"▼"} {lang==="he"?"אפשרויות נוספות":"More options"}
+          </button>
+          {more&&<>
           {onSuggestMixedDayPlan && (
             <button onClick={()=>{onSuggestMixedDayPlan();setOpen(false);}}
               style={{width:"100%",marginTop:6,padding:"10px 0",borderRadius:12,border:"1px solid #f0c9a0",background:"#FBF3E6",color:"#b06a1a",fontSize:13,fontWeight:700,cursor:"pointer"}}>
@@ -20289,6 +20306,7 @@ function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,o
             style={{width:"100%",marginTop:6,padding:"10px 0",borderRadius:12,border:"1px solid #d7e0c8",background:"#F0F3E6",color:"#65792f",fontSize:13,fontWeight:700,cursor:"pointer"}}>
             {tx.swapBtn}
           </button>
+          </>}
         </div>
       )}
     </div>
