@@ -9210,6 +9210,20 @@ const SIMPLE_VEG_MIN=7;
 const SIMPLE_MAIN_CAP=5, SIMPLE_SNACK_CAP=2; // עד 5 רכיבים כשיש צורך (לבקשת המשתמש) — לירק שני בבוקר ולהשלמת לאוצין; המבנה הבסיסי נשאר 4
 const FAV_BONUS=1; // נקודות לכל מתכון מועדף ביום בבחירת התפריט הפשוט
 const SIMPLE_ADDON_FKS=new Set(["flaxseed","chiaseeds","pumpkinS","sunflowerS","saltIodized","wakame","tahiniFullRaw"]);
+// "חתימת מנה" (לבקשת המשתמש: "בטטה ממולאת בשעועית שחורה בצהריים ובטטה אפויה ממולאת שעועית בערב — כפילות"):
+// שני הרכיבים העיקריים בקלוריות, לפי המילה הראשונה בשם (בטטה טריה/אפויה → בטטה; שעועית שחורה/אדומה → שעועית).
+// בלי שומן, תבלינים, זרעים, אגוזים, עלים וירקות לא עמילניים. שתי מנות עם אותה חתימה = אותה מנה בפועל
+const __dishSig=new Map();
+function dishSig(fk){ if (__dishSig.has(fk)) return __dishSig.get(fk); const fd=TEMP_FDB[fk]; let sig=null;
+  if (fd&&fd._isRecipe) { const SKIP=new Set(["שומן","תבלינים","זרעים","אגוזים","עלים"]);
+    const parts=(fd._ings||[]).map(i=>{ const f=FDB[i.fk]; if (!f||SKIP.has(f.cat)||isVegNonStarchy(i.fk)) return null;
+      const k=String(f.he||i.fk).split(/[\s,(/]/)[0]; if (/^(לימון|ליים|מים|מלח)/.test(k)) return null; // תיבול, לא בסיס המנה
+      return [k, ingNut(i.fk,i.g||0).kcal||0]; }).filter(Boolean);
+    const by={}; parts.forEach(([k,v])=>{ by[k]=(by[k]||0)+v; });
+    const top=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>x[0]); if (top.length) sig=top.sort().join("+"); }
+  __dishSig.set(fk,sig); return sig; }
+// שתי ארוחות "כפולות": מנה עם אותה חתימה (או אותו מתכון) בשתיהן
+const mealsDuplicate=(a,b)=>{ const sa=new Set((a||[]).map(x=>x&&dishSig(x.fk)).filter(Boolean)); return (b||[]).some(x=>x&&sa.has(dishSig(x.fk))); };
 const simpleCount=items=>(items||[]).filter(it=>!SIMPLE_ADDON_FKS.has(it.fk)&&FDB[it.fk]?.cat!=="פרי").length; // פרי לא נספר (לבקשת המשתמש)
 // השלמת לאוצין בהחלפה (לבקשת המשתמש: "לאוצין ירוד מאוד אצל בני 55 פלוס"): ארוחה עיקרית מתחת ליעד מקבלת מקור מרוכז —
 // תורמוס, יוגורט סויה, אדממה, משקה סויה במקום משקה שיבולת שועל, או רבע מנה נוספת מהמנה העיקרית — ובמקום הקלוריות
@@ -9361,6 +9375,8 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     let sc=0; for (const key of KEYS){ const tg=key==="protein"?(wKg||70)*0.9:key==="fiber"?14*target/1000:dri[key]?.dri; if(!tg) continue; const tgK=key==="calcium"?(dri.calcium?.weekDri||tg):tg; sc+=Math.min(1,(t[key]||0)/tgK)*(key==="calcium"?caW:key==="vitE"?1.5:1); } // סידן — מול היעד המלא (לבקשת המשתמש: 100% בשבוע)
     ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)) return; const l=leuOf(plan[mk]); sc+=l>=LEU?3:l+0.45>=LEU?2:l>=2?1:-3; }); // לאוצין: ביעד, או בהישג יד עם גרעיני דלעת (עד 2 כפות)
     const v=mealShareViolation(plan); if (v>0.03) return null; sc-=v*25;
+    // אותה מנה פעמיים ביום (לבקשת המשתמש: בטטה ממולאת בשעועית בצהריים וגם בערב) — קנס כבד, כמעט פסילה
+    if (mealsDuplicate(plan.lunch,plan.dinner)||mealsDuplicate(plan.breakfast,plan.lunch)||mealsDuplicate(plan.breakfast,plan.dinner)) sc-=15;
     // חלוקה מאוזנת בין הארוחות (לבקשת המשתמש: "מעט קלוריות בבוקר, הרבה מאוד בצהריים ובערב"): בוקר לפחות 24%,
     // צהריים עד 36% וערב עד 34% — לפני התוספות (זרעים, טחינה), שמוסיפות לצהריים ולערב עוד כ-2%
     { const vu=["breakfast","snack","lunch","dinner"].reduce((a,mk)=>a+simpleVegUnits(plan[mk]),0); sc-=Math.max(0,SIMPLE_VEG_MIN-vu)*0.4; } // העדפה לימים עשירים בירקות
