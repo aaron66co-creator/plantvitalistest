@@ -14539,8 +14539,8 @@ function fullModeCalciumWeek(week, target, dri, excl){
   const avgCa=()=>days.reduce((a,k)=>a+(dN(week[k]).calcium||0),0)/days.length; const leuM=a=>nut(a).leucine||0;
   const soyIn=a=>(a||[]).some(x=>x&&(SOY_FKS_ALL.has(x.fk)||ingsOf(x.fk).some(i=>SOY_FKS_ALL.has(i.fk))));
   const hasDrink=a=>(a||[]).some(x=>x&&(x.fk==="soymilkFortified"||x.fk==="oatMilk"||x.fk==="soymilkOrgPlain"));
-  // השלמת סידן חסר מימי המשתמש (לבקשת המשתמש, "אפשרות ב'"): עד 104% קלוריות ביום, וגם טחינה מלאה ליד הסלט
-  const CAP=target*1.04;
+  // השלמת סידן חסר מימי המשתמש (לבקשת המשתמש, "אפשרות ב'"): עד 105% קלוריות ביום (כמו במצב הפשוט), וגם טחינה מלאה ליד הסלט
+  const CAP=target*1.05;
   const room=(d,a,addK)=>{ if (dN(d).kcal+addK<=CAP) return true;
     const cand=[...["lunch","dinner"].flatMap(m=>(d[m]||[]).filter(x=>x&&!x._user&&!isRec(x.fk)&&FDB[x.fk]?.cat==="דגן"&&x.g>=100)),
       ...MAIN.flatMap(m=>(d[m]||[]).filter(x=>x&&!x._user&&isRec(x.fk)))];
