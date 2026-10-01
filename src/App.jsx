@@ -14477,7 +14477,10 @@ function completeWeekFull(week, existingWeek, target, recipes, recipeIds, dri, w
     // יום שהמשתמש כבר מילא בכל הארוחות ועומד ביעד (95% ומעלה) — נשאר בדיוק כמו שהוא (בלי תוספות שמעבירות אותו את היעד)
     const exK=sumNuts(["breakfast","snack","lunch","dinner"].flatMap(m=>ex[m]||[]).map(x=>ingNut(x.fk,x.g,x.soaked))).kcal||0;
     if (["breakfast","lunch","dinner"].every(m=>(ex[m]||[]).length)&&exK>=target*0.95) { week[dk]=Object.fromEntries(Object.entries(ex).map(([m,a])=>[m,(a||[]).map(x=>({...x,_user:true,_keep:true}))])); continue; }
-    const day=generatePersonalDayPlan(target, recipes, ex, dri, wKg, hp, excl); if (day) week[dk]=day; }
+    // ההשלמה אקראית ולפעמים נעצרת רחוק מהיעד (נמצא בבדיקה: יום אחד ב-81%) — עד 4 ניסיונות, נשאר הקרוב ביותר ל-100%
+    const dK=d=>sumNuts(["breakfast","snack","lunch","dinner"].flatMap(m=>d[m]||[]).map(x=>ingNut(x.fk,x.g,x.soaked))).kcal||0;
+    let best=null, bd=1e9; for (let t=0; t<4 && bd>target*0.03; t++){ const day=generatePersonalDayPlan(target, recipes, ex, dri, wKg, hp, excl); if (!day) continue; const dv=Math.abs(dK(day)-target); if (dv<bd){ bd=dv; best=day; } }
+    if (best) week[dk]=best; }
   fullModeDedupWeek(week, recipeIds, excl);
   fullModeCalciumWeek(week, target, planDRI(dri), excl);
   return week;
