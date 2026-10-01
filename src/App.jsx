@@ -9226,6 +9226,14 @@ function dishSig(fk){ if (__dishSig.has(fk)) return __dishSig.get(fk); const fd=
   __dishSig.set(fk,sig); return sig; }
 // שתי ארוחות "כפולות": מנה עם אותה חתימה (או אותו מתכון) בשתיהן
 const mealsDuplicate=(a,b)=>{ const sa=new Set((a||[]).map(x=>x&&dishSig(x.fk)).filter(Boolean)); return (b||[]).some(x=>x&&sa.has(dishSig(x.fk))); };
+// שני פלפלים בודדים באותה ארוחה (לבקשת המשתמש: "מעדיף סלט פלפלים") — מאוחדים ל"סלט פלפלים צבעוני", באותה כמות פלפל
+const PEPPER_FKS=new Set(["redPepper","yellowPepper","greenPepper","orangePepper"]);
+function mergePeppersToSalad(items, ok){
+  const a=items||[]; const pp=a.filter(x=>x&&PEPPER_FKS.has(x.fk)&&!x._user); const fd=TEMP_FDB.sal20pp;
+  if (pp.length<2||!fd||!fd._isRecipe||(ok&&!(fd._ings||[]).every(i=>ok(i.fk)))) return a;
+  const I=fd._ings||[], tot=I.reduce((t,i)=>t+(i.g||0),0)||1, pepShare=I.filter(i=>PEPPER_FKS.has(i.fk)).reduce((t,i)=>t+(i.g||0),0)/tot;
+  const g=Math.round(pp.reduce((t,x)=>t+(x.g||0),0)/pepShare);
+  const out=a.filter(x=>!pp.includes(x)); out.splice(Math.max(0,a.indexOf(pp[0])-(a.slice(0,a.indexOf(pp[0])).filter(x=>pp.includes(x)).length)),0,{fk:"sal20pp",g}); return out; }
 const simpleCount=items=>(items||[]).filter(it=>!SIMPLE_ADDON_FKS.has(it.fk)&&FDB[it.fk]?.cat!=="פרי").length; // פרי לא נספר (לבקשת המשתמש)
 // השלמת לאוצין בהחלפה (לבקשת המשתמש: "לאוצין ירוד מאוד אצל בני 55 פלוס"): ארוחה עיקרית מתחת ליעד מקבלת מקור מרוכז —
 // תורמוס, יוגורט סויה, אדממה, משקה סויה במקום משקה שיבולת שועל, או רבע מנה נוספת מהמנה העיקרית — ובמקום הקלוריות
@@ -9277,7 +9285,8 @@ function simplePools(recipes, excl){
     soup: ids(reg.filter(r=>cat(r)==="מרקים")),
     legSal: ids(reg.filter(r=>cat(r)==="סלטי קטניות")),
     // סלט ירקות בלי דגן משמעותי (לא סלט קינואה/בורגול) — בכל ארוחה עיקרית כבר יש דגן, לחם או תבשיל דגנים
-    vegSal: ids(reg.filter(r=>{ if (cat(r)!=="סלטי ירקות") return false; const tot=r.ings.reduce((a,i)=>a+(i.g||0),0)||1; if (r.ings.filter(i=>FDB[i.fk]?.cat==="דגן").reduce((a,i)=>a+(i.g||0),0)/tot>=0.15) return false;
+    // סלט הפלפלים (sal20pp) — לא במאגר הסלטים, רק כאיחוד של שני פלפלים בודדים
+    vegSal: ids(reg.filter(r=>{ if (cat(r)!=="סלטי ירקות"||r.id==="sal20pp") return false; const tot=r.ings.reduce((a,i)=>a+(i.g||0),0)||1; if (r.ings.filter(i=>FDB[i.fk]?.cat==="דגן").reduce((a,i)=>a+(i.g||0),0)/tot>=0.15) return false;
       return r.ings.filter(i=>isVegNonStarchy(i.fk)).reduce((a,i)=>a+(i.g||0),0)/tot>=0.5; })), // לפחות חצי ירקות (לא סלט תפוחי אדמה / בטטה)
     fruit: ["apple","orange","banana","pear","kiwi","clementine","grapes","mango","peach","strawberry","persimmon","pomegranate","plum","nectarine","grapefruit","pineapple"].filter(ok),
     nuts: ["almonds","walnuts","cashews","pistachio","hazelnuts","pecans"].filter(ok),
@@ -9458,6 +9467,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     if (hi) { const m=plan[hi].find(x=>TEMP_FDB[x.fk]?._isRecipe); const q=m?svG(m.fk)*0.25:0; if (m&&m.g-q>=svG(m.fk)*0.5-0.01&&dayK()-ingNut(m.fk,q).kcal>=target*0.95) { const g0=m.g, l0=leuOf(plan[hi]); m.g=Math.round((m.g-q)*10)/10; if (l0>=LEU&&leuOf(plan[hi])<LEU) m.g=g0; else moved=true; } } // לא מורידים ארוחה מתחת ל-2 גר' לאוצין
     if (lo) { const m=plan[lo].find(x=>TEMP_FDB[x.fk]?._isRecipe); const q=m?svG(m.fk)*0.25:0; if (m&&m.g+q<=svG(m.fk)*1.5+0.01&&dayK()+ingNut(m.fk,q).kcal<=target*1.05) { m.g=Math.round((m.g+q)*10)/10; moved=true; } }
     if (!moved) break; }
+  ["breakfast","lunch","dinner"].forEach(mk=>{ if (!isFixed(mk)) plan[mk]=mergePeppersToSalad(plan[mk],P.ok); }); // שני פלפלים → סלט פלפלים
   plan.__onePlate=best.np; return plan;
 }
 // שבוע במצב פשוט: הארוחה בצלחת אחת של הצהריים חוזרת יומיים ברצף (בישול אחד), כל מתכון עד פעמיים בשבוע;
@@ -15958,6 +15968,7 @@ const DEF_RECIPES=[
 // סלטי ירקות ועלים (לבקשת המשתמש): מקורות לסידן / ויטמין E / ויטמין A / מגנזיום — כמנה, במקום עלים גולמיים בודדים
 {id:"sal01vg",name:"סלט ירקות ועלים",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"swisschard",g:108},{fk:"spinach",g:60},{fk:"redPepper",g:100},{fk:"mushroom",g:140},{fk:"lemon",g:25},{fk:"oliveOil",g:7.5}],instructions:"קוצצים מנגולד ותרד לרצועות, פורסים פלפל אדום ופטריות דק. מערבבים ומתבלים במיץ לימון ומעט שמן זית."},
 {id:"sal02sp",name:"סלט תרד, גזר וגרעיני חמנייה",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"spinach",g:120},{fk:"carrot",g:122},{fk:"sunflowerS",g:20},{fk:"lemon",g:25},{fk:"oliveOil",g:7.5}],instructions:"שוטפים עלי תרד, מגררים גזר גס. מערבבים עם מיץ לימון ומעט שמן זית ומפזרים גרעיני חמנייה קלויים. (מקור טוב לוויטמין E ולוויטמין A.)"},
+{id:"sal20pp",name:"סלט פלפלים צבעוני",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"redPepper",g:240},{fk:"yellowPepper",g:240},{fk:"parsley",g:10},{fk:"lemon",g:25},{fk:"oliveOil",g:5}],instructions:"חותכים פלפל אדום ופלפל צהוב לרצועות דקות. מוסיפים פטרוזיליה קצוצה, סוחטים לימון ומזלפים כפית שמן זית. מערבבים ומגישים."},
 {id:"sal03ch",name:"סלט מנגולד, פלפל אדום ושקדים",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"swisschard",g:144},{fk:"redPepper",g:100},{fk:"almonds",g:20},{fk:"lemon",g:25},{fk:"garlic",g:3}],instructions:"קוצצים עלי מנגולד דק (הגבעולים — לקוביות קטנות), פורסים פלפל אדום. גורסים שקדים. מתבלים בלימון ושום כתוש. (מקור טוב לוויטמין E ולסידן.)"},
 {id:"sal04kb",name:"סלט קייל, בטטה וגרעיני דלעת",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"kale",g:90},{fk:"sweetPotatoCooked",g:180},{fk:"pumpkinS",g:15},{fk:"lemon",g:25}],instructions:"מעסים עלי קייל קרועים עם מיץ לימון עד שמתרככים. מוסיפים קוביות בטטה אפויה וקרה ומפזרים גרעיני דלעת. (מקור טוב לוויטמין A, מגנזיום וסידן.)"},
 {id:"sal05sa",name:"סלט תרד, אבוקדו ועגבניות",servings:2,type:"תבשיל",preferredMeal:"any",foodGroup:"סלט_בסיס",ings:[{fk:"spinach",g:90},{fk:"avocado",g:100},{fk:"tomato",g:200},{fk:"lemon",g:25}],instructions:"מסדרים עלי תרד בקערה, מוסיפים קוביות אבוקדו ועגבנייה ומתבלים במיץ לימון. (מקור טוב לוויטמין E, חומצה פולית ואשלגן.)"},
