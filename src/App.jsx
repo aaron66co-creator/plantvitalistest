@@ -14384,6 +14384,29 @@ function capVegUnitsPerMeal(day){
 // עד שהממוצע השבועי מגיע ליעד — יוגורט סויה ביתי → אורגני קנוי (204 מ"ג במקום 38), משקה סויה מועשר לארוחה בלי סויה,
 // ואחר כך משקה שיבולת שועל מועשר לארוחה בלי משקה. מקום קלורי: תוספת דגן מבושל (עד 60%), ואז רבע מנה ממתכון (עד ¾).
 // כל שינוי נבדק: היום עד 102% קלוריות, ארוחה לא יורדת מתחת ל-2 גר' לאוצין, ופריט שהמשתמש בחר (_user) לא נוגעים בו
+// מצב מלא: אותה מנה פעמיים ביום (לבקשת המשתמש) — שלבים שבועיים (תבשיל יומי, מכסות מתכונים) יכולים להוסיף מנה עם
+// אותה "חתימה" (dishSig) כמו בארוחה אחרת. כאן היא מוחלפת במתכון אחר מאותה קטגוריה בספר (תבשיל↔תבשיל, מרק↔מרק),
+// בלי חתימה שכבר יש היום, בלי רכיב מוחרג ועם צפיפות חלבון דומה (±35%) — בכמות שנותנת אותן קלוריות
+function fullModeDedupWeek(week, recipeIds, excl){
+  if (!week) return week; const MAIN=["breakfast","lunch","dinner"]; const fdOf=fk=>TEMP_FDB[fk];
+  const cat=fk=>{ const fd=fdOf(fk); return fd&&fd._isRecipe?bookCategoryOf({name:fd.he||"",foodGroup:fd._foodGroup||"",type:fd._recipeType||"",ings:fd._ings||[]}):null; };
+  const bad=fk=>excl&&excl.size&&(excl.has(fk)||(fdOf(fk)?._ings||[]).some(i=>excl.has(i.fk)));
+  const per100=fk=>ingNut(fk,100);
+  const pool=(recipeIds||[]).filter(id=>fdOf(id)?._isRecipe&&!bad(id));
+  for (const k of Object.keys(week)) { const d=week[k];
+    for (let pass=0; pass<3; pass++) { let fixed=false;
+      for (let a=0; a<MAIN.length && !fixed; a++) for (let b=a+1; b<MAIN.length && !fixed; b++) {
+        const A=d[MAIN[a]]||[], B=d[MAIN[b]]||[]; const sigA=new Set(A.map(x=>x&&dishSig(x.fk)).filter(Boolean));
+        const idx=B.findIndex(x=>x&&!x._user&&dishSig(x.fk)&&sigA.has(dishSig(x.fk))); if (idx<0) continue;
+        const it=B[idx], c=cat(it.fk), kc=ingNut(it.fk,it.g).kcal||0, p0=per100(it.fk);
+        const daySigs=new Set(MAIN.flatMap(m=>(d[m]||[]).map(x=>x&&dishSig(x.fk))).filter(Boolean)); const dayFks=new Set(MAIN.flatMap(m=>(d[m]||[]).map(x=>x&&x.fk)));
+        const cands=pool.filter(id=>!dayFks.has(id)&&cat(id)===c&&!daySigs.has(dishSig(id))).map(id=>{ const q=per100(id); const pr=(q.protein||0)/(q.kcal||1), pr0=(p0.protein||0)/(p0.kcal||1); return {id,q,d:Math.abs(pr-pr0)/(pr0||1)}; })
+          .filter(o=>o.d<=0.35&&(o.q.kcal||0)>0).sort((x,y)=>x.d-y.d);
+        if (!cands.length) continue; const o=cands[0]; const g=Math.round(kc/(o.q.kcal/100)*10)/10;
+        B[idx]={fk:o.id,g}; fixed=true; }
+      if (!fixed) break; } }
+  return week;
+}
 function fullModeCalciumWeek(week, target, dri, excl){
   if (!week||!target||!dri) return week; const caT=dri.calcium?.weekDri||dri.calcium?.dri||1000;
   const MEALS=["breakfast","lunch","snack","dinner"], MAIN=["breakfast","lunch","dinner"], days=Object.keys(week);
@@ -14560,6 +14583,7 @@ function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
   yield {phase:"polish",i:__di+1}; }
   yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipeIds, (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
   { const __su={}; Object.keys(week).forEach(k=>ensureCalorieFloor(week[k], target)); /* רצפת קלוריות אחרונה — יום שירד מתחת ל-98% בשלבים השבועיים */ Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, __su, new Set(recipeIds))); Object.keys(week).forEach(k=>{ tidyMealLogic(week[k], target, dri, excludedFks); roundSpoonPortions(week[k], target, dri); rebalanceMealShares(week[k]); }); } // שלב אחרון לכל יום
+  fullModeDedupWeek(week, recipeIds, excludedFks); // בלי אותה מנה פעמיים ביום (לבקשת המשתמש)
   fullModeCalciumWeek(week, target, dri, excludedFks); // סידן שבועי (לבקשת המשתמש)
   return week;
 }
@@ -15493,6 +15517,7 @@ function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=nu
   yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id), (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id)); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
   Object.keys(week).forEach(k=>ensureCalorieFloor(week[k], target)); // רצפת קלוריות אחרונה לפני השלבים הסופיים
   Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, finalUsage, new Set(recipes.map(r=>r.id)))); Object.keys(week).forEach(k=>{ tidyMealLogic(week[k], target, dri, excludedFks); roundSpoonPortions(week[k], target, dri); rebalanceMealShares(week[k]); }); // שלב אחרון לכל יום
+  fullModeDedupWeek(week, recipes.map(r=>r.id), excludedFks); // בלי אותה מנה פעמיים ביום (לבקשת המשתמש)
   fullModeCalciumWeek(week, target, dri, excludedFks); // סידן שבועי (לבקשת המשתמש)
   return {week, updatedUsage: finalUsage};
 }
