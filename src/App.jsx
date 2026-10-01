@@ -16302,14 +16302,14 @@ function MySettingsModal({lang,onClose,profile,setProfile,detailView,toggleDetai
         <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B"}}>⚙️ {he?"ההגדרות שלי":"My settings"}</div>
         <button onClick={onClose} aria-label={he?"סגור":"Close"} style={{background:"#F5F2EB",border:"none",borderRadius:8,color:"#6B7C72",width:28,height:28,cursor:"pointer"}}>✕</button>
       </div>
-      <div style={row}><div style={lbl}>🍽 {he?"סגנון ארוחות":"Meal style"}</div>
-        {seg([["simple",he?"פשוט — עד 5 מזונות":"Simple — up to 5 foods"],["full",he?"מלא — מגוון רחב":"Full — wide variety"]],st,k=>setProfile(p=>({...p,mealStyle:k})))}
+      <div style={row}><div style={lbl}>🍽 {he?"הארוחות שמוצעות לי":"The meals suggested to me"}</div>
+        {seg([["simple",he?"עד 5 מזונות בארוחה":"Up to 5 foods per meal"],["full",he?"מגוון רחב של מזונות":"A wide variety of foods"]],st,k=>setProfile(p=>({...p,mealStyle:k})))}
         <div style={{fontSize:11.5,color:"#4A5A50",marginTop:6,lineHeight:1.45}}>{st==="simple"?(he?"ארוחות קצרות ונוחות: עד 5 מזונות בארוחה, ארוחת צהריים שמבשלים פעם ליומיים, ומרק או פשטידה בערב — גם לערב שלמחרת.":"Short, convenient meals: up to 5 foods per meal, a lunch you cook once for two days, and a dinner soup or quiche for the next evening too."):(he?"ארוחות עשירות: מגוון רחב של מזונות בכל ארוחה.":"Rich meals: a wide variety of foods in every meal.")}</div></div>
       <div style={row}><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",...lbl,marginBottom:0}}><input type="checkbox" checked={!!profile.eatsDairyEggs} onChange={e=>setProfile(p=>({...p,eatsDairyEggs:e.target.checked}))} style={{width:18,height:18,accentColor:"#2e7d32"}}/>🥚🥛 {he?"אני אוכל/ת גם חלב וביצים":"I also eat dairy and eggs"}</label>
         <div style={{fontSize:11.5,color:"#4A5A50",marginTop:4,lineHeight:1.45}}>{profile.eatsDairyEggs?(he?"\"הצע תפריט\" ישלב חלב וביצים.":"\"Suggest\" will include dairy and eggs."):(he?"כבוי — כל התפריטים צמחיים לגמרי.":"Off — all menus are fully plant-based.")}</div></div>
-      <div style={row}><div style={lbl}>👁 {he?"תצוגה":"View"}</div>
-        {seg([["simple",he?"✨ פשוטה":"✨ Simple"],["full",he?"🔍 פירוט מלא":"🔍 Full details"]],detailView?"full":"simple",k=>{ if ((k==="full")!==!!detailView) toggleDetail(); })}
-        <div style={{fontSize:11.5,color:"#4A5A50",marginTop:6,lineHeight:1.45}}>{he?"בתצוגה הפשוטה רואים סיכום במילים; בפירוט המלא — כל המספרים והניתוחים.":"The simple view shows a summary in words; full details show all numbers and analyses."}</div></div>
+      <div style={row}><div style={lbl}>👁 {he?"מה רואים במסכים":"What the screens show"}</div>
+        {seg([["simple",he?"✨ סיכום במילים":"✨ A summary in words"],["full",he?"🔍 כל המספרים":"🔍 All the numbers"]],detailView?"full":"simple",k=>{ if ((k==="full")!==!!detailView) toggleDetail(); })}
+        <div style={{fontSize:11.5,color:"#4A5A50",marginTop:6,lineHeight:1.45}}>{he?"סיכום במילים — מה טוב ומה כדאי לחזק, בלי טבלאות. כל המספרים — כל הערכים, האחוזים והניתוחים (למתעניינים ולדיאטנית).":"A summary in words — what's good and what to boost, no tables. All the numbers — every value, percentage and analysis (for the curious and your dietitian)."}</div></div>
       <div style={row}><div style={lbl}>🌐 {he?"שפה":"Language"}</div>{seg([["he","עברית"],["en","English"]],lang,k=>{ if (k!==lang) toggleLang(); })}</div>
       <div style={row}><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",...lbl,marginBottom:0}}><input type="checkbox" checked={!!rememberProfile} onChange={()=>setRememberProfile(v=>!v)} style={{width:18,height:18,accentColor:"#2e7d32"}}/>💾 {he?"שמור את נתוני הפרופיל במכשיר":"Save profile data on this device"}</label></div>
       <button onClick={onBudget} style={{...row,width:"100%",textAlign:"start",cursor:"pointer",fontSize:13,fontWeight:800,color:"#1E3A2B"}}>💰 {he?"ניהול תקציב ומחירים":"Budget & prices"} ›</button>
@@ -23220,7 +23220,8 @@ function AppInner(){
           <div id="onboard-dayselector-mobile">{daySelectorNode}</div>
           {(tab==="meals"||tab==="micro")&&<div id="onboard-autoplan-mobile">{autoPlanNode}</div>}
           {/* שורת מצב (לבקשת המשתמש): מה מוגדר עכשיו — לחיצה פותחת את "⚙️ ההגדרות שלי" */}
-          {tab==="meals"&&!planBlock&&(()=>{ const he=lang==="he"; const st=profile.mealStyle||"full"; const parts=[(he?"סגנון: ":"Style: ")+(st==="simple"?(he?"פשוט":"Simple"):(he?"מלא":"Full")),(he?"תצוגה: ":"View: ")+(detailView?(he?"מלאה":"full"):(he?"פשוטה":"simple")),(he?"תפריט: ":"Menu: ")+(profile.eatsDairyEggs&&!isVegan?(he?"עם חלב וביצים":"with dairy & eggs"):(he?"צמחי":"plant-based"))]; return (
+          {tab==="meals"&&!planBlock&&(()=>{ const he=lang==="he"; const st=profile.mealStyle||"full"; // מונחים שמסבירים את עצמם (לבקשת המשתמש: "פשוט" ו"תצוגה פשוטה" לא מובנים)
+          const parts=[st==="simple"?(he?"ארוחות של עד 5 מזונות":"Meals of up to 5 foods"):(he?"ארוחות עם מגוון רחב":"Meals with a wide variety"),detailView?(he?"מסכים עם כל המספרים":"Screens with all the numbers"):(he?"מסכים עם סיכום במילים":"Screens with a summary in words"),profile.eatsDairyEggs&&!isVegan?(he?"תפריט עם חלב וביצים":"Menu with dairy & eggs"):(he?"תפריט צמחי":"Plant-based menu")]; return (
             <button onClick={()=>setSettingsOpen(true)} style={{flexBasis:"100%",display:"flex",alignItems:"center",gap:8,background:"#FFFFFF",border:"1px solid #D9D3C5",borderRadius:12,padding:"7px 12px",cursor:"pointer",color:"#1E3A2B",textAlign:"start"}} title={he?"לשינוי ההגדרות":"Change settings"}>
               <span style={{fontSize:18}}>⚙️</span>
               <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:13,fontWeight:800}}>{he?"ההגדרות שלי":"My settings"}</span><span style={{display:"block",fontSize:11.5,color:"#4A5A50"}}>{parts.join(" · ")}</span></span>
