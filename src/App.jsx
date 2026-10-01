@@ -80,9 +80,14 @@ function useIsDesktop(bp=640){
 
 function getDRI(age,sex,pregnant){
   const a=Math.max(18,+age||35),s=sex||"male"; // האפליקציה למבוגרים בלבד (18+)
-  const tbl={vitA:{u:"μg",v:[[900,900,900],[700,700,700]],w:[[600,600,600],[500,500,500]]},vitC:{u:"mg",v:[[90,90,90],[75,75,75]],w:[[60,60,60],[50,50,50]]},vitD:{u:"μg",v:[[15,15,20],[15,15,20]],w:[[10,10,15],[10,10,15]]},vitE:{u:"mg",v:[[15,15,15],[15,15,15]],w:[[10,10,10],[10,10,10]]},vitK:{u:"μg",v:[[120,120,120],[90,90,90]],w:[[80,80,80],[60,60,60]]},vitB1:{u:"mg",v:[[1.2,1.2,1.2],[1.1,1.1,1.1]],w:[[.8,.8,.8],[.7,.7,.7]]},vitB2:{u:"mg",v:[[1.3,1.3,1.3],[1.1,1.1,1.1]],w:[[.9,.9,.9],[.8,.8,.8]]},vitB3:{u:"mg",v:[[16,16,16],[14,14,14]],w:[[11,11,11],[9,9,9]]},vitB6:{u:"mg",v:[[1.3,1.7,1.7],[1.3,1.5,1.5]],w:[[.9,1.2,1.2],[.9,1,.9]]},vitB9:{u:"μg",v:[[400,400,400],[400,400,400]],w:[[270,270,270],[270,270,270]]},vitB12:{u:"μg",v:[[2.4,2.4,2.4],[2.4,2.4,2.4]],w:[[1.6,1.6,1.6],[1.6,1.6,1.6]]},calcium:{u:"mg",v:[[1000,1000,1200],[1000,1200,1200]],w:[[700,700,800],[700,800,800]]},iron:{u:"mg",v:[[8,8,8],[18,8,8]],w:[[5,5,5],[12,5,5]]},zinc:{u:"mg",v:[[11,11,11],[8,8,8]],w:[[7,7,7],[5,5,5]]},magnesium:{u:"mg",v:[[400,420,420],[310,320,320]],w:[[300,300,300],[220,230,230]]},potassium:{u:"mg",v:[[3400,3400,3400],[2600,2600,2600]],w:[[2300,2300,2300],[1800,1800,1800]]},selenium:{u:"μg",v:[[55,55,55],[55,55,55]],w:[[37,37,37],[37,37,37]]},iodine:{u:"μg",v:[[150,150,150],[150,150,150]],w:[[100,100,100],[100,100,100]]}};
+  const tbl={vitA:{u:"μg",v:[[900,900,900],[700,700,700]],w:[[625,625,625],[500,500,500]]},vitC:{u:"mg",v:[[90,90,90],[75,75,75]],w:[[75,75,75],[60,60,60]]},vitD:{u:"μg",v:[[15,15,20],[15,15,20]],w:[[10,10,10],[10,10,10]]},vitE:{u:"mg",v:[[15,15,15],[15,15,15]],w:[[12,12,12],[12,12,12]]},vitK:{u:"μg",v:[[120,120,120],[90,90,90]],w:[[80,80,80],[60,60,60]]},vitB1:{u:"mg",v:[[1.2,1.2,1.2],[1.1,1.1,1.1]],w:[[1,1,1],[.9,.9,.9]]},vitB2:{u:"mg",v:[[1.3,1.3,1.3],[1.1,1.1,1.1]],w:[[1.1,1.1,1.1],[.9,.9,.9]]},vitB3:{u:"mg",v:[[16,16,16],[14,14,14]],w:[[12,12,12],[11,11,11]]},vitB6:{u:"mg",v:[[1.3,1.7,1.7],[1.3,1.5,1.5]],w:[[1.1,1.4,1.4],[1.1,1.3,1.3]]},vitB9:{u:"μg",v:[[400,400,400],[400,400,400]],w:[[320,320,320],[320,320,320]]},vitB12:{u:"μg",v:[[2.4,2.4,2.4],[2.4,2.4,2.4]],w:[[2,2,2],[2,2,2]]},calcium:{u:"mg",v:[[1000,1000,1200],[1000,1200,1200]],w:[[800,800,1000],[800,1000,1000]]},iron:{u:"mg",v:[[8,8,8],[18,8,8]],w:[[6,6,6],[8.1,5,5]]},zinc:{u:"mg",v:[[11,11,11],[8,8,8]],w:[[9.4,9.4,9.4],[6.8,6.8,6.8]]},magnesium:{u:"mg",v:[[420,420,420],[320,320,320]],w:[[350,350,350],[265,265,265]]},potassium:{u:"mg",v:[[3400,3400,3400],[2600,2600,2600]],w:[[2300,2300,2300],[1800,1800,1800]]},selenium:{u:"μg",v:[[55,55,55],[55,55,55]],w:[[45,45,45],[45,45,45]]},iodine:{u:"μg",v:[[150,150,150],[150,150,150]],w:[[95,95,95],[95,95,95]]}};
   const col=s==="male"?0:1,ageIdx=a<51?0:a<71?1:2,r={};
   Object.entries(tbl).forEach(([k,{u,v,w}])=>{r[k]={unit:u,dri:v[col][ageIdx],warn:w[col][ageIdx]};});
+  // סף "warn" = ה-EAR הרשמי (NASEM; לבקשת המשתמש, אחרי בדיקה מול הטבלאות)
+  // מגנזיום בגילאי 19–30 נמוך מעט (יעד 400/310, EAR 330/255); מגיל 31 — 420/320 ו-350/265 (הוצלב מול טבלת NASEM)
+  if (a<31) { r.magnesium.dri=s==="male"?400:310; r.magnesium.warn=s==="male"?330:255; }
+  // רכיבים שאין להם EAR רשמי — רק המלצה משוערת (AI). ה-warn שלהם הוא סף פנימי של האפליקציה (כשני שליש מהיעד)
+  r.vitK.aiOnly=true; r.potassium.aiOnly=true;
   // עדכון ערכי DRI להריון לפי NASEM
   if(pregnant&&s!=="male"){
     r.iron.dri=27;          // 18→27 mg
@@ -100,13 +105,13 @@ function getDRI(age,sex,pregnant){
   // נוטריאנטים חדשים — ערכים לפי NASEM
   const age2=+age||35;
   const isFemale=s!=="male";
-  r.vitB5={unit:"mg",dri:5,warn:3};
-  r.choline={unit:"mg",dri:isFemale?425:550,warn:isFemale?300:400};
-  if(pregnant){r.choline={unit:"mg",dri:450,warn:300};}
-  r.copper={unit:"mg",dri:0.9,warn:0.6};
-  r.manganese={unit:"mg",dri:isFemale?1.8:2.3,warn:isFemale?1.4:1.8};
-  r.sodium={unit:"mg",dri:1500,warn:1000};
-  r.phosphorus={unit:"mg",dri:700,warn:500};
+  r.vitB5={unit:"mg",dri:5,warn:3,aiOnly:true};
+  r.choline={unit:"mg",dri:isFemale?425:550,warn:isFemale?300:400,aiOnly:true};
+  if(pregnant){r.choline={unit:"mg",dri:450,warn:300,aiOnly:true};}
+  r.copper={unit:"mg",dri:0.9,warn:0.7};
+  r.manganese={unit:"mg",dri:isFemale?1.8:2.3,warn:isFemale?1.4:1.8,aiOnly:true};
+  r.sodium={unit:"mg",dri:1500,warn:1000,aiOnly:true};
+  r.phosphorus={unit:"mg",dri:700,warn:580};
   // תקרות בטיחות (UL — Tolerable Upper Intake Level, לפי NASEM): לא "כמה שיותר טוב" כמו שאר המיקרו-נוטריאנטים —
   // אלה שלושת הנוטריאנטים שבפועל ניתנים לחריגה מתזונת WFPB רגילה בלי תוספים (בעיקר דרך אגוזי ברזיל לסלניום,
   // מלח/נורי/וואקמה ליוד, ודגנים/עלים/אגוזים עתירים למנגן) — ולכן שווים אזהרה ייעודית ב-MicroPanel
@@ -144,6 +149,13 @@ function planDRI(dri){ if (!dri||dri.__plan) return dri; const r={...dri}; Objec
   MICRO_KEYS.forEach(k=>{ const v=r[k]; if (!v||typeof v!=="object"||v.weekDri!=null||k==="sodium"||k==="vitB12"||k==="vitD") return; r[k]={...v,weekDri:v.dri,dri:Math.round(v.dri*DAY_MICRO_FRAC*1000)/1000}; });
   Object.defineProperty(r,"__plan",{value:true,enumerable:false}); return r; }
 const DRI_LABELS={vitA:{he:"ויטמין A",en:"Vitamin A"},vitC:{he:"ויטמין C",en:"Vitamin C"},vitD:{he:"ויטמין D",en:"Vitamin D"},vitE:{he:"ויטמין E",en:"Vitamin E"},vitK:{he:"ויטמין K",en:"Vitamin K"},vitB1:{he:"B1",en:"B1"},vitB2:{he:"B2",en:"B2"},vitB3:{he:"B3",en:"B3"},vitB6:{he:"B6",en:"B6"},vitB9:{he:"פולאט B9",en:"Folate B9"},vitB12:{he:"B12 ⚠",en:"B12 ⚠"},calcium:{he:"סידן",en:"Calcium"},iron:{he:"ברזל",en:"Iron"},zinc:{he:"אבץ",en:"Zinc"},magnesium:{he:"מגנזיום",en:"Magnesium"},potassium:{he:"אשלגן",en:"Potassium"},selenium:{he:"סלניום",en:"Selenium"},iodine:{he:"יוד",en:"Iodine"},vitB5:{he:"B5",en:"B5"},choline:{he:"כולין",en:"Choline"},copper:{he:"נחושת",en:"Copper"},manganese:{he:"מנגן",en:"Manganese"},sodium:{he:"נתרן",en:"Sodium"},phosphorus:{he:"זרחן",en:"Phosphorus"}};
+// רכיבים שיש להם רק המלצה משוערת (AI) ולא EAR רשמי — הסבר ליד התוצאה (לבקשת המשתמש, כמו בכולין)
+const AI_ONLY_NOTES={
+  choline:{he:"היעד לכולין הוא המלצה משוערת (AI), לא דרישה שנקבעה במחקר; באירופה ממליצים על 400 מ\"ג למבוגר, ורוב האנשים לא מגיעים ליעד. מקורות טובים: סויה, תורמוס, נבט חיטה, אדממה, כרובית, ברוקולי ופטריות.",en:"The choline target is an Adequate Intake (AI), not a requirement set by research; Europe recommends 400 mg for adults, and most people fall short of it. Good sources: soy, lupin beans, wheat germ, edamame, cauliflower, broccoli and mushrooms."},
+  vitK:{he:"היעד לוויטמין K הוא המלצה משוערת (AI), לא דרישה שנקבעה במחקר; הסף המינימלי הוא סף פנימי של האפליקציה. מקורות טובים: עלים ירוקים (תרד, כרוב עלים, חסה), ברוקולי וכרוב.",en:"The vitamin K target is an Adequate Intake (AI), not a requirement set by research; the minimum threshold is the app's own. Good sources: leafy greens (spinach, kale, lettuce), broccoli and cabbage."},
+  potassium:{he:"היעד לאשלגן הוא המלצה משוערת (AI, עודכנה ב-2019), לא דרישה שנקבעה במחקר; הסף המינימלי הוא סף פנימי של האפליקציה. מקורות טובים: קטניות, תפוחי אדמה ובטטה, עלים ירוקים, עגבניות, בננה ופירות יבשים.",en:"The potassium target is an Adequate Intake (AI, updated in 2019), not a requirement set by research; the minimum threshold is the app's own. Good sources: legumes, potatoes and sweet potatoes, leafy greens, tomatoes, bananas and dried fruit."},
+  vitB5:{he:"היעד לחומצה פנטותנית (B5) הוא המלצה משוערת (AI), לא דרישה שנקבעה במחקר; הסף המינימלי הוא סף פנימי של האפליקציה. חוסר נדיר מאוד. מקורות טובים: דגנים מלאים, קטניות, פטריות, אבוקדו וזרעי חמנייה.",en:"The pantothenic acid (B5) target is an Adequate Intake (AI), not a requirement set by research; the minimum threshold is the app's own. Deficiency is very rare. Good sources: whole grains, legumes, mushrooms, avocado and sunflower seeds."},
+  manganese:{he:"היעד למנגן הוא המלצה משוערת (AI), לא דרישה שנקבעה במחקר; הסף המינימלי הוא סף פנימי של האפליקציה. מקורות טובים: דגנים מלאים, קטניות, אגוזים ותה.",en:"The manganese target is an Adequate Intake (AI), not a requirement set by research; the minimum threshold is the app's own. Good sources: whole grains, legumes, nuts and tea."}};
 
 // שדות satFat (שומן רווי, גר') ו-cholesterol (כולסטרול, מ"ג) נוספו כפרמטרים אופציונליים בסוף — לבקשת המשתמש,
 // לגרסה הצמחונית (עם מוצרי חלב/ביצים) שבה מעקב שומן רוֹווי/כולסטרול הוא קריטי ולא היה קיים בגרסת ה-WFPB
@@ -14344,6 +14356,43 @@ function capVegUnitsPerMeal(day){
     if (dropIdxSet.size) day[mk] = items.filter((it,idx)=>!dropIdxSet.has(idx));
   });
 }
+// סידן שבועי במצב המלא (לבקשת המשתמש: "העבר את תוספות הסידן גם למצב המלא") — כמו במצב הפשוט: בימים הדלים ביותר,
+// עד שהממוצע השבועי מגיע ליעד — יוגורט סויה ביתי → אורגני קנוי (204 מ"ג במקום 38), משקה סויה מועשר לארוחה בלי סויה,
+// ואחר כך משקה שיבולת שועל מועשר לארוחה בלי משקה. מקום קלורי: תוספת דגן מבושל (עד 60%), ואז רבע מנה ממתכון (עד ¾).
+// כל שינוי נבדק: היום עד 102% קלוריות, ארוחה לא יורדת מתחת ל-2 גר' לאוצין, ופריט שהמשתמש בחר (_user) לא נוגעים בו
+function fullModeCalciumWeek(week, target, dri, excl){
+  if (!week||!target||!dri) return week; const caT=dri.calcium?.weekDri||dri.calcium?.dri||1000;
+  const MEALS=["breakfast","lunch","snack","dinner"], MAIN=["breakfast","lunch","dinner"], days=Object.keys(week);
+  const ok=fk=>!!FDB[fk]&&!(excl&&excl.has(fk)); const ingsOf=fk=>(FDB[fk]||TEMP_FDB[fk])?._ings||[]; const isRec=fk=>!!TEMP_FDB[fk]?._isRecipe;
+  const nut=a=>sumNuts((a||[]).filter(x=>x&&x.fk).map(x=>ingNut(x.fk,x.g,x.soaked))); const dN=d=>nut(MEALS.flatMap(m=>d[m]||[]));
+  const avgCa=()=>days.reduce((a,k)=>a+(dN(week[k]).calcium||0),0)/days.length; const leuM=a=>nut(a).leucine||0;
+  const soyIn=a=>(a||[]).some(x=>x&&(SOY_FKS_ALL.has(x.fk)||ingsOf(x.fk).some(i=>SOY_FKS_ALL.has(i.fk))));
+  const hasDrink=a=>(a||[]).some(x=>x&&(x.fk==="soymilkFortified"||x.fk==="oatMilk"||x.fk==="soymilkOrgPlain"));
+  const CAP=target*1.02;
+  const room=(d,a,addK)=>{ if (dN(d).kcal+addK<=CAP) return true;
+    const cand=[...["lunch","dinner"].flatMap(m=>(d[m]||[]).filter(x=>x&&!x._user&&!isRec(x.fk)&&FDB[x.fk]?.cat==="דגן"&&x.g>=100)),
+      ...MAIN.flatMap(m=>(d[m]||[]).filter(x=>x&&!x._user&&isRec(x.fk)))];
+    for (const x of cand) { const r=isRec(x.fk), sv=r?(TEMP_FDB[x.fk]._servingG||200):x.g, ng=Math.round((x.g-sv*0.25)*10)/10;
+      if (r?ng<sv*0.75-0.01:ng<x.g*0.6) continue; const home=MAIN.find(m=>(d[m]||[]).includes(x)); const g0=x.g; x.g=ng;
+      if (home&&!a.includes(x)&&leuM(d[home])<2) { x.g=g0; continue; }
+      if (dN(d).kcal+addK<=CAP) return true; }
+    return false; };
+  const acts=[
+    d=>ok("soyYogurtOrgPlain")&&MEALS.some(m=>{ const x=(d[m]||[]).find(x=>x&&x.fk==="soyYogurtPlain"&&!x._user); if (!x) return false; x.fk="soyYogurtOrgPlain"; return true; }),
+    d=>ok("soymilkFortified")&&["dinner","lunch","breakfast"].some(m=>{ const a=d[m]||[]; if (!a.length||soyIn(a)||hasDrink(a)||!room(d,a,115)) return false; a.push({fk:"soymilkFortified",g:250}); return true; }),
+    d=>ok("oatMilk")&&["breakfast","dinner","lunch"].some(m=>{ const a=d[m]||[]; if (!a.length||hasDrink(a)||!room(d,a,110)) return false; a.push({fk:"oatMilk",g:250}); return true; }) ];
+  const blocked=new Set();
+  for (let g=0; g<50 && avgCa()<caT; g++){ let done=false;
+    for (const k of [...days].sort((a,b)=>(dN(week[a]).calcium||0)-(dN(week[b]).calcium||0))){
+      for (let ai=0; ai<acts.length&&!done; ai++){ if (blocked.has(k+":"+ai)) continue; const snap=JSON.stringify(week[k]), d=week[k];
+        const l0=Object.fromEntries(MAIN.map(m=>[m,leuM(d[m])])), c0=dN(d).calcium||0;
+        if (!acts[ai](d)) { week[k]=JSON.parse(snap); blocked.add(k+":"+ai); continue; }
+        const bad=dN(d).kcal>CAP+1||(dN(d).calcium||0)<=c0+20||MAIN.some(m=>{ const l=leuM(d[m]); return l0[m]>=2?l<2:l<l0[m]-0.05; });
+        if (bad) { week[k]=JSON.parse(snap); blocked.add(k+":"+ai); } else done=true; }
+      if (done) break; }
+    if (!done) break; }
+  return week;
+}
 function generateWeekPlan(...a){ a[3]=planDRI(a[3]); return withAgeMealCaps(a[3], ()=>generateWeekPlan__impl(...a)); }
 function generateWeekPlan__impl(...a){ return runGenSync(generateWeekPlan__gen(...a)); }
 function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set()){
@@ -14487,6 +14536,7 @@ function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
   yield {phase:"polish",i:__di+1}; }
   yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipeIds, (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
   { const __su={}; Object.keys(week).forEach(k=>ensureCalorieFloor(week[k], target)); /* רצפת קלוריות אחרונה — יום שירד מתחת ל-98% בשלבים השבועיים */ Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, __su, new Set(recipeIds))); Object.keys(week).forEach(k=>{ tidyMealLogic(week[k], target, dri, excludedFks); roundSpoonPortions(week[k], target, dri); rebalanceMealShares(week[k]); }); } // שלב אחרון לכל יום
+  fullModeCalciumWeek(week, target, dri, excludedFks); // סידן שבועי (לבקשת המשתמש)
   return week;
 }
 // גרסה שבועית של מחולל "הצע ארוחות ממתכונים" (generateRecipesNSFDayPlan) — לבקשת המשתמש. מריצה את אותו
@@ -15419,6 +15469,7 @@ function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=nu
   yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id), (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id)); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
   Object.keys(week).forEach(k=>ensureCalorieFloor(week[k], target)); // רצפת קלוריות אחרונה לפני השלבים הסופיים
   Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, finalUsage, new Set(recipes.map(r=>r.id)))); Object.keys(week).forEach(k=>{ tidyMealLogic(week[k], target, dri, excludedFks); roundSpoonPortions(week[k], target, dri); rebalanceMealShares(week[k]); }); // שלב אחרון לכל יום
+  fullModeCalciumWeek(week, target, dri, excludedFks); // סידן שבועי (לבקשת המשתמש)
   return {week, updatedUsage: finalUsage};
 }
 // גרסה אישית לשבוע (generatePersonalWeekPlan) הוסרה לבקשת המשתמש — נותר רק המנגנון האישי היומי (generatePersonalDayPlan)
@@ -19584,9 +19635,9 @@ function WeeklyMicroModal({plannedTotals,actualTotals,profile,lang,onClose}){
                   :`~Est. absorbed: planned ${fmtN(plannedTotals.calciumAbsorbedEst,0)}mg · actual ${fmtN(actualTotals.calciumAbsorbedEst||0,0)}mg per week (non-binding estimate, rough reference range ~1750-2450mg/week)`}
               </div>
             )}
-            {r.key==="choline"&&(
+            {AI_ONLY_NOTES[r.key]&&(
               <div style={{fontSize:12,color:"#1E3A2B",marginTop:8,lineHeight:1.4,borderTop:"1px dashed #E2DED4",paddingTop:5}}>
-                {lang==="he"?"היעד לכולין הוא המלצה משוערת (AI), לא דרישה שנקבעה במחקר; באירופה ממליצים על 400 מ\"ג למבוגר, ורוב האנשים לא מגיעים ליעד. מקורות טובים: סויה, תורמוס, נבט חיטה, אדממה, כרובית, ברוקולי ופטריות.":"The choline target is an Adequate Intake (AI), not a requirement set by research; Europe recommends 400 mg for adults, and most people fall short of it. Good sources: soy, lupin beans, wheat germ, edamame, cauliflower, broccoli and mushrooms."}
+                {AI_ONLY_NOTES[r.key][lang==="he"?"he":"en"]}
               </div>
             )}
           </div>
@@ -20445,7 +20496,7 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals,wee
         :earlyDays
         ?(lang==="he"?"📅 זו תמונה של יום אחד. הצבעים השבועיים יופיעו כשיהיו 3 ימים מתוכננים או מתועדים — העמידה ביעדים נמדדת לאורך השבוע, לא ביום בודד.":"📅 This is a one-day snapshot. Weekly colors appear once 3 days are planned or logged — targets are met over the week, not on a single day.")
         :(lang==="he"?"📅 יום בודד הוא תמונת מצב. היעדים (RDA) נקבעו כממוצע לאורך זמן, ולכן יום נמוך תקין כשהממוצע השבועי משלים.":"📅 A single day is a snapshot. Targets (RDA) are long-term averages, so a low day is fine when the weekly average makes up for it.")}</div>
-      <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:6,lineHeight:1.5}}>{lang==="he"?"ℹ️ מהו EAR? \"הצריכה הממוצעת הנדרשת\" (Estimated Average Requirement) — הרמה היומית שמספיקה לכ-50% מהאוכלוסייה הבריאה בקבוצת הגיל/מין. צריכה מתחת ל-EAR מצביעה על סיכון ממשי לחוסר קליני. ה-RDA (100% מהיעד כאן) גבוה יותר בכוונה — נקבע כדי לכסות כמעט את כל האוכלוסייה (כ-97-98%), לא רק את החציון.":"ℹ️ What's EAR? \"Estimated Average Requirement\" — the daily level sufficient for about 50% of healthy people in that age/sex group. Intake below EAR signals a real risk of clinical deficiency. The RDA (100% of target here) is set deliberately higher — to cover nearly the whole population (about 97-98%), not just the median."}</div>
+      <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:6,lineHeight:1.5}}>{lang==="he"?"ℹ️ מהו EAR? \"הצריכה הממוצעת הנדרשת\" (Estimated Average Requirement) — הרמה היומית שמספיקה לכ-50% מהאוכלוסייה הבריאה בקבוצת הגיל/מין. צריכה מתחת ל-EAR מצביעה על סיכון ממשי לחוסר קליני. ה-RDA (100% מהיעד כאן) גבוה יותר בכוונה — נקבע כדי לכסות כמעט את כל האוכלוסייה (כ-97-98%), לא רק את החציון. לרכיבים שמסומנים \"סף מינימלי\" (כולין, ויטמין K, אשלגן, B5 ומנגן) אין EAR רשמי — רק המלצה משוערת (AI), והסף הוא סף פנימי של האפליקציה.":"ℹ️ What's EAR? \"Estimated Average Requirement\" — the daily level sufficient for about 50% of healthy people in that age/sex group. Intake below EAR signals a real risk of clinical deficiency. The RDA (100% of target here) is set deliberately higher — to cover nearly the whole population (about 97-98%), not just the median. Nutrients marked \"min. threshold\" (choline, vitamin K, potassium, B5 and manganese) have no official EAR — only an Adequate Intake (AI) — and the threshold is the app's own."}</div>
       <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"?"🧂 יוד — יעד: 150 מק\"ג ביום (תקרה בטוחה 1,100), בממוצע שבועי. מקורות: מלח מיודד (כ-45 מק\"ג ברבע כפית) ומעט וואקמה (עד גרם ביום). בישראל צריכת היוד נמוכה (מי התפלה, אין העשרת מלח חובה), ובתזונה צמחית הסיכון גבוה יותר — כדאי לשאול את הרופא/ה על תוסף של 150 מק\"ג. מסמנים תוסף ביומן התוספים — והוואקמה יורדת מההצעות. בהריון, בהנקה או עם מחלת בלוטת התריס — להתייעץ.":"🧂 Iodine — target: 150 µg a day (safe upper limit 1,100), as a weekly average. Sources: iodized salt (about 45 µg in a quarter teaspoon) and a little wakame (up to a gram a day). Iodine intake in Israel is low (desalinated water, no mandatory salt iodization), and plant-based diets are at higher risk — worth asking your doctor about a 150 µg supplement. Tick it in the supplement log and wakame drops out of the suggestions. In pregnancy, breastfeeding or with thyroid disease — ask your doctor."}</div>
       <div style={{fontSize:14,color:"#1E3A2B",fontWeight:500,marginBottom:9,lineHeight:1.5}}>{lang==="he"
         ?"ℹ️ ספיגה משוערת (ליד סידן): הערכה בלבד של הסידן שנספג בפועל — הספיגה שונה בין מקורות (תרד ~5%, ברוקולי/כרוב ~55-60%). כ-250-350 מ\"ג נספג ליום הוא טווח תקין."
@@ -20494,9 +20545,7 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals,wee
           const bottomLine = r.isSkip ? "supplement"
             : r.isCeiling ? `${fmtN(r.val,0)}/${r.dri}${r.unit} (${lang==="he"?"תקרה":"ceiling"})`
             : r.naCap!=null ? `${fmtN(r.val,0)}${r.unit} (${lang==="he"?"טווח":"range"} ${r.dri}–${r.naCap})`
-            : r.ul!=null ? `${fmtN(r.val,1)}/${r.dri}${r.unit} (EAR ${r.warnPct}% · UL ${r.ul}${r.unit})`
-            : r.k==="choline" ? `${fmtN(r.val,1)}/${r.dri}${r.unit} (${lang==="he"?"סף מינימלי":"min. threshold"} ${r.warnPct}%)` // לכולין אין EAR רשמי — זה סף פנימי
-            : `${fmtN(r.val,1)}/${r.dri}${r.unit} (EAR ${r.warnPct}%)`;
+            : `${fmtN(r.val,1)}/${r.dri}${r.unit} (${AI_ONLY_NOTES[r.k]?(lang==="he"?"סף מינימלי":"min. threshold"):"EAR"} ${r.warnPct}%${r.ul!=null?` · UL ${r.ul}${r.unit}`:""})`; // AI בלבד — אין EAR רשמי, זה סף פנימי
           return(
             <div key={r.k} style={{background:r.isSkip?"#F5F2EB":"#FBFAF7",borderRadius:9,padding:"6px 8px",border:`1px solid ${color}${r.isSkip?"55":"33"}`}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
@@ -20522,9 +20571,9 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals,wee
                     :`~Est. absorbed: ${fmtN(totals.calciumAbsorbedEst,0)}mg (non-binding estimate${totals.calciumAbsorbedHasEstimate?", includes approximation":""})`}
                 </div>
               )}
-              {r.k==="choline"&&!r.isSkip&&( // הסבר ליד הכולין (לבקשת המשתמש): היעד הוא המלצה משוערת, ומה המקורות הטובים
+              {AI_ONLY_NOTES[r.k]&&!r.isSkip&&( // הסבר ליד רכיב שיש לו רק המלצה משוערת (לבקשת המשתמש): ומה המקורות הטובים
                 <div style={{fontSize:12,color:"#1E3A2B",marginTop:3,lineHeight:1.4,borderTop:"1px dashed #E2DED4",paddingTop:3}}>
-                  {lang==="he"?"היעד לכולין הוא המלצה משוערת (AI), לא דרישה שנקבעה במחקר; באירופה ממליצים על 400 מ\"ג למבוגר, ורוב האנשים לא מגיעים ליעד. מקורות טובים: סויה, תורמוס, נבט חיטה, אדממה, כרובית, ברוקולי ופטריות.":"The choline target is an Adequate Intake (AI), not a requirement set by research; Europe recommends 400 mg for adults, and most people fall short of it. Good sources: soy, lupin beans, wheat germ, edamame, cauliflower, broccoli and mushrooms."}
+                  {AI_ONLY_NOTES[r.k][lang==="he"?"he":"en"]}
                 </div>
               )}
             </div>
