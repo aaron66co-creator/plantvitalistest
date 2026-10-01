@@ -6804,6 +6804,7 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
   const addItem = (mk,fk,gOverride)=>{
     if (usedFks.has(fk)) return false;
     const fd = FDB[fk]||TEMP_FDB[fk]; if(!fd) return false;
+    if (fd._isRecipe && dishSig(fk) && ["breakfast","lunch","dinner"].some(m=>m!==mk && (plan[m]||[]).some(x=>x&&dishSig(x.fk)===dishSig(fk)))) return false; // אותה מנה בארוחה אחרת היום (לבקשת המשתמש)
     if (STANDALONE_VEG_EXCLUDE.has(fk) && !fd._isRecipe) return false;
     if (NEVER_STANDALONE_FKS.has(fk) && !fd._isRecipe) return false;
     if (legumeCapReached(mk,fk)) return false;
@@ -9210,6 +9211,21 @@ const SIMPLE_VEG_MIN=7;
 const SIMPLE_MAIN_CAP=5, SIMPLE_SNACK_CAP=2; // עד 5 רכיבים כשיש צורך (לבקשת המשתמש) — לירק שני בבוקר ולהשלמת לאוצין; המבנה הבסיסי נשאר 4
 const FAV_BONUS=1; // נקודות לכל מתכון מועדף ביום בבחירת התפריט הפשוט
 const SIMPLE_ADDON_FKS=new Set(["flaxseed","chiaseeds","pumpkinS","sunflowerS","saltIodized","wakame","tahiniFullRaw"]);
+// "חתימת מנה" (לבקשת המשתמש: "בטטה ממולאת בשעועית שחורה בצהריים ובטטה אפויה ממולאת שעועית בערב — כפילות"):
+// שני הרכיבים העיקריים בקלוריות, לפי המילה הראשונה בשם (בטטה טריה/אפויה → בטטה; שעועית שחורה/אדומה → שעועית).
+// בלי שומן, תבלינים, זרעים, אגוזים, עלים וירקות לא עמילניים. שתי מנות עם אותה חתימה = אותה מנה בפועל
+const __dishSig=new Map();
+function dishSig(fk){ if (__dishSig.has(fk)) return __dishSig.get(fk); const fd=TEMP_FDB[fk]; let sig=null;
+  if (fd&&fd._isRecipe) { const SKIP=new Set(["שומן","תבלינים","זרעים","אגוזים","עלים"]);
+    const parts=(fd._ings||[]).map(i=>{ const f=FDB[i.fk]; if (!f||SKIP.has(f.cat)||isVegNonStarchy(i.fk)) return null;
+      const w=String(f.he||i.fk).split(/[\s,(/]+/); let k=w[0]; if (/^(לימון|ליים|מים|מלח)/.test(k)) return null; // תיבול, לא בסיס המנה
+      if (/^(קמח|משקה|יוגורט|חמאת|גבינה|גבינת)$/.test(k)&&w[1]) k+=" "+w[1]; // קמח חומוס ≠ קמח מלא
+      return [k, ingNut(i.fk,i.g||0).kcal||0]; }).filter(Boolean);
+    const by={}; parts.forEach(([k,v])=>{ by[k]=(by[k]||0)+v; });
+    const top=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>x[0]); if (top.length) sig=top.sort().join("+"); }
+  __dishSig.set(fk,sig); return sig; }
+// שתי ארוחות "כפולות": מנה עם אותה חתימה (או אותו מתכון) בשתיהן
+const mealsDuplicate=(a,b)=>{ const sa=new Set((a||[]).map(x=>x&&dishSig(x.fk)).filter(Boolean)); return (b||[]).some(x=>x&&sa.has(dishSig(x.fk))); };
 const simpleCount=items=>(items||[]).filter(it=>!SIMPLE_ADDON_FKS.has(it.fk)&&FDB[it.fk]?.cat!=="פרי").length; // פרי לא נספר (לבקשת המשתמש)
 // השלמת לאוצין בהחלפה (לבקשת המשתמש: "לאוצין ירוד מאוד אצל בני 55 פלוס"): ארוחה עיקרית מתחת ליעד מקבלת מקור מרוכז —
 // תורמוס, יוגורט סויה, אדממה, משקה סויה במקום משקה שיבולת שועל, או רבע מנה נוספת מהמנה העיקרית — ובמקום הקלוריות
@@ -9361,6 +9377,8 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     let sc=0; for (const key of KEYS){ const tg=key==="protein"?(wKg||70)*0.9:key==="fiber"?14*target/1000:dri[key]?.dri; if(!tg) continue; const tgK=key==="calcium"?(dri.calcium?.weekDri||tg):tg; sc+=Math.min(1,(t[key]||0)/tgK)*(key==="calcium"?caW:key==="vitE"?1.5:1); } // סידן — מול היעד המלא (לבקשת המשתמש: 100% בשבוע)
     ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)) return; const l=leuOf(plan[mk]); sc+=l>=LEU?3:l+0.45>=LEU?2:l>=2?1:-3; }); // לאוצין: ביעד, או בהישג יד עם גרעיני דלעת (עד 2 כפות)
     const v=mealShareViolation(plan); if (v>0.03) return null; sc-=v*25;
+    // אותה מנה פעמיים ביום (לבקשת המשתמש: בטטה ממולאת בשעועית בצהריים וגם בערב) — קנס כבד, כמעט פסילה
+    if (mealsDuplicate(plan.lunch,plan.dinner)||mealsDuplicate(plan.breakfast,plan.lunch)||mealsDuplicate(plan.breakfast,plan.dinner)) sc-=15;
     // חלוקה מאוזנת בין הארוחות (לבקשת המשתמש: "מעט קלוריות בבוקר, הרבה מאוד בצהריים ובערב"): בוקר לפחות 24%,
     // צהריים עד 36% וערב עד 34% — לפני התוספות (זרעים, טחינה), שמוסיפות לצהריים ולערב עוד כ-2%
     { const vu=["breakfast","snack","lunch","dinner"].reduce((a,mk)=>a+simpleVegUnits(plan[mk]),0); sc-=Math.max(0,SIMPLE_VEG_MIN-vu)*0.4; } // העדפה לימים עשירים בירקות
@@ -11578,6 +11596,7 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
   function tryAdd(mk, fk, budgetMult){
     if (usedFks.has(fk)) return false;
     const fd = FDB[fk]||TEMP_FDB[fk]; if(!fd) return false;
+    if (fd._isRecipe && dishSig(fk) && ["breakfast","lunch","dinner"].some(m=>m!==mk && (plan[m]||[]).some(x=>x&&dishSig(x.fk)===dishSig(fk)))) return false; // אותה מנה בארוחה אחרת היום (לבקשת המשתמש)
     if (budgetMult==null) budgetMult = fd._isRecipe ? 0.9 : 1.25;
     // כלל 7 (מתוקן): פריטי "אגוזים" מוגבלים לכל היותר ל-10 גרם (15 גרם לאגוזי מלך) — אבל במקום לגזור ישירות
     // כמות גרם שרירותית (שיכולה ליצור חלקי-יחידה מוזרים כמו "17.5 פיסטוקים"), התקרה עצמה מוגדרת כיחידה-שלמה
@@ -14365,6 +14384,29 @@ function capVegUnitsPerMeal(day){
 // עד שהממוצע השבועי מגיע ליעד — יוגורט סויה ביתי → אורגני קנוי (204 מ"ג במקום 38), משקה סויה מועשר לארוחה בלי סויה,
 // ואחר כך משקה שיבולת שועל מועשר לארוחה בלי משקה. מקום קלורי: תוספת דגן מבושל (עד 60%), ואז רבע מנה ממתכון (עד ¾).
 // כל שינוי נבדק: היום עד 102% קלוריות, ארוחה לא יורדת מתחת ל-2 גר' לאוצין, ופריט שהמשתמש בחר (_user) לא נוגעים בו
+// מצב מלא: אותה מנה פעמיים ביום (לבקשת המשתמש) — שלבים שבועיים (תבשיל יומי, מכסות מתכונים) יכולים להוסיף מנה עם
+// אותה "חתימה" (dishSig) כמו בארוחה אחרת. כאן היא מוחלפת במתכון אחר מאותה קטגוריה בספר (תבשיל↔תבשיל, מרק↔מרק),
+// בלי חתימה שכבר יש היום, בלי רכיב מוחרג ועם צפיפות חלבון דומה (±35%) — בכמות שנותנת אותן קלוריות
+function fullModeDedupWeek(week, recipeIds, excl){
+  if (!week) return week; const MAIN=["breakfast","lunch","dinner"]; const fdOf=fk=>TEMP_FDB[fk];
+  const cat=fk=>{ const fd=fdOf(fk); return fd&&fd._isRecipe?bookCategoryOf({name:fd.he||"",foodGroup:fd._foodGroup||"",type:fd._recipeType||"",ings:fd._ings||[]}):null; };
+  const bad=fk=>excl&&excl.size&&(excl.has(fk)||(fdOf(fk)?._ings||[]).some(i=>excl.has(i.fk)));
+  const per100=fk=>ingNut(fk,100);
+  const pool=(recipeIds||[]).filter(id=>fdOf(id)?._isRecipe&&!bad(id));
+  for (const k of Object.keys(week)) { const d=week[k];
+    for (let pass=0; pass<3; pass++) { let fixed=false;
+      for (let a=0; a<MAIN.length && !fixed; a++) for (let b=a+1; b<MAIN.length && !fixed; b++) {
+        const A=d[MAIN[a]]||[], B=d[MAIN[b]]||[]; const sigA=new Set(A.map(x=>x&&dishSig(x.fk)).filter(Boolean));
+        const idx=B.findIndex(x=>x&&!x._user&&dishSig(x.fk)&&sigA.has(dishSig(x.fk))); if (idx<0) continue;
+        const it=B[idx], c=cat(it.fk), kc=ingNut(it.fk,it.g).kcal||0, p0=per100(it.fk);
+        const daySigs=new Set(MAIN.flatMap(m=>(d[m]||[]).map(x=>x&&dishSig(x.fk))).filter(Boolean)); const dayFks=new Set(MAIN.flatMap(m=>(d[m]||[]).map(x=>x&&x.fk)));
+        const cands=pool.filter(id=>!dayFks.has(id)&&cat(id)===c&&!daySigs.has(dishSig(id))).map(id=>{ const q=per100(id); const pr=(q.protein||0)/(q.kcal||1), pr0=(p0.protein||0)/(p0.kcal||1); return {id,q,d:Math.abs(pr-pr0)/(pr0||1)}; })
+          .filter(o=>o.d<=0.35&&(o.q.kcal||0)>0).sort((x,y)=>x.d-y.d);
+        if (!cands.length) continue; const o=cands[0]; const g=Math.round(kc/(o.q.kcal/100)*10)/10;
+        B[idx]={fk:o.id,g}; fixed=true; }
+      if (!fixed) break; } }
+  return week;
+}
 function fullModeCalciumWeek(week, target, dri, excl){
   if (!week||!target||!dri) return week; const caT=dri.calcium?.weekDri||dri.calcium?.dri||1000;
   const MEALS=["breakfast","lunch","snack","dinner"], MAIN=["breakfast","lunch","dinner"], days=Object.keys(week);
@@ -14541,6 +14583,7 @@ function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
   yield {phase:"polish",i:__di+1}; }
   yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipeIds, (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipeIds); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
   { const __su={}; Object.keys(week).forEach(k=>ensureCalorieFloor(week[k], target)); /* רצפת קלוריות אחרונה — יום שירד מתחת ל-98% בשלבים השבועיים */ Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, __su, new Set(recipeIds))); Object.keys(week).forEach(k=>{ tidyMealLogic(week[k], target, dri, excludedFks); roundSpoonPortions(week[k], target, dri); rebalanceMealShares(week[k]); }); } // שלב אחרון לכל יום
+  fullModeDedupWeek(week, recipeIds, excludedFks); // בלי אותה מנה פעמיים ביום (לבקשת המשתמש)
   fullModeCalciumWeek(week, target, dri, excludedFks); // סידן שבועי (לבקשת המשתמש)
   return week;
 }
@@ -15474,6 +15517,7 @@ function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=nu
   yield {phase:"weekly"}; yield* recipeQuotaGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id), (target<1800?{bowl:2, pan:2, mealSalad:1, soup:2, drink:2}:{bowl:2, pan:3, mealSalad:2, soup:2, drink:2})); yield* recipeCategoryCoverageGen(daysArr, target, dri, excludedFks, recipes.map(r=>r.id)); yield* enforceWeeklyMicrosGen(daysArr, target, dri, varietyExclFor(excludedFks,daysArr), 1); yield* enforceWeeklyMicrosGen(daysArr, target, dri, excludedFks); yield* enforceWeeklyVarietyGen(daysArr, target, dri, excludedFks);
   Object.keys(week).forEach(k=>ensureCalorieFloor(week[k], target)); // רצפת קלוריות אחרונה לפני השלבים הסופיים
   Object.keys(week).sort().forEach(k=>guaranteeDailyStews(week[k], target, excludedFks, finalUsage, new Set(recipes.map(r=>r.id)))); Object.keys(week).forEach(k=>{ tidyMealLogic(week[k], target, dri, excludedFks); roundSpoonPortions(week[k], target, dri); rebalanceMealShares(week[k]); }); // שלב אחרון לכל יום
+  fullModeDedupWeek(week, recipes.map(r=>r.id), excludedFks); // בלי אותה מנה פעמיים ביום (לבקשת המשתמש)
   fullModeCalciumWeek(week, target, dri, excludedFks); // סידן שבועי (לבקשת המשתמש)
   return {week, updatedUsage: finalUsage};
 }
