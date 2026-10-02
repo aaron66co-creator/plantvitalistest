@@ -378,6 +378,8 @@ function fmtQty(v){
 // שם פריט עם כמות, בלי כפילות מילה (לבקשת המשתמש: "תאנים תאנה" → "תאנה"): כשהיחידה זהה לשם — רק כמות+יחידה;
 // כששם הפריט מתחיל ביחידה ("תמר מג׳הול" ביחידת "תמר") — רק מספר+שם
 function itemLabel(fk,su,v,lang){ const name=foodName(fk,lang); if(!su||su.weightOnly) return null;
+  // יחידה אחת בגודל רגיל — רק שם המזון (לבקשת המשתמש: "יחידה בינונית פלפל צהוב" → "פלפל צהוב")
+  if(fmtQty(v)==="1"&&["יחידה בינונית","יחידה","medium","unit"].includes(lang==="he"?su.he:su.en)&&!su.nameHe) return name;
   const pl=v>1.01, full=lang==="he"?(pl?su.nameHePl:su.nameHe):(pl?su.nameEnPl:su.nameEn); // "8 חצאי אגוזי מלך"
   if(full){ const q=fmtQty(v); return q==="1"?full:`${q} ${full}`; }
   const sg=lang==="he"?su.he:su.en, sgPl=lang==="he"?su.hePl:su.enPl, low=x=>(x||"").toLowerCase();
@@ -16312,7 +16314,6 @@ function MySettingsModal({lang,onClose,profile,setProfile,detailView,toggleDetai
         {seg([["simple",he?"✨ בלי ערכים תזונתיים":"✨ Without nutrition values"],["full",he?"📊 עם ערכים תזונתיים":"📊 With nutrition values"]],detailView?"full":"simple",k=>{ if ((k==="full")!==!!detailView) toggleDetail(); })}
         <div style={{fontSize:11.5,color:"#4A5A50",marginTop:6,lineHeight:1.45}}>{he?"בלי ערכים תזונתיים — סיכום במילים: מה טוב ומה כדאי לחזק, בלי טבלאות. עם ערכים תזונתיים — קלוריות, חלבון, ויטמינים ומינרלים: כל הערכים, האחוזים והניתוחים (למתעניינים ולדיאטנית).":"Without nutrition values — a summary in words: what's good and what to boost, no tables. With nutrition values — calories, protein, vitamins and minerals: every value, percentage and analysis (for the curious and your dietitian)."}</div></div>
       <div style={row}><div style={lbl}>🌐 {he?"שפה":"Language"}</div>{seg([["he","עברית"],["en","English"]],lang,k=>{ if (k!==lang) toggleLang(); })}</div>
-      <div style={row}><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",...lbl,marginBottom:0}}><input type="checkbox" checked={!!rememberProfile} onChange={()=>setRememberProfile(v=>!v)} style={{width:18,height:18,accentColor:"#2e7d32"}}/>💾 {he?"שמור את נתוני הפרופיל במכשיר":"Save profile data on this device"}</label></div>
       <div style={row}><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",...lbl,marginBottom:0}}><input type="checkbox" checked={!!profile.assumePlanned} onChange={e=>setProfile(p=>({...p,assumePlanned:e.target.checked}))} style={{width:18,height:18,accentColor:"#2e7d32"}}/>📝 {he?"ימים שלא תיעדתי — לחשב לפי התפריט":"Days I didn't log — count them from the menu"}</label>
         <div style={{fontSize:11.5,color:"#4A5A50",marginTop:4,lineHeight:1.45}}>{he?"במעקב השבועי ובדוח לדיאטנית ימים כאלה מסומנים \"לפי התפריט\", כי ייתכן שאכלת אחרת.":"In weekly tracking and the dietitian report such days are marked \"from the menu\", since you may have eaten differently."}</div></div>
       <div style={row}><div style={lbl}>🧰 {he?"כלים נוספים":"More tools"}</div>
@@ -16320,6 +16321,8 @@ function MySettingsModal({lang,onClose,profile,setProfile,detailView,toggleDetai
         <div style={{fontSize:11.5,color:"#4A5A50",margin:"3px 0 6px",lineHeight:1.45}}>{he?"עלות משוערת בסיכום היומי ותכנון לפי תקציב.":"Estimated cost in the daily summary and budget planning."}</div>
         {showBudget&&<button onClick={onBudget} style={{background:"#F5F2EB",border:"1px solid #E2DED4",borderRadius:10,padding:"7px 10px",cursor:"pointer",fontSize:12.5,fontWeight:800,color:"#1E3A2B"}}>💰 {he?"ניהול תקציב ומחירים":"Budget & prices"} ›</button>}
         <div style={{fontSize:11.5,color:"#4A5A50",marginTop:8,lineHeight:1.45}}>📋 {he?"משקל, היקף מותניים ובדיקות דם — ביומן, תחת \"⚖️ משקל ובריאות\".":"Weight, waist and blood tests — in the Log, under \"⚖️ Weight & health\"."}</div></div>
+      {/* בסוף החלון — הגדרה טכנית שכבר מסומנת מראש (לבקשת המשתמש) */}
+      <div style={{...row,marginTop:6}}><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",...lbl,marginBottom:0}}><input type="checkbox" checked={!!rememberProfile} onChange={()=>setRememberProfile(v=>!v)} style={{width:18,height:18,accentColor:"#2e7d32"}}/>💾 {he?"לזכור את הפרטים שלי במכשיר הזה":"Remember my details on this device"}</label></div>
       <div style={{fontSize:11,color:"#6B7C72",lineHeight:1.45,marginTop:4}}>{he?"גובה, משקל, מטרה, רגישויות ומצב רפואי — בכרטיס הפרופיל.":"Height, weight, goal, sensitivities and medical status — in the profile card."}</div>
     </div></div>); }
 // ספריית הידע (לבקשת המשתמש): כל ההסברים במקום אחד, לפי נושאים. עקרונות התכנון ואיך נקבעים היעדים עברו לכאן מהמדריך
@@ -18661,7 +18664,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
       {ings.length===0
         ?(isDragOver?<div style={{fontSize:11,color:"#8C6D53",textAlign:"center",padding:"10px 0",fontWeight:700}}>{lang==="he"?"שחרר כאן להעברה":"Drop here to move"}</div>:null) /* בלי "לחץ בנה / הצע" — נראה ככפתור ולא היה (לבקשת המשתמש) */
         :<>
-          <div style={{fontSize:20,lineHeight:1.6,marginBottom:4}}>{ings.map(({fk})=>(FDB[fk]||TEMP_FDB[fk])?.emoji||"").join(" ")}</div>
+          {/* שורת האימוג'ים הוסרה (לבקשת המשתמש: חוזרת על הפריטים ותופסת מקום) */}
           {/* רשימת רכיבים כ"צ'יפים" נפרדים (במקום שורת טקסט מאוחדת אחת) — נחוץ כדי לאפשר מתג "מושרה" בודד
               לכל קטנית/דגן בנפרד, בלי לפגוע בקומפקטיות עבור שאר הרכיבים שמוצגים בדיוק כמו קודם */}
           <div style={{display:"flex",flexWrap:"wrap",gap:"2px 0",fontSize:11,color:"#1E3A2B",lineHeight:1.9,fontWeight:500}}>
@@ -19582,7 +19585,7 @@ function FoodLogPanel({logDate,onDateChange,meals,actualIntake,onMarkPlanned,onF
           onClear={()=>onClear(logDate,mk)}/>
       ))}
       <div style={{textAlign:"center",fontSize:10,color:"#6B7C72",padding:"6px 0"}}>
-        {lang==="he"?"התוצאות התזונתיות המלאות מוצגות בלשונית \"ארוחות\" — כאן רק תיעוד מהיר":"Full nutrition results appear in the \"Meals\" tab — this is quick logging only"}
+        {lang==="he"?"התוצאות התזונתיות מוצגות בלשונית \"📊 תזונה\" — כאן רק תיעוד מהיר":"Nutrition results appear in the \"📊 Nutrition\" tab — this is quick logging only"}
       </div>
     </div>
   );
@@ -21121,6 +21124,7 @@ function SwapModal({allMeals,target,wKg,profile,lang,onClose,onApply}){
 }
 
 function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop,simple}){
+  const [addForId,setAddForId]=useState(null); // "➕ הוסף לארוחה" פתוח עבור מתכון זה
   const tx=T[lang];
   // מיון אלפביתי של רשימת המתכונים המוצגת (לפי lang===he) — לא נוגע בסדר הפנימי של recipes/localStorage,
   // רק בסדר התצוגה, כדי לא לשבש שום מנגנון אחר שתלוי בסדר המקורי (למשל שמירה/עדכון)
@@ -21646,7 +21650,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop,sim
         {showCatHeader&&<div style={{fontSize:18,fontWeight:800,color:"#4527a0",margin:i===0?"0 0 8px":"18px 0 8px",paddingBottom:6,borderBottom:"1px solid #7c4dff33",gridColumn:isDesktop?"1 / -1":undefined}}>{BOOK_CATEGORY_LABELS[lang][cat]}</div>}
         <div data-recipe-card={r.id} style={{background:"#FFFFFF",borderRadius:14,padding:"12px 14px",marginBottom:10,border:"1px solid #d9cdee"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-            <div style={{flex:1,minWidth:0,cursor:"pointer",display:"flex",gap:8,alignItems:"flex-start"}} onClick={()=>setExpanded(isExp?null:r.id)}>
+            <div style={{flex:1,minWidth:0,cursor:"pointer",display:"flex",gap:8,alignItems:"flex-start"}} onClick={()=>{ lastRecIdRef.current=r.id; setViewId(r.id); }} title={lang==="he"?"לצפייה במתכון":"View recipe"}>
               <span style={{flexShrink:0,background:"#F5F2EB",border:"1px solid #c9b8e8",color:"#7c5cbf",borderRadius:7,minWidth:22,height:22,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{i+1}</span>
               <div style={{flex:1}}>
                 <div style={{fontSize:13,fontWeight:700,color:"#5c3d99",marginBottom:3,unicodeBidi:"plaintext"}}>🍽 {r.name}</div>
@@ -21660,10 +21664,6 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop,sim
             <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end",maxWidth:"55%"}}>
               <span style={{fontSize:14,cursor:"pointer",color:"#7c4dff"}} onClick={()=>setExpanded(isExp?null:r.id)}>{isExp?"▲":"▼"}</span>
               <button onClick={()=>toggleFav(r.id)} style={{background:r.fav?"#ffd54f22":"#F5F2EB",border:"1px solid "+(r.fav?"#b8860b":"#c9b8e8"),borderRadius:6,color:r.fav?"#b8860b":"#5c3d99",padding:"4px 8px",fontSize:13,cursor:"pointer",lineHeight:1}} title={lang==="he"?"מועדף":"Favorite"}>{r.fav?"⭐":"☆"}</button>
-              <button onClick={(e)=>{e.stopPropagation(); if(confirmDelId===r.id) delRec(r.id); else setConfirmDelId(r.id);}} style={{background:confirmDelId===r.id?"#c1440e":"#fdecea",border:"1px solid #ff6b6b44",borderRadius:6,color:confirmDelId===r.id?"#fff":"#c1440e",padding:"4px 8px",fontSize:10,cursor:"pointer",fontWeight:confirmDelId===r.id?700:400}} title={isBuiltIn?(lang==="he"?"מתכון ברירת-מחדל — ניתן לשחזר מתפריט הגיבוי":"Built-in recipe — can be restored from the backup menu"):undefined}>{confirmDelId===r.id?(lang==="he"?"⚠️ שוב לאישור":"⚠️ Tap again"):tx.deleteRecipe}</button>
-              <button onClick={()=>dupRec(r)} style={{background:"#eef2f7",border:"1px solid #4fc3f766",borderRadius:6,color:"#1a6fa0",padding:"4px 8px",fontSize:10,cursor:"pointer"}}>{lang==="he"?"⧉ שכפל":"⧉ Duplicate"}</button>
-              <button onClick={()=>{ lastRecIdRef.current=r.id; setViewId(r.id); }} style={{background:"#F3EEFB",border:"1px solid #7c4dff66",borderRadius:6,color:"#4527a0",padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"👁 צפייה":"👁 View"}</button>
-              <button onClick={()=>startEdit(r)} style={{background:"#E8EFE9",border:"1px solid #388e3c66",borderRadius:6,color:"#2e7d32",padding:"4px 8px",fontSize:10,cursor:"pointer"}}>{lang==="he"?"✏️ ערוך":"✏️ Edit"}</button>
             </div>
           </div>
           {/* בלי ערכים תזונתיים בכרטיס (לבקשת המשתמש) — הם מופיעים ב"👁 צפייה" ובהגדרה "מסכים עם ערכים תזונתיים" */}
@@ -21675,14 +21675,23 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop,sim
               </div>
             ))}
           </div>}
-          <div style={{display:"flex",gap:4,marginBottom:isExp?8:0}}>
-            {MEAL_KEYS.map(mk=>(
-              <button key={mk} onClick={()=>onAddToMeal(mk,r)} style={{flex:1,padding:"6px 0",borderRadius:8,border:"1px solid #c9b8e8",background:"#F5F2EB",color:"#7c5cbf",fontSize:10,cursor:"pointer"}}>
-                {mk==="breakfast"?"🌅":mk==="snack"?"🍎":mk==="lunch"?"☀️":"🌙"}
-              </button>
-            ))}
-          </div>
+          {/* הוספה לארוחה — כפתור אחד במקום ארבעה אימוג'ים (לבקשת המשתמש) */}
+          {addForId===r.id
+            ?<div style={{display:"flex",gap:4,marginBottom:isExp?8:0,flexWrap:"wrap"}}>
+              {MEAL_KEYS.map(mk=>(
+                <button key={mk} onClick={()=>{ onAddToMeal(mk,r); setAddForId(null); }} style={{flex:"1 1 22%",padding:"6px 0",borderRadius:8,border:"1px solid #c9b8e8",background:"#F5F2EB",color:"#4527a0",fontSize:11.5,fontWeight:700,cursor:"pointer"}}>
+                  {lang==="he"?{breakfast:"🌅 בוקר",snack:"🍎 ביניים",lunch:"☀️ צהריים",dinner:"🌙 ערב"}[mk]:{breakfast:"🌅 Breakfast",snack:"🍎 Snack",lunch:"☀️ Lunch",dinner:"🌙 Dinner"}[mk]}
+                </button>))}
+            </div>
+            :<button onClick={()=>setAddForId(r.id)} style={{display:"block",width:"100%",marginBottom:isExp?8:0,padding:"6px 0",borderRadius:8,border:"1px solid #c9b8e8",background:"#F5F2EB",color:"#4527a0",fontSize:12,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"➕ הוסף לארוחה":"➕ Add to a meal"}</button>}
           {isExp&&(<div style={{marginTop:10,borderTop:"1px solid #7c4dff22",paddingTop:10}}>
+            {/* מחק / שכפל / ערוך — בתוך הכרטיס הפתוח (לבקשת המשתמש: 9 כפתורים על כל כרטיס) */}
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+              <button onClick={(e)=>{e.stopPropagation(); if(confirmDelId===r.id) delRec(r.id); else setConfirmDelId(r.id);}} style={{background:confirmDelId===r.id?"#c1440e":"#fdecea",border:"1px solid #ff6b6b44",borderRadius:6,color:confirmDelId===r.id?"#fff":"#c1440e",padding:"4px 8px",fontSize:10,cursor:"pointer",fontWeight:confirmDelId===r.id?700:400}} title={isBuiltIn?(lang==="he"?"מתכון ברירת-מחדל — ניתן לשחזר מתפריט הגיבוי":"Built-in recipe — can be restored from the backup menu"):undefined}>{confirmDelId===r.id?(lang==="he"?"⚠️ שוב לאישור":"⚠️ Tap again"):tx.deleteRecipe}</button>
+              <button onClick={()=>dupRec(r)} style={{background:"#eef2f7",border:"1px solid #4fc3f766",borderRadius:6,color:"#1a6fa0",padding:"4px 8px",fontSize:10,cursor:"pointer"}}>{lang==="he"?"⧉ שכפל":"⧉ Duplicate"}</button>
+              <button onClick={()=>{ lastRecIdRef.current=r.id; setViewId(r.id); }} style={{background:"#F3EEFB",border:"1px solid #7c4dff66",borderRadius:6,color:"#4527a0",padding:"4px 8px",fontSize:11,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"👁 צפייה":"👁 View"}</button>
+              <button onClick={()=>startEdit(r)} style={{background:"#E8EFE9",border:"1px solid #388e3c66",borderRadius:6,color:"#2e7d32",padding:"4px 8px",fontSize:10,cursor:"pointer"}}>{lang==="he"?"✏️ ערוך":"✏️ Edit"}</button>
+            </div>
             <div style={{fontSize:11,color:"#7c5cbf",fontWeight:700,marginBottom:6}}>{lang==="he"?"🧾 רכיבים:":"🧾 Ingredients:"}</div>
             <div style={{background:"#F5F2EB",borderRadius:10,padding:"8px 10px",marginBottom:10}}>
               {(r.ings||[]).map((ing,i)=>{
@@ -21921,6 +21930,9 @@ function AppInner(){
   const[recipes,setRecipes]=useState(()=>{
     return mergeRecipesWithDefaults(load(RECIPE_STORAGE,[]));
   });
+  // המתכונים נרשמים במאגר המזונות מיד, לפני כל חישוב תזונתי (לבקשת המשתמש — שורש הבאג: אחרי רענון הדף, הסיכום
+  // השבועי חושב לפני שהמתכונים נרשמו, ולכן כל מנה-מתכון נספרה כריקה ו"יש מה לחזק: אבץ, כולין… ועוד 12")
+  useMemo(()=>{ recipes.forEach(r=>{TEMP_FDB[r.id]=recipeToFdbEntry(r);}); },[recipes]);
   // תיקון לבעיה של "מתכונים נעלמים ואז חוזרים": אם יש כמה טאבים/מופעים פתוחים של האפליקציה (אותו localStorage
   // משותף), כל אחד מהם מחזיק תמונת-מצב ישנה משלו בזיכרון (recipes) מרגע הטעינה שלו. אם טאב אחד שומר מתכון חדש,
   // וטאב אחר (שלא יודע על זה) שומר בעצמו משהו אחר מאוחר יותר — הוא דורס בטעות את התוספת של הטאב הראשון, כי
@@ -22101,14 +22113,14 @@ function AppInner(){
     const s=sumNuts(allItems.map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
     const {absorbed,hasEstimatedItem}=estimateAbsorbedCalcium(allItems);
     return {...s, calciumAbsorbedEst:absorbed, calciumAbsorbedHasEstimate:hasEstimatedItem, pSources:phosphorusSources(allItems)};
-  },[meals]);
+  },[meals,recipes]);
   const weeklyActualTotals=useMemo(()=>{
     const allItems=[];
     weekDates.forEach(dateKey=>{ MEAL_KEYS.forEach(mk=>{ allItems.push(...getActualMealEffective(dateKey,mk)); }); });
     const s=sumNuts(allItems.map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
     const {absorbed,hasEstimatedItem}=estimateAbsorbedCalcium(allItems);
     return {...s, calciumAbsorbedEst:absorbed, calciumAbsorbedHasEstimate:hasEstimatedItem, pSources:phosphorusSources(allItems)};
-  },[actualIntake,weekDates,meals]);
+  },[actualIntake,weekDates,meals,recipes]);
   // לבקשת המשתמש: פירוט יומי (לא רק סך שבועי) של שומן רוֹווי/כולסטרול, כדי לתפוס דפוסים שממוצע/סכום שבועי
   // מסתיר — למשל יום בודד עם עודף גדול שמוסתר בתוך ממוצע שבועי סביר. מבוסס על אותו "בפועל" (עם נפילה חזרה
   // למתוכנן) כמו weeklyActualTotals, רק מפורק ליום-יום במקום מסוכם
@@ -22253,6 +22265,7 @@ function AppInner(){
       .then(result=>{ if (isCancelled&&isCancelled()) return null; save(RECIPE_USAGE_HISTORY_STORAGE, result.updatedUsage); return result.week; });
   };
   const [weekPlanProgress,setWeekPlanProgress]=useState(null);
+  const [moreOpen,setMoreOpen]=useState(false); // "⋯ עוד פעולות" במסך הארוחות
   const [autoAgain,setAutoAgain]=useState(false); // "🔄 הצע אחר" מההודעה — גם התפריט הבא נכנס ישר
   const [planToast,setPlanToast]=useState(null); // {kind, undo}
   const planToastTimer=useRef(0), keepUndoRef=useRef(null), mealsNowRef=useRef(meals); mealsNowRef.current=meals;
@@ -22722,12 +22735,14 @@ function AppInner(){
   const weekIsEmpty=!Object.values(meals||{}).some(d=>MEAL_KEYS.some(mk=>((d||{})[mk]||[]).length));
   // בלי חלון אישור כשאין מה לדרוס (לבקשת המשתמש): התפריט נכנס ישר, ובמקום החלון — הודעה קצרה "🔄 הצע אחר / ↩️ בטל".
   // כשיש כבר תפריט (שבוע, או היום עבור תפריט ליום) — החלון נשאר, כהגנה. השלמה ("השלם יום/שבוע") והסיור — תמיד עם חלון
+  const dayHasGap=MEAL_KEYS.some(mk=>!(((meals||{})[dayKey]||{})[mk]||[]).length);
+  const weekHasGap=[0,1,2,3,4,5,6].some(d=>MEAL_KEYS.some(mk=>!(((meals||{})[`d${d}`]||{})[mk]||[]).length));
   const dayIsEmpty=!MEAL_KEYS.some(mk=>(((meals||{})[dayKey]||{})[mk]||[]).length);
   const autoWeek=!onboardActive&&weekPlanMode!=="completeWeek"&&(weekIsEmpty||autoAgain);
   const autoMixedWeek=!onboardActive&&(weekIsEmpty||autoAgain);
   const autoDay=!onboardActive&&dayPlanMode!=="personal"&&(dayIsEmpty||autoAgain);
   const autoMixedDay=!onboardActive&&(dayIsEmpty||autoAgain);
-  // שלוש הדרכים גלויות במסך הריק (לבקשת המשתמש): שבוע (הכפתור הגדול), יום אחד, או בנייה עצמית + "השלם"
+  // במסך הריק (לבקשת המשתמש): שבוע (הכפתור הגדול) או יום אחד; ובנייה עצמית — ב"בנה וערוך" ואז "השלם" תחת "תכנון אוטומטי"
   const emptyLink={background:"none",border:"none",padding:0,color:"#2e7d32",fontWeight:800,textDecoration:"underline",cursor:"pointer",fontSize:13.5};
   const weekEmptyCta=(weekIsEmpty&&!planBlock)?(<div style={{marginBottom:10}}><button onClick={()=>(profile.eatsDairyEggs&&!simpleMode&&!isVegan)?askBudgetThen("week",()=>setMixedWeekPlanOpen(true)):askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
     style={{width:"100%",flex:"1 1 100%",padding:"14px 0",marginBottom:6,borderRadius:14,border:"none",background:"linear-gradient(135deg,#2e7d32,#43a047)",color:"#FFFFFF",fontSize:16,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 12px rgba(46,125,50,0.25)"}}>
@@ -22735,9 +22750,7 @@ function AppInner(){
     <div style={{fontSize:13.5,color:"#4A5A50",textAlign:"center",lineHeight:1.6}}>
       {lang==="he"?"או: ":"Or: "}
       <button style={emptyLink} onClick={()=>(profile.eatsDairyEggs&&!simpleMode&&!isVegan)?askBudgetThen("day",()=>setMixedPlanOpen(true)):askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}>{lang==="he"?"תפריט ליום אחד":"a menu for one day"}</button>
-      {" · "}
-      <button style={emptyLink} onClick={()=>planGuard(()=>setBuilderOpen({mk:"breakfast",mode:dashSource}),dashSource)}>{lang==="he"?"לבנות לבד":"build it yourself"}</button>
-      <div style={{fontSize:12,color:"#6B7C72"}}>{lang==="he"?"בנית חלק? ״השלם יום״ או ״השלם שבוע״ ישלימו את מה שחסר.":"Built part of it? 'Complete day' or 'Complete week' fills in the rest."}</div>
+      <div style={{fontSize:12,color:"#6B7C72"}}>{lang==="he"?"בנית חלק מהארוחות ב״🍽 בנה וערוך״ שבכרטיס הארוחה? ״השלם יום״ או ״השלם שבוע״ תחת ״🤖 תכנון אוטומטי״ ישלימו לתפריט מלא.":"Built some meals with '🍽 Build & edit' on a meal card? 'Complete day' or 'Complete week' under '🤖 Auto-plan' will fill in a full menu."}</div>
     </div></div>):null;
   const autoPlanNode=(
     planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<><AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
@@ -22777,6 +22790,8 @@ function AppInner(){
   const printWeekBtn=(
       <button onClick={()=>setPrintWeekHtml(buildWeekMenuPrintHTML(meals,lang))} title={lang==="he"?"הדפסה / PDF של תפריט השבוע":"Print / PDF of this week's menu"}
         style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #bcd4bf",background:"#E8EFE9",color:"#1E3A2B",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>🖨️ {lang==="he"?"הדפס שבוע":"Print week"}</button>);
+  // "מתוכנן / בפועל" — רק אחרי שתועד משהו ביומן (לבקשת המשתמש: לפני כן יש רק "מתוכנן", והמתג מבלבל)
+  const hasAnyLog=Object.keys(actualIntake||{}).some(dk=>isDayDocumented(actualIntake,dk));
   const dashSourceToggleNode=(
     <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center"}}>
       <div style={{display:"flex",flex:1,background:"#E8EFE9",borderRadius:10,padding:3,border:"1px solid #E2DED4"}}>
@@ -23311,7 +23326,7 @@ function AppInner(){
         {(tab==="micro"||tab==="macros")&&!isDesktop&&(<div style={{display:"flex",gap:6,marginBottom:10}}>
           {[["micro",lang==="he"?"💊 ויטמינים ומינרלים":"💊 Vitamins & minerals"],["macros",lang==="he"?"🍽 אבות המזון":"🍽 Macronutrients"]].map(([k,l])=>(<button key={k} onClick={()=>setTab(k)} style={{flex:1,padding:"9px 4px",borderRadius:10,border:tab===k?"2px solid #1E3A2B":"1px solid #D9D3C5",background:tab===k?"#E8EFE9":"#FFFFFF",color:"#1E3A2B",fontSize:13,fontWeight:tab===k?800:600,cursor:"pointer"}}>{l}</button>))}
         </div>)}
-        {(tab==="micro"||tab==="macros")&&!desktopSidebarTab&&dashSourceToggleNode}
+        {(tab==="micro"||tab==="macros")&&!desktopSidebarTab&&(hasAnyLog||dashSource==="actual")&&dashSourceToggleNode}
         {/* מחוץ לאזור הקבוע בראש המסך (לבקשת המשתמש: פחות מקום תפוס) — פרופיל, תזכורת אתמול וכפתור התפריט הראשון */}
         {/* "שלב 1 מתוך 2: הפרופיל" — בתוכן ולא בראש המסך הקבוע (תפס חצי מסך) */}
         {!desktopSidebarTab&&(tab==="meals"||tab==="micro")&&planBlock&&<div id="onboard-autoplan-mobile" style={{marginBottom:8}}>{autoPlanNode}</div>}
@@ -23352,16 +23367,19 @@ function AppInner(){
                 לגמרי בגרסת המובייל. נוספו כאן כשורת שני כפתורים רחבים, מיד אחרי כרטיסי הארוחות ולפני הסיכום —
                 אותם handlers בדיוק כמו ב-Desktop (setDayPlanMode/setDayPlanOpen ו-clearWeek), רק פריסה שונה
                 (שורה אחת אופקית, מתאימה לרוחב מסך צר, במקום עמודה אנכית בין שתי קוביות) */}
-            <div style={{display:"flex",gap:8,marginTop:8}}>
-              <button onClick={()=>askBudgetThen("day",()=>{setDayPlanMode("personal");setDayPlanOpen(true);})}
+            {/* "השלם" — רק כשיש ארוחה ריקה; שאר הפעולות מקופלות ב"⋯ עוד פעולות" (לבקשת המשתמש: 7 כפתורים בתחתית) */}
+            {(dayHasGap||weekHasGap)&&<div style={{display:"flex",gap:8,marginTop:8}}>
+              {dayHasGap&&<button onClick={()=>askBudgetThen("day",()=>{setDayPlanMode("personal");setDayPlanOpen(true);})}
                 style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #d9c2a3",background:"#F7EFE3",color:"#8C6D53",fontSize:12,fontWeight:700,cursor:"pointer"}}>
                 {lang==="he"?"השלם יום":"Complete Day"}
-              </button>
-              <button onClick={()=>askBudgetThen("week",()=>{setWeekPlanMode("completeWeek");setWeekPlanOpen(true);})} /* "השלם שבוע" ליד "השלם יום" (לבקשת המשתמש) */
+              </button>}
+              {weekHasGap&&<button onClick={()=>askBudgetThen("week",()=>{setWeekPlanMode("completeWeek");setWeekPlanOpen(true);})} /* "השלם שבוע" ליד "השלם יום" (לבקשת המשתמש) */
                 style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #b9d3b4",background:"#EEF6EC",color:"#2e7d32",fontSize:12,fontWeight:700,cursor:"pointer"}}>
                 {lang==="he"?"השלם שבוע":"Complete Week"}
-              </button>
-            </div>
+              </button>}
+            </div>}
+            <button onClick={()=>setMoreOpen(o=>!o)} aria-expanded={moreOpen} style={{display:"block",width:"100%",marginTop:8,padding:"9px 0",borderRadius:10,border:"1px solid #D9D3C5",background:"#FFFFFF",color:"#1E3A2B",fontSize:13,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"⋯ עוד פעולות":"⋯ More actions"} {moreOpen?"▲":"▼"}</button>
+            {moreOpen&&<>
             <div style={{display:"flex",gap:8,marginTop:8}}>
               <button onClick={clearWeek}
                 style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #E2DED4",background:"#E8EFE9",color:"#1E3A2B",fontSize:12,fontWeight:700,cursor:"pointer"}}>
@@ -23393,6 +23411,7 @@ function AppInner(){
                 </button>
               </div>
             )}
+            </>}
             {saveDayToast && <div style={{fontSize:11,color:"#2e7d32",marginTop:4,textAlign:"center"}}>{saveDayToast}</div>}
             </>}
             {!weekIsEmpty&&(detailView?summaryNode:<SimpleDaySummary week={displayWeek} totals={displayTotals} target={target} profile={profile} lang={lang} full={summaryNode} cost={dayCostNow} dailyBudget={budgetDerived(monthlyBudget)?.daily}/>)}
@@ -23411,7 +23430,7 @@ function AppInner(){
             </div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",gap:8,marginBottom:6,maxWidth:360}}>{clearWeekBtn}{printWeekBtn}</div>
-              {dashSourceToggleNode}
+              {(hasAnyLog||dashSource==="actual")&&dashSourceToggleNode}
               <div style={{display:"grid",gridTemplateColumns:"1fr 44px 1fr",gap:10}}>
                 <div id="onboard-mealcard">
                 <MealCard key="breakfast" mealKey="breakfast" ings={dashSource==="actual"?getActualMealEffective(logDate,"breakfast"):getMeal("breakfast")} time={mealTimes.breakfast||""}
