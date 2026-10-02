@@ -881,6 +881,8 @@ function macros(t){
   const c=100-p-f;
   return{p,c,f,pK,cK,fK,fibK,tot};
 }
+// לתצוגה בלבד: ארוחה/יום ריקים — 0% ולא "100% פחמימות" (לבקשת המשתמש). המחולל ממשיך להשתמש ב-macros כמו שהוא
+function macrosShown(t){ const m=macros(t); return (m.pK+m.cK+m.fK+m.fibK)>0?m:{...m,c:0}; }
 function foodName(fk,lang){const fd=FDB[fk]||TEMP_FDB[fk];return fd?(lang==="he"?fd.he:fd.en):fk;}
 
 // מנגנון איזון מאקרו לארוחה בודדת (לבקשת המשתמש): מפעיל את אותה לוגיקת "צמצום שומן → הגדלת חלבון" שכבר
@@ -18252,7 +18254,7 @@ function MealBuilder({mealKey,currentIngs,onClose,onSave,lang,recipes=[],exclude
     return [...recipeItems,...mealItems,...fdbItems];
   },[search,catFilter,lang,recipeFdbEntries,mealFdbEntries]);
 
-  const t=totalNut(ings);const{p,c,f}=macros(t);
+  const t=totalNut(ings);const{p,c,f}=macrosShown(t);
   const pendFd=pendFk?(FDB[pendFk]||TEMP_FDB[pendFk]):null;
   const isRecipePend=pendFk&&!!TEMP_FDB[pendFk]&&!FDB[pendFk];
   const pendGNum=isRecipePend?(pendFd?._servingG||100)*pendServings:Math.max(1,parseFloat(pendG)||1);
@@ -18436,7 +18438,7 @@ function MealBuilder({mealKey,currentIngs,onClose,onSave,lang,recipes=[],exclude
             <button onClick={saveMeal} style={{padding:"7px 14px",borderRadius:9,border:"none",background:"#2e7d32",color:"white",fontSize:12,fontWeight:700,cursor:"pointer"}}>{tx.saveBtn}</button>
           </div>}
           <div style={{display:"flex",gap:4,marginBottom:8}}>
-            {[{l:tx.carb,v:c,ok:c<=55,c:"#b8860b"},{l:tx.prot,v:p,ok:p>=18,c:"#3a7bc8"},{l:tx.fat,v:f,ok:f<=30,c:"#5c8a63"},{l:"kcal",v:Math.round(calcKcalActual(t)),ok:true,c:"#8C6D53"}].map(({l,v,ok,c:col})=>(
+            {[{l:tx.carb,v:c,ok:c<=55,c:"#b8860b"},{l:tx.prot,v:p,ok:p>=18||!ings.length,c:"#3a7bc8"},{l:tx.fat,v:f,ok:f<=30,c:"#5c8a63"},{l:"kcal",v:Math.round(calcKcalActual(t)),ok:true,c:"#8C6D53"}].map(({l,v,ok,c:col})=>(
               <div key={l} style={{flex:1,background:"#F5F2EB",borderRadius:8,padding:"4px 5px",textAlign:"center",border:`1px solid ${ok?col+"44":"#f0b8ac"}`}}>
                 <div style={{fontSize:11,fontWeight:700,color:ok?col:"#c62828"}}>{v}{l!=="kcal"?"%":""}</div>
                 <div style={{fontSize:8,color:"#6B7C72"}}>{l}</div>
@@ -20427,8 +20429,8 @@ function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,o
 // נוסחת ה-2 קק"ל לגרם סיבים
 function MacroReportPanel({dayTotals,weekTotals,target,wKg,lang,onInfo}){
   const tx=T[lang];
-  const dayM=macros(dayTotals||{});
-  const weekM=macros(weekTotals||{});
+  const dayM=macrosShown(dayTotals||{});
+  const weekM=macrosShown(weekTotals||{});
   const weekTarget=(target||0)*7;
   const kcalDayOk = target>0 && Math.abs((dayTotals?.kcal||0)-target) <= target*0.05;
   const kcalWeekOk = weekTarget>0 && Math.abs((weekTotals?.kcal||0)-weekTarget) <= weekTarget*0.05;
@@ -20580,7 +20582,7 @@ function MacroReportPanel({dayTotals,weekTotals,target,wKg,lang,onInfo}){
 function Summary({totals,target,goal,wKg,profile,lang,onInfo,estimatedCost,dailyBudget,onOpenCostSwap}){
   const tx=T[lang];const tgt=target||2000;
   const hp=resolveHealthProfile(profile);
-  const{p,c,f}=macros(totals);
+  const{p,c,f}=macrosShown(totals);
   // קלוריות בפועל: פחמימות נטו×4 + סיבים×2 + חלבון×4 + שומן×9
   const kcalActual=Math.round(calcKcalActual(totals));
   const kcalPct=Math.round(kcalActual/tgt*100),kcalOk=Math.abs(kcalPct-100)<=5;
