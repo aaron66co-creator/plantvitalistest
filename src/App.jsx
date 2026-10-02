@@ -9595,6 +9595,30 @@ function balanceMealMix(d, target, dri, ok, dayNo){ if (!d||!target) return d; d
         steps.forEach(st=>consider([st]));
         if (!best) for (const a of steps) if (a.dir<0) for (const b of steps) if (b.dir>0&&b.mk!==a.mk&&b.x!==a.x) consider([a,b]);
         if (!best) break; best.ms.forEach(doM); }
+  capManganese(d,dri,target,LEU);
+  return d; }
+// מנגן — בדיקה אחרונה (לבקשת המשתמש: יום עבר את התקרה כי השלבים האחרונים לא בדקו מנגן). מקטינים את הפריטים העשירים
+// במנגן (דגן/אגוזים/זרעים עד 30%, מתכון ברבעי מנה עד ¾), בלי לרדת מתחת ל-95% מהקלוריות ובלי להוריד לאוצין בארוחה מתחת לסף
+function capManganese(d, dri, target, LEU){ const UL=dri?.manganese?.ul||15; const MEALS=["breakfast","snack","lunch","dinner"], MAIN=["breakfast","lunch","dinner"];
+  const all=()=>MEALS.flatMap(m=>[...((d.__fx||{})[m]||[]),...(d[m]||[])]); const tot=()=>sumNuts(all().map(x=>ingNut(x.fk,x.g,x.soaked)));
+  const leu=m=>sumNuts([...((d.__fx||{})[m]||[]),...(d[m]||[])].map(x=>ingNut(x.fk,x.g,x.soaked))).leucine||0;
+  const orig=new Map(); MEALS.forEach(m=>(d[m]||[]).forEach(x=>orig.set(x,x.g)));
+  for (let r=0; r<10; r++){ const T=tot(); const over=(T.manganese||0)-UL; if (over<=0) return d;
+    const cands=MEALS.flatMap(m=>(d[m]||[]).filter(x=>!x._user&&!x._keep).map(x=>({m,x,mn:ingNut(x.fk,x.g,x.soaked).manganese||0}))).filter(c=>c.mn>=0.3).sort((a,b)=>b.mn-a.mn);
+    let done=false;
+    for (const c of cands){ const fR=TEMP_FDB[c.x.fk]; const g0=c.x.g, floor=(orig.get(c.x)||g0)*0.7; let ng;
+      if (fR&&fR._isRecipe&&fR._servingG){ const q=fR._servingG/4; ng=Math.ceil((g0-q*0.999)/q)*q; if (ng>=g0-0.5) ng=g0-q; }
+      else ng=g0-Math.min(g0*0.3,over/((c.mn||1)/g0)+0.5);
+      if (ng<floor-0.5) continue; ng=Math.round(ng*10)/10; const l0=MAIN.map(leu);
+      c.x.g=ng; let T2=tot(); let comp=null;
+      // מתחת ל-95% קלוריות — משלימים באותן קלוריות מפריט דל מנגן שכבר ביום (פרי, משקה סויה), עד +50% ממנו
+      if ((T2.kcal||0)<target*0.95){ const need=target*0.95-(T2.kcal||0)+5;
+        const lows=MEALS.flatMap(m=>(d[m]||[]).filter(x=>x!==c.x&&!x._user&&!x._keep&&FDB[x.fk]&&(FDB[x.fk].cat==="פרי"||x.fk==="soymilkFortified"))).map(x=>{ const n=ingNut(x.fk,100); return {x,mnPerK:(n.manganese||0)/Math.max(1,n.kcal||1),kPerG:(n.kcal||0)/100}; }).filter(o=>o.kPerG>0).sort((a,b)=>a.mnPerK-b.mnPerK);
+        for (const o of lows){ const addG=need/o.kPerG; if (addG>o.x.g*0.5) continue; comp={x:o.x,g0:o.x.g}; o.x.g=Math.round((o.x.g+addG)*10)/10; T2=tot(); if ((T2.manganese||0)<(T.manganese||0)-0.05) break; o.x.g=comp.g0; comp=null; T2=tot(); } }
+      const l1=MAIN.map(leu);
+      if ((T2.kcal||0)<target*0.95 || l1.some((v,i)=>v<Math.min(l0[i],LEU||2)-0.05)) { c.x.g=g0; if (comp) comp.x.g=comp.g0; continue; }
+      done=true; break; }
+    if (!done) return d; }
   return d; }
 // שבוע במצב פשוט: הארוחה בצלחת אחת של הצהריים חוזרת יומיים ברצף (בישול אחד), כל מתכון עד פעמיים בשבוע;
 // ארוחות בוקר חדשות עד פעמיים בשבוע (מגיל 65 ומ-1,800 קק"ל — עד 3) (השאר — ארוחות הבוקר הקיימות, לבקשת המשתמש: 70% מהמנות ממתכונים קיימים)
@@ -19931,14 +19955,18 @@ function simpleWeekVerdict(low,lang){
   out.push(simpleLine("💡",he?`הצעה אחת: להוסיף ${simpleTipOf(low[0],lang)} (ל${nm(low[0])}).`:`One tip: add ${simpleTipOf(low[0],lang)} (for ${nm(low[0])}).`));
   return out;
 }
-function SimpleDaySummary({totals,target,profile,lang,full,week,cost,dailyBudget}){
+// המקורות העיקריים לרכיב — לאזהרת תקרה מעשית (לבקשת המשתמש: "המשתמש לא יודע מה גרם לכך")
+function topSourcesText(items,k,lang,n=2){ const by={}; (items||[]).forEach(x=>{ if(!x||!x.fk) return; by[x.fk]=(by[x.fk]||0)+(ingNut(x.fk,x.g,x.soaked)[k]||0); });
+  return Object.entries(by).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([fk])=>foodName(fk,lang)).join(lang==="he"?", ":", "); }
+function SimpleDaySummary({totals,target,profile,lang,full,week,cost,dailyBudget,items}){
   const he=lang==="he"; const dri=getDRI(profile.age||35,profile.sex||"male",profile.pregnant); const hp=resolveHealthProfile(profile);
   const kc=calcKcalActual(totals); const tgt=target||2000; const pct=kc/tgt*100; const w=+profile.weight||0;
   const lines=[];
   if (!(kc>0)) lines.push(simpleLine("🍽️",he?"עוד לא נבנה תפריט ליום הזה — אפשר להתחיל מ״תכנון אוטומטי״.":"No menu for this day yet — try 'Auto-plan'."));
   else {
     // בטיחות — תמיד
-    ["selenium","iodine","manganese"].forEach(k=>{ const d=dri[k]; if(d?.ul!=null&&(totals[k]||0)>d.ul) lines.push(simpleLine("⛔",he?`${DRI_LABELS[k].he} מעל התקרה הבטוחה — כדאי לצמצם את המקור העיקרי.`:`${DRI_LABELS[k].en} above the safe ceiling — reduce its main source.`,"#b3261e")); });
+    ["selenium","iodine","manganese"].forEach(k=>{ const d=dri[k]; if(d?.ul!=null&&(totals[k]||0)>d.ul){ const src=topSourcesText(items,k,lang);
+      lines.push(simpleLine("⛔",he?`${DRI_LABELS[k].he} מעל התקרה היום${src?` — בעיקר מ: ${src}`:""}. אפשר להקטין אחד מהם ב״🍽 בנה וערוך״, או ״🔄 תפריט חדש ליום״.`:`${DRI_LABELS[k].en} above the ceiling today${src?` — mainly from: ${src}`:""}. You can reduce one of them in '🍽 Build & edit', or use '🔄 New day menu'.`,"#b3261e")); } });
     if ((totals.sodium||0)>(hp.sodiumMax||2300)) lines.push(simpleLine("⛔",he?"נתרן מעל התקרה היומית — פחות מלח ומזון מעובד.":"Sodium above the daily ceiling — less salt and processed food.","#b3261e"));
     lines.push(simpleLine(pct>=95&&pct<=105?"✓":"•", pct>=95&&pct<=105?(he?"הקלוריות בטווח":"Calories in range"):pct<95?(he?"הקלוריות מתחת ליעד":"Calories below target"):(he?"הקלוריות מעל היעד":"Calories above target"), pct>=95&&pct<=105?"#2e7d32":"#a6440f"));
     if (w && (totals.protein||0) < w*hp.protPerKg*0.9) lines.push(simpleLine("•",he?"חלבון נמוך — כדאי להוסיף קטנית, טופו או תורמוס.":"Protein is low — add legumes, tofu or lupins.","#a6440f"));
@@ -19954,13 +19982,14 @@ function SimpleDaySummary({totals,target,profile,lang,full,week,cost,dailyBudget
     <span>💰 {he?"עלות משוערת להיום":"Estimated cost today"}</span><span style={{color:dailyBudget&&cost>dailyBudget?"#a6440f":"#8a6608"}}>₪{fmtN(cost,1)}{dailyBudget?<span style={{fontWeight:500,color:"#6B7C72"}}>{he?` מתוך ₪${fmtN(dailyBudget,0)}`:` of ₪${fmtN(dailyBudget,0)}`}</span>:null}</span></div>:null;
   return <>{costLine}<SimpleShell lang={lang} title={he?"📊 איך היום שלי":"📊 How's my day"} full={full} folded>{lines.map((l,i)=><Fragment key={i}>{l}</Fragment>)}</SimpleShell></>;
 }
-function SimpleMicroPanel({weekTotals,days,profile,lang,full,sourceLabel}){
+function SimpleMicroPanel({weekTotals,days,profile,lang,full,sourceLabel,weekItems}){
   const he=lang==="he"; const dri=planDRI(getDRI(profile.age||35,profile.sex||"male",profile.pregnant)); const hp=resolveHealthProfile(profile);
   const lines=[];
   if (!days) lines.push(simpleLine("🍽️",he?"עוד אין תפריט לשבוע הזה.":"No menu for this week yet."));
   else {
     const wk=k=>wkDri(dri[k])*days;
-    ["selenium","iodine","manganese"].forEach(k=>{ const d=dri[k]; if(d?.ul!=null&&(weekTotals[k]||0)>d.ul*days) lines.push(simpleLine("⛔",he?`${DRI_LABELS[k].he} מעל התקרה הבטוחה השבועית.`:`${DRI_LABELS[k].en} above the weekly safe ceiling.`,"#b3261e")); });
+    ["selenium","iodine","manganese"].forEach(k=>{ const d=dri[k]; if(d?.ul!=null&&(weekTotals[k]||0)>d.ul*days){ const src=topSourcesText(weekItems,k,lang);
+      lines.push(simpleLine("⛔",he?`${DRI_LABELS[k].he} מעל התקרה השבועית${src?` — בעיקר מ: ${src}`:""}. אפשר להקטין אותם ב״🍽 בנה וערוך״.`:`${DRI_LABELS[k].en} above the weekly ceiling${src?` — mainly from: ${src}`:""}. You can reduce them in '🍽 Build & edit'.`,"#b3261e")); } });
     if ((weekTotals.sodium||0)>(hp.sodiumMax||2300)*days*1.02) lines.push(simpleLine("⛔",he?"נתרן מעל התקרה השבועית — פחות מלח ומזון מעובד.":"Sodium above the weekly ceiling — less salt and processed food.","#b3261e"));
     const low=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&k!=="sodium"&&!(k==="iodine"&&iodineSuppOn())&&dri[k]&&(weekTotals[k]||0)<(isAiOnlyKey(k,dri[k])?dri[k].warn*days:wk(k)*0.98)).sort((a,b)=>(weekTotals[a]||0)/wk(a)-(weekTotals[b]||0)/wk(b));
     lines.push(...simpleWeekVerdict(low,lang));
@@ -21010,7 +21039,7 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals,wee
           <div style={{fontSize:13,color:"#a6440f",fontWeight:700,marginBottom:3}}>{lang==="he"?"⚠️ מעל תקרת הבטיחות היומית (UL)":"⚠️ Above Daily Safety Ceiling (UL)"}</div>
           <div style={{fontSize:11,color:"#a6440f",marginBottom:4,lineHeight:1.4}}>{lang==="he"?"חריגה חוזרת מעל התקרה עלולה להזיק — שקול לצמצם את המקורות העיקריים (למשל אגוזי ברזיל לסלניום, מלח/נורי/וואקמה ליוד).":"Repeated intake above this ceiling may be harmful — consider reducing the main sources (e.g. Brazil nuts for selenium, salt/nori/wakame for iodine)."}</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-            {overULRows.map(r=><span key={r.k} style={{background:"#fbdcd6",border:"1px solid #e5a08f",borderRadius:20,color:"#a6440f",fontSize:12,padding:"2px 8px"}}>{DRI_LABELS[r.k][lang]} {fmtN(r.val,1)}/{r.ul}{r.unit}</span>)}
+            {overULRows.map(r=><span key={r.k} style={{background:"#fbdcd6",border:"1px solid #e5a08f",borderRadius:20,color:"#a6440f",fontSize:12,padding:"2px 8px"}}>{DRI_LABELS[r.k][lang]} {fmtN(r.val,1)}/{r.ul}{r.unit}{(()=>{ const src=topSourcesText(meals?Object.values(meals).flat():[],r.k,lang); return src?(lang==="he"?` — בעיקר מ: ${src}`:` — mainly from: ${src}`):""; })()}</span>)}
           </div>
         </div>
       )}
@@ -23107,7 +23136,7 @@ function AppInner(){
     );
   };
   const simpleMicroNode=(full)=>{ const src=dashSource==="actual"; const days=src?7:[0,1,2,3,4,5,6].filter(d=>Object.values(meals[`d${d}`]||{}).some(a=>a&&a.length)).length;
-    return <SimpleMicroPanel weekTotals={src?weeklyActualTotals:weeklyPlannedTotals} days={days} profile={profile} lang={lang} full={full} sourceLabel={src?(lang==="he"?"בפועל, עם המתוכנן לימים שלא תועדו":"actual, with the plan for unlogged days"):(lang==="he"?"מתוכנן":"planned")}/>; };
+    return <SimpleMicroPanel weekItems={src?weekDates.flatMap(dk=>MEAL_KEYS.flatMap(mk=>getActualMealEffective(dk,mk))):[0,1,2,3,4,5,6].flatMap(d=>MEAL_KEYS.flatMap(mk=>(meals[`d${d}`]||{})[mk]||[]))} weekTotals={src?weeklyActualTotals:weeklyPlannedTotals} days={days} profile={profile} lang={lang} full={full} sourceLabel={src?(lang==="he"?"בפועל, עם המתוכנן לימים שלא תועדו":"actual, with the plan for unlogged days"):(lang==="he"?"מתוכנן":"planned")}/>; };
   const dayCostNow=!showBudget?null:dayCost(Object.fromEntries(MEAL_KEYS.map(mk=>[mk,dashSource==="actual"?getActualMealDefaulted(logDate,mk):getMeal(mk)])),priceOverrides);
   const summaryNode=<Summary totals={displayTotals} target={target} goal={profile.goal} wKg={wKg} profile={profile}
               lang={lang} onInfo={setInfoOpen}
@@ -23546,7 +23575,7 @@ function AppInner(){
             </>}
             {saveDayToast && <div style={{fontSize:11,color:"#2e7d32",marginTop:4,textAlign:"center"}}>{saveDayToast}</div>}
             </>}
-            {!weekIsEmpty&&(detailView?summaryNode:<SimpleDaySummary week={displayWeek} totals={displayTotals} target={target} profile={profile} lang={lang} full={summaryNode} cost={dayCostNow} dailyBudget={budgetDerived(monthlyBudget)?.daily}/>)}
+            {!weekIsEmpty&&(detailView?summaryNode:<SimpleDaySummary items={displayItemsFlat} week={displayWeek} totals={displayTotals} target={target} profile={profile} lang={lang} full={summaryNode} cost={dayCostNow} dailyBudget={budgetDerived(monthlyBudget)?.daily}/>)}
           </>
         )}
         {tab==="meals"&&desktopMealsLayout&&(
@@ -23616,7 +23645,7 @@ function AppInner(){
                     lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 ))}
               </div>
-              {detailView?summaryNode:<SimpleDaySummary week={displayWeek} totals={displayTotals} target={target} profile={profile} lang={lang} full={summaryNode} cost={dayCostNow} dailyBudget={budgetDerived(monthlyBudget)?.daily}/>}
+              {detailView?summaryNode:<SimpleDaySummary items={displayItemsFlat} week={displayWeek} totals={displayTotals} target={target} profile={profile} lang={lang} full={summaryNode} cost={dayCostNow} dailyBudget={budgetDerived(monthlyBudget)?.daily}/>}
             </div>
           </div>
         )}
