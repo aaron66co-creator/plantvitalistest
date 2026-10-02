@@ -19849,7 +19849,7 @@ function SimpleMicroPanel({weekTotals,days,profile,lang,full,sourceLabel}){
     const low=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&k!=="sodium"&&!(k==="iodine"&&iodineSuppOn())&&dri[k]&&(weekTotals[k]||0)<(isAiOnlyKey(k,dri[k])?dri[k].warn*days:wk(k)*0.98)).sort((a,b)=>(weekTotals[a]||0)/wk(a)-(weekTotals[b]||0)/wk(b));
     lines.push(...simpleWeekVerdict(low,lang));
     lines.push(simpleLine("💊",he?"B12 וויטמין D — לפי יומן התוספים.":"B12 and vitamin D — see the supplement log."));
-    lines.push(<div key="n" style={{fontSize:14,color:"#34443b",marginTop:4}}>{he?`מבוסס על ${days} ימים עם תפריט השבוע (${sourceLabel}).`:`Based on ${days} days with a menu this week (${sourceLabel}).`}</div>);
+    lines.push(<div key="n" style={{fontSize:14,color:"#34443b",marginTop:4}}>{he?`מבוסס על ${days===1?"יום אחד":days+" ימים"} עם תפריט השבוע (${sourceLabel}).`:`Based on ${days} days with a menu this week (${sourceLabel}).`}</div>);
   }
   return <SimpleShell lang={lang} title={he?"💊 ויטמינים ומינרלים השבוע":"💊 Vitamins & minerals this week"} full={full}>
     <CalciumNotice lang={lang} profile={profile} pct={days===7?Math.round((weekTotals.calcium||0)/(getDRI(profile.age||35,profile.sex||"male",profile.pregnant).calcium.dri*7)*100):null}/>
@@ -19894,7 +19894,7 @@ function dateForWeekday(weekDatesArr, wd){
 // מהיעד השבועי שלו (יעד יומי × 7). לא עוד ממוצע-אחוזים — ציון מלא רק כשכל הנוטריאנטים נסגרו במלואם. יוד כן
 // נספר כאן (בניגוד ל-NDS היומי) — כי הוא כן מוצג ברשימה השבועית למטה, ולכן חייב גם להשפיע על הציון, אחרת
 // נוצר פער מבלבל בין מה שהמשתמש רואה כ"לא הגיע ל-100%" לבין מה שבפועל מוריד נקודות
-function calcWeeklyMicroScore(weeklyTotals,profile){
+function calcWeeklyMicroScore(weeklyTotals,profile,days=7){ // days — כמה ימים יש בסיכום (לבקשת המשתמש: יום אחד קיבל ציון 3 כי הושווה ל-7 ימים)
   const dri=getDRI(profile.age||35,profile.sex||"male",profile.pregnant);
   const skip=new Set(["vitB12","vitD"]);
   let score=100;
@@ -19903,30 +19903,30 @@ function calcWeeklyMicroScore(weeklyTotals,profile){
     const d=dri[k];if(!d)return;
     // ברזל לנשים בגיל הפוריות (ביקורת דיאטנית): הציון נמדד מול יעד התכנון (18 מ"ג) — היעד המוצג (32.4) כמעט לא בר-השגה
     // ממזון, ומדידה מולו הייתה מורידה 5 נקודות בכל שבוע בלי קשר למה שנאכל
-    if (k==="sodium") { const cap=resolveHealthProfile(profile).sodiumMax||2300; if ((weeklyTotals[k]||0)>cap*7*1.02) score-=5; return; } // נתרן: יורד רק מעל התקרה
-    if (isAiOnlyKey(k,d)) { if ((weeklyTotals[k]||0)<d.warn*7) score-=5; return; } // בלי EAR רשמי — יורד רק מתחת לסף המינימלי
+    if (k==="sodium") { const cap=resolveHealthProfile(profile).sodiumMax||2300; if ((weeklyTotals[k]||0)>cap*days*1.02) score-=5; return; } // נתרן: יורד רק מעל התקרה
+    if (isAiOnlyKey(k,d)) { if ((weeklyTotals[k]||0)<d.warn*days) score-=5; return; } // בלי EAR רשמי — יורד רק מתחת לסף המינימלי
     const tgtD=(k==="iron"&&d.planDri!=null)?d.planDri:d.dri;
-    const pct=(weeklyTotals[k]||0)/(tgtD*7);
+    const pct=(weeklyTotals[k]||0)/(tgtD*days);
     // מדורג (לבקשת המשתמש — אבץ ב-97% הוריד 5 נקודות אף שהוא מעל ה-EAR ומסומן תקין): מתחת ל-EAR — 5 נקודות; בין ה-EAR ל-98% מהיעד — 2
-    if(pct<0.98) score-=((weeklyTotals[k]||0)<d.warn*7?5:2);
+    if(pct<0.98) score-=((weeklyTotals[k]||0)<d.warn*days?5:2);
   });
   return Math.max(0,score);
 }
 
-function WeeklyMicroBar({plannedScore,actualScore,lang,onClick,onInfo}){
-  const colorFor=s=>s>=80?"#2e7d32":s>=50?"#b8722e":"#c62828";
+function WeeklyMicroBar({plannedScore,actualScore,lang,onClick,onInfo,showActual}){
+  const colorFor=s=>s==null?"#6B7C72":s>=80?"#2e7d32":s>=50?"#b8722e":"#c62828";
   return(
     <button onClick={onClick} style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:"#FFFFFF",borderRadius:9,padding:"8px 10px",border:"1px solid #E2DED4",marginBottom:10,cursor:"pointer",textAlign:"start",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)"}}>
       <span style={{fontSize:10,color:"#1E3A2B",flexShrink:0,display:"flex",alignItems:"center",gap:4}}>{lang==="he"?"💊 עמידה שבועית ביעדים":"💊 Weekly Target Adherence"}<InfoTag infoKey="weeklyMicro" lang={lang} onClick={e=>{e.stopPropagation();onInfo("weeklyMicro");}}/></span>
       <div style={{flex:1,display:"flex",gap:14,justifyContent:"flex-end",alignItems:"center"}}>
         <div style={{display:"flex",alignItems:"center",gap:4}}>
           <span style={{fontSize:9,color:"#6B7C72"}}>{lang==="he"?"מתוכנן":"Planned"}</span>
-          <span style={{fontSize:14,fontWeight:800,color:colorFor(plannedScore)}}>{plannedScore}</span>
+          <span style={{fontSize:14,fontWeight:800,color:colorFor(plannedScore)}}>{plannedScore??"—"}</span>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:4}}>
+        {showActual&&<div style={{display:"flex",alignItems:"center",gap:4}}>
           <span style={{fontSize:9,color:"#6B7C72"}}>{lang==="he"?"בפועל":"Actual"}</span>
-          <span style={{fontSize:14,fontWeight:800,color:colorFor(actualScore)}}>{actualScore}</span>
-        </div>
+          <span style={{fontSize:14,fontWeight:800,color:colorFor(actualScore)}}>{actualScore??"—"}</span>
+        </div>}
         <span style={{fontSize:12,color:"#8C6D53"}}>{lang==="he"?"‹":"›"}</span>
       </div>
     </button>
@@ -22151,8 +22151,11 @@ function AppInner(){
     const kcal=calcKcalActual(t)||1;
     return {weekday:weekdayOfDateKey(dateKey),satFatPct:Math.round((t.satFat||0)*9/kcal*100),cholMg:Math.round(t.cholesterol||0)};
   }),[actualIntake,weekDates,meals]);
-  const weeklyPlannedScore=useMemo(()=>calcWeeklyMicroScore(weeklyPlannedTotals,profile),[weeklyPlannedTotals,profile]);
-  const weeklyActualScore=useMemo(()=>calcWeeklyMicroScore(weeklyActualTotals,profile),[weeklyActualTotals,profile]);
+  // הציון השבועי לפי הימים שיש בהם אוכל בלבד; מתחת ל-3 ימים — אין ציון (null)
+  const plannedDaysN=[0,1,2,3,4,5,6].filter(d=>Object.values(meals[`d${d}`]||{}).some(a=>a&&a.length)).length;
+  const actualDaysN=(weekDates||[]).filter(dk=>isDayDocumented(actualIntake,dk)).length;
+  const weeklyPlannedScore=useMemo(()=>plannedDaysN>=3?calcWeeklyMicroScore(weeklyPlannedTotals,profile,plannedDaysN):null,[weeklyPlannedTotals,profile,plannedDaysN]);
+  const weeklyActualScore=useMemo(()=>actualDaysN>=3?calcWeeklyMicroScore(weeklyActualTotals,profile,actualDaysN):null,[weeklyActualTotals,profile,actualDaysN]);
 
   const[builderOpen,setBuilderOpen]=useState(null); // {mk, mode:"planned"|"actual"} | null
   const[savedOpen,setSavedOpen]=useState(null);
@@ -22769,10 +22772,10 @@ function AppInner(){
   const weekEmptyCta=(weekIsEmpty&&!planBlock)?(<div style={{marginBottom:10}}><button onClick={()=>(profile.eatsDairyEggs&&!simpleMode&&!isVegan)?askBudgetThen("week",()=>setMixedWeekPlanOpen(true)):askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
     style={{width:"100%",flex:"1 1 100%",padding:"14px 0",marginBottom:6,borderRadius:14,border:"none",background:"linear-gradient(135deg,#2e7d32,#43a047)",color:"#FFFFFF",fontSize:16,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 12px rgba(46,125,50,0.25)"}}>
     {lang==="he"?"✨ הצע לי תפריט לשבוע":"✨ Suggest a menu for my week"}</button>
-    <div style={{fontSize:13.5,color:"#4A5A50",textAlign:"center",lineHeight:1.6}}>
+    <div style={{fontSize:13.5,color:"#1E3A2B",textAlign:"center",lineHeight:1.6}}>
       {lang==="he"?"או: ":"Or: "}
       <button style={emptyLink} onClick={()=>(profile.eatsDairyEggs&&!simpleMode&&!isVegan)?askBudgetThen("day",()=>setMixedPlanOpen(true)):askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}>{lang==="he"?"תפריט ליום אחד":"a menu for one day"}</button>
-      <div style={{fontSize:12,color:"#6B7C72"}}>{lang==="he"?"בנית חלק מהארוחות ב״🍽 בנה וערוך״ שבכרטיס הארוחה? ״השלם יום״ או ״השלם שבוע״ תחת ״🤖 תכנון אוטומטי״ ישלימו לתפריט מלא.":"Built some meals with '🍽 Build & edit' on a meal card? 'Complete day' or 'Complete week' under '🤖 Auto-plan' will fill in a full menu."}</div>
+      <div style={{fontSize:13,color:"#34443b"}}>{lang==="he"?"בנית חלק מהארוחות ב״🍽 בנה וערוך״ שבכרטיס הארוחה? ״השלם יום״ או ״השלם שבוע״ תחת ״🤖 תכנון אוטומטי״ ישלימו לתפריט מלא.":"Built some meals with '🍽 Build & edit' on a meal card? 'Complete day' or 'Complete week' under '🤖 Auto-plan' will fill in a full menu."}</div>
     </div></div>):null;
   const autoPlanNode=(
     planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<><AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
@@ -23008,9 +23011,12 @@ function AppInner(){
   );
   const microVitSectionNode=(
     <div style={microSectionCardStyle}>
-      <div style={microSectionTitleStyle}>💊 {lang==="he"?"עמידה בוויטמינים ומינרלים (יומי + שבועי)":"Vitamin & Mineral Compliance (Daily + Weekly)"}</div>
-      <WeeklyMicroBar plannedScore={weeklyPlannedScore} actualScore={weeklyActualScore} lang={lang} onClick={()=>setWeeklyMicroOpen(true)} onInfo={setInfoOpen}/>
-      <div style={{marginTop:10}}><MicroPanel week={displayWeek} meals={displayMealsObj} totals={displayTotals} otherTotals={dashSource==="actual"?dayTotals:actualDayTotals} otherLabel={dashSource==="actual"?(lang==="he"?"מתוכנן":"Planned"):(lang==="he"?"בפועל":"Actual")} profile={profile} lang={lang} onInfo={setInfoOpen}/></div>
+      <div style={microSectionTitleStyle}>💊 {lang==="he"?"ויטמינים ומינרלים":"Vitamins & minerals"}</div>
+      {/* מה מוצג — שורה אחת ברורה (לבקשת המשתמש: יומי התבלבל עם שבועי) */}
+      <div style={{fontSize:13,fontWeight:700,color:"#1E3A2B",background:"#F3F7F1",border:"1px solid #D6E4D2",borderRadius:8,padding:"6px 9px",marginBottom:8}}>{(()=>{ const n=dashSource==="actual"?actualDaysN:plannedDaysN; const dn=lang==="he"?DAYS_HE[dayIdx]:DAYS_EN[dayIdx]; return n>=3?(lang==="he"?`מציג: ממוצע יומי לאורך השבוע (${n} ימים עם תפריט)`:`Showing: daily average over the week (${n} days with a menu)`):(lang==="he"?`מציג: יום ${dn} בלבד — עם 3 ימים יוצג ממוצע שבועי`:`Showing: ${dn} only — a weekly average appears with 3 days`); })()}</div>
+      <WeeklyMicroBar plannedScore={weeklyPlannedScore} actualScore={weeklyActualScore} showActual={hasAnyLog} lang={lang} onClick={()=>setWeeklyMicroOpen(true)} onInfo={setInfoOpen}/>
+      {weeklyPlannedScore==null&&<div style={{fontSize:12.5,color:"#4A5A50",margin:"-4px 0 8px"}}>{lang==="he"?"הציון השבועי יופיע כשיהיו 3 ימים עם תפריט.":"The weekly score appears once 3 days have a menu."}</div>}
+      <div style={{marginTop:10}}><MicroPanel week={displayWeek} meals={displayMealsObj} totals={displayTotals} otherTotals={hasAnyLog?(dashSource==="actual"?dayTotals:actualDayTotals):null} otherLabel={dashSource==="actual"?(lang==="he"?"מתוכנן":"Planned"):(lang==="he"?"בפועל":"Actual")} profile={profile} lang={lang} onInfo={setInfoOpen}/></div>
     </div>
   );
   // לבקשת המשתמש: בגרסת ה-Desktop (כפתורי הקטגוריות), "יומי" ו"שבועי" הופרדו לשני כפתורים/חלונות נפרדים
@@ -23531,12 +23537,8 @@ function AppInner(){
             </div>
           </div>
         )}
-        {tab==="micro"&&!desktopMicroLayout&&(detailView?(
-          <>
-            {ratiosSectionNode}
-            {microVitSectionNode}
-          </>
-        ):simpleMicroNode(<>{ratiosSectionNode}{microVitSectionNode}</>))}
+        {/* תמצית במילים למעלה, והפירוט המלא מקופל — גם עם "ערכים תזונתיים" (לבקשת המשתמש: המסך היה עמוס) */}
+        {tab==="micro"&&!desktopMicroLayout&&simpleMicroNode(<>{ratiosSectionNode}{microVitSectionNode}</>)}
         {tab==="micro"&&desktopMicroLayout&&(
           // פריסת Desktop: לבקשת המשתמש, לשונית "מיקרו" צומצמה — הפירוט (יחסים/המרת אומגות/שומן רוֹווי/
           // ויטמינים ומינרלים) עבר לשורת כפתורים בסרגל הצד (microCategoryButtonsNode, מתחת לכפתור "מיקרו"),
