@@ -21962,10 +21962,10 @@ function AppInner(){
   // אתר-רגיל. את זה אי-אפשר לתקן לגמרי מהצד-שלנו (מגבלת-פלטפורמה של פיירפוקס), אבל אפשר להפוך את הטעינה-
   // מחדש לבלתי-מורגשת: שומרים את הלשונית והיום-הנבחר, וכשהאפליקציה עולה מחדש היא חוזרת בדיוק לאותו מקום
   // במקום לאפס ל-ברירת-המחדל — כך שגם אם הדף "נטען מחדש", זה מרגיש כמו "חזרתי לאותו מקום", לא כמו "ברח לי"
-  const[tab,setTabRaw]=useState(()=>load("wfpb_last_tab","meals"));
+  const[tab,setTabRaw]=useState("meals"); // תמיד נפתח ב"ארוחות" (לבקשת המשתמש) — לא זוכרים את הלשונית האחרונה
   // היסטוריית לשוניות לכפתור "חזור" של הטלפון (לבקשת המשתמש: "חזור" זרק אותו מהאפליקציה) — חזרה ללשונית הקודמת
   const tabHist=useRef([]); const tabNow=useRef(tab); tabNow.current=tab;
-  const setTab = t => { if (t!==tabNow.current) { tabHist.current=[...tabHist.current.slice(-19),tabNow.current]; } setTabRaw(t); save("wfpb_last_tab", t); };
+  const setTab = t => { if (t!==tabNow.current) { tabHist.current=[...tabHist.current.slice(-19),tabNow.current]; } setTabRaw(t); };
   const[exitHint,setExitHint]=useState(false);
   useEffect(()=>{
     // "חזור": קודם סוגרים חלון פתוח (כמו לחיצה על ✕ / מחוץ לחלון), אחר כך חוזרים ללשונית הקודמת, ואחר כך ללשונית
@@ -21983,8 +21983,8 @@ function AppInner(){
     const onPop=()=>{
       if (closeTopOverlay()) { guard(); return; }
       let prev=tabHist.current.pop(); while (prev&&prev===tabNow.current) prev=tabHist.current.pop(); // בלי "חזרה" ללשונית שכבר נמצאים בה
-      if (prev) { setTabRaw(prev); save("wfpb_last_tab",prev); guard(); return; }
-      if (tabNow.current!=="meals") { setTabRaw("meals"); save("wfpb_last_tab","meals"); guard(); return; }
+      if (prev) { setTabRaw(prev); guard(); return; }
+      if (tabNow.current!=="meals") { setTabRaw("meals"); guard(); return; }
       if (!armed) { armed=true; setExitHint(true); guard(); setTimeout(()=>{ armed=false; setExitHint(false); },2500); return; }
       try{ window.history.back(); }catch{ /* ignore */ } }; // לחיצה שנייה תוך 2.5 שניות — יוצאים
     guard(); window.addEventListener("popstate",onPop);
