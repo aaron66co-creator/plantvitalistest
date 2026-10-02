@@ -14,8 +14,9 @@ createRoot(document.getElementById("root")).render(
 // index.html ב-vercel.json), הוא מבטל ישירות כל רישום-SW קיים ומנקה את כל המטמון - בלי להמתין למחזור-החיים
 // העצמי של ה-SW הישן. שתי שכבות-ניקוי מקבילות, לא תלויות זו-בזו
 if ("serviceWorker" in navigator) {
+  // מוחקים רק את ה-SW הישן (sw.js) — לא את קובץ ההתראות (push-sw.js), שאין בו טיפול בטעינה או מטמון
   navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((reg) => reg.unregister());
+    regs.forEach((reg) => { const u = (reg.active || reg.waiting || reg.installing)?.scriptURL || ""; if (!u.endsWith("/push-sw.js")) reg.unregister(); });
   }).catch(() => {});
 }
 if ("caches" in window) {
