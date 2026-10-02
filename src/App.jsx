@@ -16850,7 +16850,7 @@ function RecipeBookModal({recipes,lang,onClose,profile}){
   );
 }
 
-function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRegenerate,mode,budget}){
+function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRegenerate,mode,budget,simple}){ // simple — בלי ערכים תזונתיים (לפי ההגדרות)
   const isDesktop=useIsDesktop();
   const tx=T[lang];
   const[viewRecipeId,setViewRecipeId]=useState(null);
@@ -16876,7 +16876,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
           <div style={{background:"#FBF3E0",border:"1px solid #e8d9a3",borderRadius:10,padding:"14px 12px",color:"#8a6d1a",fontSize:12,textAlign:"center",marginBottom:10}}>
             {mode==="recipesNSF"?tx.recipesNSFDayPlanEmpty:tx.personalDayPlanEmpty}
           </div>
-        ) : (<>
+        ) : simple ? null : (<>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginBottom:10}}>
           <div style={{background:"#FFFFFF",borderRadius:9,padding:"6px 4px",textAlign:"center",border:"1px solid #E2DED4"}}><div style={{fontSize:13,fontWeight:700,color:"#8C6D53"}}>{Math.round(totals.kcal)}</div><div style={{fontSize:8,color:"#6B7C72"}}>{tx.calories}{target?` / ${Math.round(target)}`:""}</div></div>
           <div style={{background:"#FFFFFF",borderRadius:9,padding:"6px 4px",textAlign:"center",border:"1px solid #E2DED4"}}><div style={{fontSize:13,fontWeight:700,color:"#3a7bc8"}}>{p}%</div><div style={{fontSize:8,color:"#6B7C72"}}>{tx.prot}</div></div>
@@ -16891,7 +16891,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
           <div key={mk} style={{background:"#FFFFFF",borderRadius:10,padding:"8px 10px",marginBottom:8,border:"1px solid #E2DED4"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
               <span style={{fontSize:12,fontWeight:800,color:"#1E3A2B"}}>{tx[mk]}</span>
-              {(plan[mk]||[]).length>0 && (
+              {(plan[mk]||[]).length>0 && !simple && (
                 <span style={{fontSize:11,fontWeight:600,color:"#3A4A42"}}>
                   {Math.round(mealTotals.kcal)} {lang==="he"?"קק\"ל":"kcal"} · {tx.carb} {Math.round(mealTotals.carbs)}{tx.grams} · {tx.prot} {Math.round(mealTotals.protein)}{tx.grams} · {tx.fat} {Math.round(mealTotals.fat)}{tx.grams}
                 </span>
@@ -16913,7 +16913,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
                       </button>
                     )}
                   </span>
-                  <bdi style={{color:"#3A4A42",fontWeight:600,whiteSpace:"nowrap"}}>{qty?`${qty} · `:""}{Math.round(it.g)}{tx.grams}{__ED_MODE?"":<> · {kcal} {lang==="he"?"קק\"ל":"kcal"}</>}</bdi>
+                  <bdi style={{color:"#3A4A42",fontWeight:600,whiteSpace:"nowrap"}}>{simple?qty:<>{qty?`${qty} · `:""}{Math.round(it.g)}{tx.grams}{__ED_MODE?"":<> · {kcal} {lang==="he"?"קק\"ל":"kcal"}</>}</>}</bdi>
                 </div>
               );
             }, lang)}
@@ -16940,7 +16940,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
 // הציע) ואת אותו יום אחרי ההחלפות (קלורית-שוות) למוצרים מן החי, יחד עם טבלת השפעה על יעדי התזונה השונים —
 // בדיוק כפי שהמשתמש ביקש: "להציג מה תהיינה ההשלכות". ההשוואה עצמה היא רק תצוגה — שום דבר לא מוחל עד לחיצה
 // מפורשת על "החל את הגרסה המעורבת".
-function MixedDayPlanModal({data,target,wKg,hp,profile,lang,onClose,onApply,onRegenerate,budget}){
+function MixedDayPlanModal({data,target,wKg,hp,profile,lang,onClose,onApply,onRegenerate,budget,simple}){
   const isDesktop=useIsDesktop();
   const tx=T[lang];
   if(!data) return null;
@@ -16989,7 +16989,7 @@ function MixedDayPlanModal({data,target,wKg,hp,profile,lang,onClose,onApply,onRe
           </div>
         )}
 
-        <div style={{background:"#FFFFFF",borderRadius:12,padding:"10px 12px",marginBottom:8,border:"1px solid #E2DED4"}}>
+        <div style={{background:"#FFFFFF",borderRadius:12,padding:"10px 12px",marginBottom:8,border:"1px solid #E2DED4",display:simple?"none":undefined}}>
           <div style={{fontSize:11,fontWeight:700,color:"#1E3A2B",marginBottom:8}}>{lang==="he"?"📊 השפעה על ערכי המאקרו/מיקרו":"📊 Impact on macro/micro values"}</div>
           <div style={{display:"grid",gridTemplateColumns:"1.4fr 1fr 1fr",gap:4,fontSize:9,color:"#6B7C72",marginBottom:4,fontWeight:700}}>
             <span></span>
@@ -17048,7 +17048,7 @@ function MixedDayPlanModal({data,target,wKg,hp,profile,lang,onClose,onApply,onRe
                   return(
                     <div key={idx} style={{display:"flex",justifyContent:"space-between",fontSize:10,color:isAnimal?"#b06a1a":"#1E3A2B",fontWeight:isAnimal?700:400,padding:"2px 0"}}>
                       <span style={{unicodeBidi:"plaintext"}}>{isAnimal?"🥚 ":""}{foodName(it.fk,lang)}</span>
-                      <bdi style={{color:"#6B7C72",whiteSpace:"nowrap"}}>{Math.round(it.g)}{tx.grams} · {kcal}kcal</bdi>
+                      <bdi style={{color:"#6B7C72",whiteSpace:"nowrap"}}>{!simple&&<>{Math.round(it.g)}{tx.grams} · {kcal}kcal</>}</bdi>
                     </div>
                   );
                 })}
@@ -17075,7 +17075,7 @@ function MixedDayPlanModal({data,target,wKg,hp,profile,lang,onClose,onApply,onRe
 // גרסת שבוע לחלונית ההשוואה — אותו עיקרון בדיוק כמו MixedDayPlanModal (טבלת השפעה על יעדי תזונה, צמחי מול
 // מעורב), רק על סך השבוע כולו, פלוס אקורדיון-יום שמציג את הארוחות המעורבות בפועל של כל יום (בדומה ל-
 // WeekPlanModal הרגיל). rollDay מאפשר "הצע שוב" ליום בודד בתוך השבוע בלי לחולל את כל 7 הימים מחדש.
-function MixedWeekPlanModal({data,target,wKg,hp,profile,lang,recipes,onClose,onApply,onRegenerate,onRerollDay,budget}){
+function MixedWeekPlanModal({data,target,wKg,hp,profile,lang,recipes,onClose,onApply,onRegenerate,onRerollDay,budget,simple}){
   const isDesktop=useIsDesktop();
   const tx=T[lang];
   const [openDay,setOpenDay]=useState(null);
@@ -17117,7 +17117,7 @@ function MixedWeekPlanModal({data,target,wKg,hp,profile,lang,recipes,onClose,onA
             :`Each of the 7 days was first built as a full plant-based menu, then ${totalSubs} swaps (avg ${fmtN(totalSubs/7,1)}/day) were made for animal products — each at the exact same calorie contribution.`}
         </div>
 
-        <div style={{background:"#FFFFFF",borderRadius:12,padding:"10px 12px",marginBottom:8,border:"1px solid #E2DED4"}}>
+        <div style={{background:"#FFFFFF",borderRadius:12,padding:"10px 12px",marginBottom:8,border:"1px solid #E2DED4",display:simple?"none":undefined}}>
           <div style={{fontSize:11,fontWeight:700,color:"#1E3A2B",marginBottom:8}}>{lang==="he"?"📊 השפעה שבועית מצטברת":"📊 Cumulative weekly impact"}</div>
           <div style={{display:"grid",gridTemplateColumns:"1.4fr 1fr 1fr",gap:4,fontSize:9,color:"#6B7C72",marginBottom:4,fontWeight:700}}>
             <span></span>
@@ -17172,7 +17172,7 @@ function MixedWeekPlanModal({data,target,wKg,hp,profile,lang,recipes,onClose,onA
             <div key={dk} style={{background:"#FFFFFF",borderRadius:10,padding:"8px 10px",marginBottom:6,border:"1px solid #E2DED4"}}>
               <div onClick={()=>setOpenDay(o=>o===dk?null:dk)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
                 <span style={{fontSize:11,fontWeight:700,color:"#1E3A2B"}}>{dayLabelsArr[i]} <span style={{fontSize:9,color:"#b06a1a",fontWeight:600}}>🥚🥛×{daySubs}</span></span>
-                <span style={{fontSize:10,color:"#6B7C72"}}>{dayKcal} kcal {openDay===dk?"▲":"▼"}</span>
+                <span style={{fontSize:10,color:"#6B7C72"}}>{!simple&&<>{dayKcal} kcal </>}{openDay===dk?"▲":"▼"}</span>
               </div>
               {openDay===dk&&MEAL_KEYS.map(mk=>{
                 const dayMealItems=mixedWeek[dk]?.[mk]||[];
@@ -17187,7 +17187,7 @@ function MixedWeekPlanModal({data,target,wKg,hp,profile,lang,recipes,onClose,onA
                       return(
                         <div key={idx} style={{display:"flex",justifyContent:"space-between",fontSize:10,color:isAnimal?"#b06a1a":"#1E3A2B",fontWeight:isAnimal?700:400,padding:"2px 0"}}>
                           <span style={{unicodeBidi:"plaintext"}}>{isAnimal?"🥚 ":""}{foodName(it.fk,lang)}</span>
-                          <bdi style={{color:"#6B7C72",whiteSpace:"nowrap"}}>{Math.round(it.g)}{tx.grams} · {kcal}kcal</bdi>
+                          <bdi style={{color:"#6B7C72",whiteSpace:"nowrap"}}>{!simple&&<>{Math.round(it.g)}{tx.grams} · {kcal}kcal</>}</bdi>
                         </div>
                       );
                     })}
@@ -17215,7 +17215,7 @@ function MixedWeekPlanModal({data,target,wKg,hp,profile,lang,recipes,onClose,onA
 
 // מציג הצעת תפריט לשבוע שלם: כרטיס סיכום שבועי (קלוריות/מאקרו/אומגה מול היעד השבועי = היעד היומי×7),
 // ואקורדיון מתקפל ליום שמאפשר לראות/לבדוק כל יום בנפרד לפני אישור החלה על כל השבוע בבת אחת.
-function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onRegenerate,onClearWeek,mode,budget,note}){
+function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onRegenerate,onClearWeek,mode,budget,note,simple}){ // simple — בלי ערכים תזונתיים (לפי ההגדרות)
   const isSimpleWk=(profile?.mealStyle||"full")==="simple"; // במצב פשוט — כותרת והסבר בשפה פשוטה (לבקשת המשתמש)
   const isDesktop=useIsDesktop();
   const tx=T[lang];
@@ -17248,6 +17248,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
         <BudgetBadge lang={lang} budget={budget} kind="week" cost={budget?weeklyCostValue:null}/>
         <div style={{fontSize:10,color:"#6B7C72",marginBottom:10}}>{mode==="completeWeek"?(lang==="he"?"מה שבחרת נשאר בדיוק כמו שהוא — נוספו ארוחות חסרות, ותוספות ליום שחסרו בו קלוריות. אפשר לפתוח כל יום ולבדוק.":"What you chose stays exactly as it is — missing meals were added, plus extras on days short of calories. Open any day to check."):isSimpleWk?(lang==="he"?"אפשר לפתוח כל יום ולראות מה בו. אם מתאים — לוחצים \"החל על כל השבוע\".":"Open any day to see what's in it. If it suits you, tap \"Apply to the whole week\"."):mode==="recipesNSF"?tx.recipesNSFDayPlanSubtitle:tx.weekPlanSubtitle}</div>
         {note&&<div style={{fontSize:12,color:"#1E3A2B",background:"#F3F7F1",border:"1px solid #D6E4D2",borderRadius:8,padding:"6px 8px",marginBottom:8,lineHeight:1.45}}>{note}</div>}
+        {!simple&&<>
         <div style={{fontSize:10,fontWeight:700,color:"#1E3A2B",marginBottom:5}}>📊 {tx.weekPlanWeekly}</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr",gap:5,marginBottom:10}}>
           <div style={{background:"#FFFFFF",borderRadius:9,padding:"6px 3px",textAlign:"center"}}><div style={{fontSize:14,fontWeight:700,color:"#6b4a30"}}>{Math.round(totals.kcal)}</div><div style={{fontSize:9,fontWeight:600,color:"#2f3b34"}}>{tx.calories}{target?` / ${weeklyTarget}`:""}</div></div>
@@ -17257,11 +17258,12 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
           <div style={{background:"#FFFFFF",borderRadius:9,padding:"6px 3px",textAlign:"center"}}><div style={{fontSize:14,fontWeight:700,color:na<=pot*0.5?"#256428":"#c62828"}}>{pot>0?(na/pot).toFixed(2):"—"}:1</div><div style={{fontSize:9,fontWeight:600,color:"#2f3b34"}}>Na:K</div></div>
           <div style={{background:"#FFFFFF",borderRadius:9,padding:"6px 3px",textAlign:"center"}}><div style={{fontSize:14,fontWeight:700,color:weeklyBudgetValue!=null?(overWeeklyBudget?"#c62828":"#2e7d32"):"#8a6608"}}>{weeklyBudgetValue!=null&&(overWeeklyBudget?"⚠️":"✅")} ₪{fmtN(weeklyCostValue,0)}</div><div style={{fontSize:9,fontWeight:600,color:"#2f3b34"}}>{lang==="he"?"💰 עלות":"💰 Cost"}{weeklyBudgetValue!=null?` / ₪${fmtN(weeklyBudgetValue,0)}`:""}</div></div>
         </div>
+        </>}
         {days.map((dk,i)=>(
           <div key={dk} style={{background:"#FFFFFF",borderRadius:10,padding:"8px 10px",marginBottom:6,border:"1px solid #E2DED4"}}>
             <div onClick={()=>setOpenDay(o=>o===dk?null:dk)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
               <span style={{fontSize:13,fontWeight:700,color:"#1E3A2B"}}>{tx.weekPlanDayLabel} {dayLabels[i]}</span>
-              <span style={{fontSize:11,fontWeight:600,color:"#6B7C72"}}>{dayKcal(dk)} {lang==="he"?"קק\"ל":"kcal"} · {tx.carb} {dayMacros(dk).carbs}{tx.grams} · {tx.prot} {dayMacros(dk).protein}{tx.grams} · {tx.fat} {dayMacros(dk).fat}{tx.grams} {openDay===dk?"▲":"▼"}</span>
+              <span style={{fontSize:11,fontWeight:600,color:"#6B7C72"}}>{!simple&&<>{dayKcal(dk)} {lang==="he"?"קק\"ל":"kcal"} · {tx.carb} {dayMacros(dk).carbs}{tx.grams} · {tx.prot} {dayMacros(dk).protein}{tx.grams} · {tx.fat} {dayMacros(dk).fat}{tx.grams} </>}{openDay===dk?"▲":"▼"}</span>
             </div>
             {openDay===dk&&MEAL_KEYS.map(mk=>{
               const dayMealItems = week[dk]?.[mk]||[];
@@ -17271,7 +17273,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
                 <div key={mk} style={{background:"#FFFFFF",borderRadius:10,padding:"8px 10px",marginBottom:8,marginTop:6,border:"1px solid #E2DED4"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
                     <span style={{fontSize:12,fontWeight:800,color:"#1E3A2B"}}>{tx[mk]}{(mk==="lunch"||mk==="dinner")&&cookNoteOf(week,i,lang,mk)&&<span style={{fontSize:11,fontWeight:700,color:"#8C6D53",marginInlineStart:6}}>{cookNoteOf(week,i,lang,mk)}</span>}</span>
-                    {dayMealItems.length>0 && (
+                    {dayMealItems.length>0 && !simple && (
                       <span style={{fontSize:11,fontWeight:600,color:"#3A4A42"}}>
                         {Math.round(mealTotals.kcal)} {lang==="he"?"קק\"ל":"kcal"} · {tx.carb} {Math.round(mealTotals.carbs)}{tx.grams} · {tx.prot} {Math.round(mealTotals.protein)}{tx.grams} · {tx.fat} {Math.round(mealTotals.fat)}{tx.grams}
                       </span>
@@ -17293,7 +17295,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
                             </button>
                           )}
                         </span>
-                        <bdi style={{color:"#3A4A42",fontWeight:600,whiteSpace:"nowrap"}}>{qty?`${qty} · `:""}{Math.round(it.g)}{tx.grams}{__ED_MODE?"":<> · {kcal} {lang==="he"?"קק\"ל":"kcal"}</>}</bdi>
+                        <bdi style={{color:"#3A4A42",fontWeight:600,whiteSpace:"nowrap"}}>{simple?qty:<>{qty?`${qty} · `:""}{Math.round(it.g)}{tx.grams}{__ED_MODE?"":<> · {kcal} {lang==="he"?"קק\"ל":"kcal"}</>}</>}</bdi>
                       </div>
                     );
                   }, lang)}
@@ -22251,21 +22253,28 @@ function AppInner(){
       .then(result=>{ if (isCancelled&&isCancelled()) return null; save(RECIPE_USAGE_HISTORY_STORAGE, result.updatedUsage); return result.week; });
   };
   const [weekPlanProgress,setWeekPlanProgress]=useState(null);
+  const [autoAgain,setAutoAgain]=useState(false); // "🔄 הצע אחר" מההודעה — גם התפריט הבא נכנס ישר
+  const [planToast,setPlanToast]=useState(null); // {kind, undo}
+  const planToastTimer=useRef(0), keepUndoRef=useRef(null), mealsNowRef=useRef(meals); mealsNowRef.current=meals;
+  function autoApplied(kind,undo){ const u=keepUndoRef.current||undo; keepUndoRef.current=null; setPlanToast({kind,undo:u});
+    clearTimeout(planToastTimer.current); planToastTimer.current=setTimeout(()=>setPlanToast(null),8000); }
   const weekGenTok=useRef(0);
   const startWeekGen=()=>{
     const tok=++weekGenTok.current; const cancelled=()=>weekGenTok.current!==tok;
     setWeekPlanLoading(true); setWeekPlanProgress(null);
     generateWeekForModeAsync(weekPlanMode,p=>{ if(!cancelled()) setWeekPlanProgress(p); },cancelled)
-      .then(w=>{ if(cancelled()) return; setWeekPlanData(w?Object.fromEntries(Object.entries(w).map(([k,d])=>[k,consolidateMealSalads(d)])):w); setWeekPlanLoading(false); })
+      .then(w=>{ if(cancelled()) return; const w2=w?Object.fromEntries(Object.entries(w).map(([k,d])=>[k,consolidateMealSalads(d)])):w; setWeekPlanData(w2); setWeekPlanLoading(false);
+        if (autoWeek){ setAutoAgain(false); if (w2){ const undo=mealsNowRef.current; handleApplyWeekPlan(w2); autoApplied("week",undo); } setWeekPlanOpen(false); } })
       .catch(e=>{ console.error(e); if(!cancelled()) setWeekPlanLoading(false); });
   };
-  const cancelWeekGen=()=>{ weekGenTok.current++; setWeekPlanLoading(false); setWeekPlanOpen(false); };
+  const cancelWeekGen=()=>{ weekGenTok.current++; setWeekPlanLoading(false); setWeekPlanOpen(false); setAutoAgain(false); };
   // מנגנון "שילוב מוצרים מן החי" — קיים רק בגרסה הצמחונית (fork). ראה generateMixedDayPlan למעלה בקובץ
   const [mixedPlanOpen,setMixedPlanOpen]=useState(false);
   const [mixedPlanData,setMixedPlanData]=useState(null);
   useEffect(()=>{
     if(mixedPlanOpen && target){
-      setMixedPlanData(generateMixedDayForBudget());
+      const d=generateMixedDayForBudget(); setMixedPlanData(d);
+      if (autoMixedDay){ setAutoAgain(false); if (d?.mixedPlan){ const undo=mealsNowRef.current; handleApplyDayPlan(d.mixedPlan); autoApplied("mixedDay",undo); } setMixedPlanOpen(false); }
     }
   },[mixedPlanOpen]);
   // גרסת שבוע לאותו מנגנון — לבקשת המשתמש
@@ -22278,10 +22287,11 @@ function AppInner(){
     const tok=++mixedGenTok.current; const cancelled=()=>mixedGenTok.current!==tok;
     setMixedWeekPlanLoading(true); setMixedWeekProgress(null);
     generateMixedWeekPlanAsync(p=>{ if(!cancelled()) setMixedWeekProgress(p); },cancelled,budgetCtxNow(),target,wKg,hp,dri,recipeIds,excludedFks)
-      .then(d=>{ if(cancelled()) return; setMixedWeekPlanData(d?{...d,mixedWeek:d.mixedWeek?Object.fromEntries(Object.entries(d.mixedWeek).map(([k,x])=>[k,consolidateMealSalads(x)])):d.mixedWeek,days:(d.days||[]).map(x=>({...x,mixedPlan:consolidateMealSalads(x.mixedPlan)}))}:d); setMixedWeekPlanLoading(false); })
+      .then(d=>{ if(cancelled()) return; setMixedWeekPlanData(d?{...d,mixedWeek:d.mixedWeek?Object.fromEntries(Object.entries(d.mixedWeek).map(([k,x])=>[k,consolidateMealSalads(x)])):d.mixedWeek,days:(d.days||[]).map(x=>({...x,mixedPlan:consolidateMealSalads(x.mixedPlan)}))}:d); setMixedWeekPlanLoading(false);
+        if (autoMixedWeek){ setAutoAgain(false); const mw=d?.mixedWeek?Object.fromEntries(Object.entries(d.mixedWeek).map(([k2,x])=>[k2,consolidateMealSalads(x)])):null; if (mw){ const undo=mealsNowRef.current; handleApplyWeekPlan(mw); autoApplied("mixedWeek",undo); } setMixedWeekPlanOpen(false); } })
       .catch(e=>{ console.error(e); if(!cancelled()) setMixedWeekPlanLoading(false); });
   };
-  const cancelMixedWeekGen=()=>{ mixedGenTok.current++; setMixedWeekPlanLoading(false); setMixedWeekPlanOpen(false); };
+  const cancelMixedWeekGen=()=>{ mixedGenTok.current++; setMixedWeekPlanLoading(false); setMixedWeekPlanOpen(false); setAutoAgain(false); };
   useEffect(()=>{
     if(mixedWeekPlanOpen && target) startMixedWeekGen(); else mixedGenTok.current++;
   },[mixedWeekPlanOpen]);
@@ -22294,7 +22304,8 @@ function AppInner(){
   useEffect(()=>{
     if(dayPlanOpen && planBlock){ setDayPlanOpen(false); setPlanBlockOpen(true); return; }
     if(dayPlanOpen && target){
-      setDayPlanData(generateForMode(dayPlanMode));
+      const dp=generateForMode(dayPlanMode); setDayPlanData(dp);
+      if (autoDay){ setAutoAgain(false); if (dp){ const undo=mealsNowRef.current; handleApplyDayPlan(dp); autoApplied("day",undo); } setDayPlanOpen(false); }
     } else if(dayPlanOpen && onboardActive){
       // בסיור המודרך, כשעוד לא הוזן פרופיל: תצוגה מקדימה לדוגמה (יעד 2,000 קק"ל) — כדי שהמסך יתאים לטקסט של השלב
       setDayPlanData(consolidateMealSalads(generateDayPlan(2000,70,hp,getDRI(35,"female",false),recipeIds,{},excludedFks)));
@@ -22709,6 +22720,13 @@ function AppInner(){
   );
   // שבוע ריק (לבקשת המשתמש: הפעולה העיקרית גלויה למשתמש חדש) — כפתור גדול אחד "הצע לי תפריט לשבוע"
   const weekIsEmpty=!Object.values(meals||{}).some(d=>MEAL_KEYS.some(mk=>((d||{})[mk]||[]).length));
+  // בלי חלון אישור כשאין מה לדרוס (לבקשת המשתמש): התפריט נכנס ישר, ובמקום החלון — הודעה קצרה "🔄 הצע אחר / ↩️ בטל".
+  // כשיש כבר תפריט (שבוע, או היום עבור תפריט ליום) — החלון נשאר, כהגנה. השלמה ("השלם יום/שבוע") והסיור — תמיד עם חלון
+  const dayIsEmpty=!MEAL_KEYS.some(mk=>(((meals||{})[dayKey]||{})[mk]||[]).length);
+  const autoWeek=!onboardActive&&weekPlanMode!=="completeWeek"&&(weekIsEmpty||autoAgain);
+  const autoMixedWeek=!onboardActive&&(weekIsEmpty||autoAgain);
+  const autoDay=!onboardActive&&dayPlanMode!=="personal"&&(dayIsEmpty||autoAgain);
+  const autoMixedDay=!onboardActive&&(dayIsEmpty||autoAgain);
   // שלוש הדרכים גלויות במסך הריק (לבקשת המשתמש): שבוע (הכפתור הגדול), יום אחד, או בנייה עצמית + "השלם"
   const emptyLink={background:"none",border:"none",padding:0,color:"#2e7d32",fontWeight:800,textDecoration:"underline",cursor:"pointer",fontSize:13.5};
   const weekEmptyCta=(weekIsEmpty&&!planBlock)?(<div style={{marginBottom:10}}><button onClick={()=>(profile.eatsDairyEggs&&!simpleMode&&!isVegan)?askBudgetThen("week",()=>setMixedWeekPlanOpen(true)):askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
@@ -23590,8 +23608,8 @@ function AppInner(){
         onChoose={b=>{ const a=budgetAsk; setBudgetAsk(null); setPlanByBudget(b); a.open(); }}/>}
       {priceEditorOpen&&<PriceEditorModal lang={lang} onClose={()=>{ setPriceEditorOpen(false); setPriceOverrides(load(PRICE_OVERRIDE_STORAGE,{})); setMonthlyBudget(loadMonthlyBudget()); }}/>}
       {costSwapModalOpen&&<CostSwapModal day={Object.fromEntries(MEAL_KEYS.map(mk=>[mk,getMeal(mk)]))} overrides={priceOverrides} lang={lang} onClose={()=>setCostSwapModalOpen(false)} onApply={handleCostSwapApply}/>}
-      {dayPlanOpen&&(
-        <DayPlanModal plan={dayPlan} target={target||(onboardActive?2000:target)} wKg={wKg||70} profile={profile} lang={lang} recipes={recipes} mode={dayPlanMode} budget={planByBudget&&monthlyBudget>0?budgetDerived(monthlyBudget):null}
+      {dayPlanOpen&&!autoDay&&(
+        <DayPlanModal plan={dayPlan} simple={!detailView} target={target||(onboardActive?2000:target)} wKg={wKg||70} profile={profile} lang={lang} recipes={recipes} mode={dayPlanMode} budget={planByBudget&&monthlyBudget>0?budgetDerived(monthlyBudget):null}
           onClose={()=>setDayPlanOpen(false)}
           onRegenerate={()=>setDayPlanData(generateForMode(dayPlanMode))}
           onApply={()=>{ if(dayPlan) handleApplyDayPlan(dayPlan); setDayPlanOpen(false); }}/>
@@ -23627,8 +23645,8 @@ function AppInner(){
           </div>
         </div>
       )}
-      {weekPlanOpen&&!weekPlanLoading&&(
-        <WeekPlanModal week={weekPlan} target={target} wKg={wKg} profile={profile} lang={lang} recipes={recipes} mode={weekPlanMode} budget={planByBudget&&monthlyBudget>0?budgetDerived(monthlyBudget):null}
+      {weekPlanOpen&&!weekPlanLoading&&!autoWeek&&(
+        <WeekPlanModal week={weekPlan} simple={!detailView} target={target} wKg={wKg} profile={profile} lang={lang} recipes={recipes} mode={weekPlanMode} budget={planByBudget&&monthlyBudget>0?budgetDerived(monthlyBudget):null}
           note={weekPlanMode==="completeWeek"?completeWeekNote(weekPlan):null}
           onClose={()=>setWeekPlanOpen(false)}
           onRegenerate={startWeekGen}
@@ -23636,6 +23654,16 @@ function AppInner(){
           onClearWeek={()=>{ clearEntireWeek(); setWeekPlanOpen(false); }}/>
       )}
       {foodSrcOpen&&<FoodSourcesModal lang={lang} onClose={()=>setFoodSrcOpen(false)}/>}
+      {planToast&&(()=>{ const he=lang==="he", wk=planToast.kind==="week"||planToast.kind==="mixedWeek";
+        const again=()=>{ const k=planToast.kind; keepUndoRef.current=planToast.undo; setPlanToast(null); setAutoAgain(true);
+          if(k==="week") setWeekPlanOpen(true); else if(k==="mixedWeek") setMixedWeekPlanOpen(true); else if(k==="day") setDayPlanOpen(true); else setMixedPlanOpen(true); };
+        const undo=()=>{ const u=planToast.undo||{}; setMeals(u); save("wfpb_meals",u); setPlanToast(null); };
+        const b={background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.35)",borderRadius:9,color:"#fff",padding:"5px 9px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"};
+        return (<div style={{position:"fixed",bottom:isDesktop?24:84,left:"50%",transform:"translateX(-50%)",background:"#1E3A2B",color:"#fff",padding:"8px 10px",borderRadius:14,fontSize:13.5,fontWeight:700,zIndex:9999,boxShadow:"0 4px 14px rgba(0,0,0,.3)",display:"flex",gap:8,alignItems:"center",direction:he?"rtl":"ltr",maxWidth:"calc(100% - 24px)",flexWrap:"wrap",justifyContent:"center"}}>
+          <span>✅ {wk?(he?"התפריט לשבוע מוכן":"Your week's menu is ready"):(he?"התפריט ליום מוכן":"Your day's menu is ready")}</span>
+          <button style={b} onClick={again}>🔄 {he?"הצע אחר":"Another"}</button>
+          <button style={b} onClick={undo}>↩️ {he?"בטל":"Undo"}</button>
+        </div>); })()}
       {exitHint&&<div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:"#1E3A2B",color:"#fff",padding:"8px 16px",borderRadius:20,fontSize:13,zIndex:99999,boxShadow:"0 2px 8px rgba(0,0,0,.25)",whiteSpace:"nowrap"}}>{lang==="he"?"לחיצה נוספת על ״חזור״ תצא מהאפליקציה":"Press back again to exit"}</div>}
       {planBlockOpen&&<div onClick={()=>setPlanBlockOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:130,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
         <div onClick={e=>e.stopPropagation()} style={{background:"#FFFFFF",borderRadius:14,maxWidth:440,width:"100%",padding:14}}>
@@ -23644,8 +23672,8 @@ function AppInner(){
         </div>
       </div>}
       {selfReportOpen&&<SelfReportModal profile={profile} lang={lang} simple={!detailView} onClose={()=>setSelfReportOpen(false)} onWeight={(dk,v,oldV)=>setWeightLog(prev=>{ const n={...(prev||{})}; if(v>0) n[dk]=Math.round(v*10)/10; else if(n[dk]!=null&&(oldV==null||+n[dk]===+oldV)) delete n[dk]; save("wfpb_weight_log",n); return n; })}/>}
-      {mixedPlanOpen&&(
-        <MixedDayPlanModal data={mixedPlanData} target={target} wKg={wKg} hp={hp} profile={profile} lang={lang} budget={planByBudget&&monthlyBudget>0?budgetDerived(monthlyBudget):null}
+      {mixedPlanOpen&&!autoMixedDay&&(
+        <MixedDayPlanModal data={mixedPlanData} simple={!detailView} target={target} wKg={wKg} hp={hp} profile={profile} lang={lang} budget={planByBudget&&monthlyBudget>0?budgetDerived(monthlyBudget):null}
           onClose={()=>setMixedPlanOpen(false)}
           onRegenerate={()=>setMixedPlanData(generateMixedDayForBudget())}
           onApply={()=>{ if(mixedPlanData?.mixedPlan) handleApplyDayPlan(mixedPlanData.mixedPlan); setMixedPlanOpen(false); }}/>
@@ -23681,8 +23709,8 @@ function AppInner(){
           </div>
         </div>
       )}
-      {mixedWeekPlanOpen&&!mixedWeekPlanLoading&&(
-        <MixedWeekPlanModal data={mixedWeekPlanData} target={target} wKg={wKg} hp={hp} profile={profile} lang={lang} recipes={recipes} budget={planByBudget&&monthlyBudget>0?budgetDerived(monthlyBudget):null}
+      {mixedWeekPlanOpen&&!mixedWeekPlanLoading&&!autoMixedWeek&&(
+        <MixedWeekPlanModal data={mixedWeekPlanData} simple={!detailView} target={target} wKg={wKg} hp={hp} profile={profile} lang={lang} recipes={recipes} budget={planByBudget&&monthlyBudget>0?budgetDerived(monthlyBudget):null}
           onClose={()=>setMixedWeekPlanOpen(false)}
           onRegenerate={startMixedWeekGen}
           onApply={()=>{ if(mixedWeekPlanData?.mixedWeek) handleApplyWeekPlan(mixedWeekPlanData.mixedWeek); setMixedWeekPlanOpen(false); }}/>
