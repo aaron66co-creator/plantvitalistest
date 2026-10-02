@@ -18718,7 +18718,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                         מתצוגות אחרות באפליקציה (חלון-הצעת-שבוע/יום, תצוגת-מתכון) שכן מציגות "kcal · gr'" לכל שורה.
                         נבדק חישובית (סימולציה, 140 ארוחות): סכום-קלוריות-לפי-פריט תמיד תואם בדיוק לסך-הארוחה
                         המוצג (0 אי-התאמות) — אין באג בחישוב עצמו, רק חוסר-תצוגה. נוסף כאן */}
-                    {(su&&!fd._isRecipe&&itemLabel(fk,su,(gD/su.g)*(su.count||1),lang))||(fd._isRecipe?recipeLabelOf(qty,fk,lang):<>{qty} {foodName(fk,lang)}</>)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}{noteOnItem&&fk===noteFk&&<span style={{fontSize:11,fontWeight:700,color:"#8C6D53",marginInlineStart:6}}>{note}</span>}{!simple&&!__ED_MODE&&<> · <bdi style={{color:"#8C6D53",fontWeight:700}}>{Math.round(ingNut(fk,g,soaked).kcal)} {lang==="he"?"קק\"ל":"kcal"}</bdi></>}</span>
+                    {(su&&!fd._isRecipe&&itemLabel(fk,su,(gD/su.g)*(su.count||1),lang))||(fd._isRecipe?recipeLabelOf(qty,fk,lang):<>{qty} {foodName(fk,lang)}</>)}{addon&&(lang==="he"?" (להוספה)":" (to add)")}{noteOnItem&&fk===noteFk&&<span style={{fontSize:11,fontWeight:700,color:"#8C6D53",marginInlineStart:6}}>{note}</span>}</span>{/* קלוריות לכל פריט הוסרו מהכרטיס (לבקשת המשתמש) — נשאר סך הארוחה בראש הכרטיס; לפריט — ב"בנה וערוך" ובמתכון */}
                   {fd._isRecipe && (
                     <button onClick={()=>setViewRecipeId(fk)} title={lang==="he"?"מתכון אישי — לחץ לצפייה במרכיבים":"Your recipe — tap to view ingredients"}
                       style={{marginInlineStart:3,marginInlineEnd:isLast?0:3,background:"#F7EFE3",border:"1px solid #d9c2a3",borderRadius:6,color:"#8C6D53",fontSize:9,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>
