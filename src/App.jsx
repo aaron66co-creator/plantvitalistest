@@ -22742,7 +22742,7 @@ function AppInner(){
   const autoMixedWeek=!onboardActive&&(weekIsEmpty||autoAgain);
   const autoDay=!onboardActive&&dayPlanMode!=="personal"&&(dayIsEmpty||autoAgain);
   const autoMixedDay=!onboardActive&&(dayIsEmpty||autoAgain);
-  // שלוש הדרכים גלויות במסך הריק (לבקשת המשתמש): שבוע (הכפתור הגדול), יום אחד, או בנייה עצמית + "השלם"
+  // במסך הריק (לבקשת המשתמש): שבוע (הכפתור הגדול) או יום אחד; ובנייה עצמית — ב"בנה וערוך" ואז "השלם" תחת "תכנון אוטומטי"
   const emptyLink={background:"none",border:"none",padding:0,color:"#2e7d32",fontWeight:800,textDecoration:"underline",cursor:"pointer",fontSize:13.5};
   const weekEmptyCta=(weekIsEmpty&&!planBlock)?(<div style={{marginBottom:10}}><button onClick={()=>(profile.eatsDairyEggs&&!simpleMode&&!isVegan)?askBudgetThen("week",()=>setMixedWeekPlanOpen(true)):askBudgetThen("week",()=>{setWeekPlanMode("recipesNSF");setWeekPlanOpen(true);})}
     style={{width:"100%",flex:"1 1 100%",padding:"14px 0",marginBottom:6,borderRadius:14,border:"none",background:"linear-gradient(135deg,#2e7d32,#43a047)",color:"#FFFFFF",fontSize:16,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 12px rgba(46,125,50,0.25)"}}>
@@ -22750,9 +22750,7 @@ function AppInner(){
     <div style={{fontSize:13.5,color:"#4A5A50",textAlign:"center",lineHeight:1.6}}>
       {lang==="he"?"או: ":"Or: "}
       <button style={emptyLink} onClick={()=>(profile.eatsDairyEggs&&!simpleMode&&!isVegan)?askBudgetThen("day",()=>setMixedPlanOpen(true)):askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}>{lang==="he"?"תפריט ליום אחד":"a menu for one day"}</button>
-      {" · "}
-      <button style={emptyLink} onClick={()=>planGuard(()=>setBuilderOpen({mk:"breakfast",mode:dashSource}),dashSource)}>{lang==="he"?"לבנות לבד":"build it yourself"}</button>
-      <div style={{fontSize:12,color:"#6B7C72"}}>{lang==="he"?"בנית חלק? ״השלם יום״ או ״השלם שבוע״ ישלימו את מה שחסר.":"Built part of it? 'Complete day' or 'Complete week' fills in the rest."}</div>
+      <div style={{fontSize:12,color:"#6B7C72"}}>{lang==="he"?"בנית חלק מהארוחות ב״🍽 בנה וערוך״ שבכרטיס הארוחה? ״השלם יום״ או ״השלם שבוע״ תחת ״🤖 תכנון אוטומטי״ ישלימו לתפריט מלא.":"Built some meals with '🍽 Build & edit' on a meal card? 'Complete day' or 'Complete week' under '🤖 Auto-plan' will fill in a full menu."}</div>
     </div></div>):null;
   const autoPlanNode=(
     planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<><AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
