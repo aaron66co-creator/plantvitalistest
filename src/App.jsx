@@ -18450,7 +18450,7 @@ function MealBuilder({mealKey,currentIngs,onClose,onSave,lang,recipes=[],exclude
 
         <div style={{flex:1,overflowY:"auto",padding:"8px 18px"}}>
           <div style={{fontSize:11,color:"#1E3A2B",fontWeight:700,marginBottom:8}}>🧺 {ings.length} {tx.items}</div>
-          {ings.length===0&&<div style={{textAlign:"center",color:"#6B7C72",padding:"30px 0",fontSize:12}}>{tx.noMeals}</div>}
+          {ings.length===0&&<div style={{textAlign:"center",color:"#6B7C72",padding:"30px 0",fontSize:12}}>{lang==="he"?"עדיין אין מזון — לחצו ״➕ הוסף מזון לארוחה״":"No food yet — tap '➕ Add food to meal'"}</div>}
           {ings.map(ing=>{const fd=FDB[ing.fk]||TEMP_FDB[ing.fk];if(!fd)return null;const nut=ingNut(ing.fk,ing.g);
             const su=fd._isRecipe?recipeServingUnit(fd):getServingUnit(ing.fk,fd,lang);
             const showUnits=useUnits[ing._id]!==false&&!!su; // ברירת מחדל: יחידות אם קיים
@@ -18655,7 +18655,7 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
       </div>
       {/* תוכן ארוחה */}
       {ings.length===0
-        ?<div style={{fontSize:11,color:isDragOver?"#8C6D53":"#6B7C72",textAlign:"center",padding:"10px 0",fontWeight:isDragOver?700:400}}>{isDragOver?(lang==="he"?"שחרר כאן להעברה":"Drop here to move"):tx.noMeals}</div>
+        ?(isDragOver?<div style={{fontSize:11,color:"#8C6D53",textAlign:"center",padding:"10px 0",fontWeight:700}}>{lang==="he"?"שחרר כאן להעברה":"Drop here to move"}</div>:null) /* בלי "לחץ בנה / הצע" — נראה ככפתור ולא היה (לבקשת המשתמש) */
         :<>
           <div style={{fontSize:20,lineHeight:1.6,marginBottom:4}}>{ings.map(({fk})=>(FDB[fk]||TEMP_FDB[fk])?.emoji||"").join(" ")}</div>
           {/* רשימת רכיבים כ"צ'יפים" נפרדים (במקום שורת טקסט מאוחדת אחת) — נחוץ כדי לאפשר מתג "מושרה" בודד
