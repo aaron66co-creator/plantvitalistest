@@ -19497,7 +19497,7 @@ function WeeklyTrackingPanel({hist,today,lang,dri,profile,alerts,restInfo,onUpda
               </button>
               {!restInfo.n && <div style={{fontSize:11.5,color:"#6B7C72",marginTop:5}}>{he?"לא נשארו ימים מתוכננים השבוע.":"No planned days left this week."}</div>}
             </>) : (
-              <div style={{fontSize:12.5,color:"#256428",fontWeight:700}}>{he?"✅ לפי הצפי, השבוע יעמוד ב-98% לפחות מכל יעדי המיקרו.":"✅ Forecast: the week will reach at least 98% of every micro target."}</div>
+              <div style={{fontSize:12.5,color:"#256428",fontWeight:700}}>{he?"✓ השבוע בכיוון הנכון — אין צורך לעדכן.":"✓ The week is on track — no update needed."}</div>
             )}
           </div>)}
         <div style={card}>
@@ -19558,47 +19558,63 @@ function* restOfWeekGen(daysArr, consumed, target, dri, dri2, keys, excl){
         const trial=JSON.parse(JSON.stringify(daysArr[i]));
         const boosted={...dri2,[k]:{...dri2[k],dri:dri2[k].dri*1.4},_microSwap:k};
         enforceDailyCalorieBand(trial, target, boosted, excl); yield {phase:"weekly",n:++n};
-        const t0=tots[i]; tots[i]=dayT(trial);
-        if (shortOf(proj())<s0-1e-6) { daysArr[i]=trial; improved=true; } else tots[i]=t0;
+        dropTinyAdds(daysArr[i], trial);
+        const t0=tots[i]; const p0=(proj()[k]||0); tots[i]=dayT(trial);
+        // שינויים קטנים בלבד (לבקשת המשתמש): עד 4 פריטים ביום, ושיפור של 2 נקודות אחוז לפחות ברכיב
+        const gainPct=((proj()[k]||0)-p0)/(wkDri(dri[k])*7)*100;
+        if (shortOf(proj())<s0-1e-6 && changedItems(daysArr[i],trial)<=4 && gainPct>=2) { daysArr[i]=trial; improved=true; } else tots[i]=t0;
         if ((proj()[k]||0)>=wkDri(dri[k])*7*0.98) break;
       }
     }
     if (!improved) break;
   }
 }
-// תצוגה מקדימה לעדכון שאר השבוע: צפי שבועי לפני ואחרי, והשינויים בכל יום
+// כמות לכל מזון בכל ארוחה — להשוואת יום לפני/אחרי
+function mealQtyMap(day){ const o={}; MEAL_KEYS.forEach(mk=>{ (day[mk]||[]).forEach(x=>{ if(x&&x.fk){ const key=mk+"|"+x.fk; o[key]=(o[key]||0)+x.g; } }); }); return o; }
+// מספר הפריטים שהשתנו: נוסף, הוסר, או כמות שהשתנתה ביותר מ-25%
+function changedItems(b,a){ const B=mealQtyMap(b), A=mealQtyMap(a); let n=0;
+  new Set([...Object.keys(B),...Object.keys(A)]).forEach(key=>{ const g0=B[key]||0, g1=A[key]||0; if(!g0||!g1){ if(g0||g1) n++; } else if(Math.abs(g1-g0)/g0>0.25) n++; }); return n; }
+// תוספת חדשה קטנה מרבע מנה לא נכנסת (לבקשת המשתמש: לא "0.1 כוס עוגיות")
+function dropTinyAdds(b,a){ const B=mealQtyMap(b);
+  MEAL_KEYS.forEach(mk=>{ if(!a[mk]) return; a[mk]=a[mk].filter(x=>{ if(!x||!x.fk||B[mk+"|"+x.fk]) return true; const fd=FDB[x.fk]||TEMP_FDB[x.fk]; const sg=fd?._isRecipe?(fd._servingG||100):(getServingUnit(x.fk,fd,"he")?.g||100); return x.g>=sg*0.25; }); }); }
+// תצוגה מקדימה לעדכון שאר השבוע — שורת סיכום, ופירוט מקופל בשמות מזון בלבד (לבקשת המשתמש: "עמוס ומבלבל")
 function RestOfWeekModal({lang,data,onApply,onClose}){
-  const he=lang==="he"; const isDesktop=useIsDesktop();
+  const he=lang==="he"; const isDesktop=useIsDesktop(); const[more,setMore]=useState(false);
   if(!data) return null;
-  const diffDay=(b,a)=>{ const out=[];
-    MEAL_KEYS.forEach(mk=>{ const bm={},am={}; (b[mk]||[]).forEach(x=>{ if(x&&x.fk) bm[x.fk]=(bm[x.fk]||0)+x.g; }); (a[mk]||[]).forEach(x=>{ if(x&&x.fk) am[x.fk]=(am[x.fk]||0)+x.g; });
-      new Set([...Object.keys(bm),...Object.keys(am)]).forEach(fk=>{ const g0=bm[fk]||0,g1=am[fk]||0; if(Math.abs(g0-g1)<0.5) return;
-        out.push({mk, txt: !g0?`➕ ${foodName(fk,lang)} — ${servingLabel(fk,Math.round(g1*10)/10,lang)}`: !g1?`➖ ${foodName(fk,lang)}`:`↔ ${foodName(fk,lang)}: ${servingLabel(fk,Math.round(g0*10)/10,lang)} → ${servingLabel(fk,Math.round(g1*10)/10,lang)}`}); }); });
+  const diffDay=(b,a)=>{ const B=mealQtyMap(b), A=mealQtyMap(a), out=[];
+    new Set([...Object.keys(B),...Object.keys(A)]).forEach(key=>{ const [mk,fk]=key.split("|"); const g0=B[key]||0,g1=A[key]||0; const nm=foodName(fk,lang);
+      if(!g0&&g1) out.push({mk,t:`➕ ${nm}`}); else if(g0&&!g1) out.push({mk,t:`➖ ${nm}`});
+      else if(Math.abs(g1-g0)/g0>0.1) out.push({mk,t:g1>g0?(he?`יותר ${nm}`:`More ${nm}`):(he?`פחות ${nm}`:`Less ${nm}`)}); });
     return out; };
+  const changed=data.days.map(d=>({...d,ch:diffDay(d.before,d.after)})).filter(d=>d.ch.length);
+  const improved=data.rows.filter(r=>r.after>r.before);
+  const dayName=d=>he?WEEK_DAYS_HE[d.wd]:WEEK_DAYS_EN[d.wd];
+  const btn={padding:"11px 0",borderRadius:10,fontSize:14,fontWeight:800,cursor:"pointer"};
   return (
     <div style={{position:"fixed",inset:0,background:"#000000cc",zIndex:70,display:"flex",alignItems:isDesktop?"center":"flex-end"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:"#FBF8F3",width:"100%",maxWidth:isDesktop?640:430,margin:"0 auto",borderRadius:isDesktop?16:"18px 18px 0 0",padding:16,maxHeight:"88vh",overflowY:"auto",direction:T[lang].dir}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-          <span style={{fontSize:15,fontWeight:800,color:"#1E3A2B"}}>{he?"📋 עדכון שאר השבוע":"📋 Update the rest of the week"}</span>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <span style={{fontSize:16,fontWeight:800,color:"#1E3A2B"}}>{he?"📋 עדכון שאר השבוע":"📋 Update the rest of the week"}</span>
           <button onClick={onClose} style={{background:"#E8EFE9",border:"none",borderRadius:8,color:"#1E3A2B",padding:"4px 10px",cursor:"pointer"}}>✕</button>
         </div>
-        <div style={{fontSize:12.5,color:"#2F3B34",lineHeight:1.5,marginBottom:10}}>{he?"צפי שבועי (מה שתועד + הימים שנותרו) לפני ואחרי העדכון. ימים שעברו לא משתנים, וכל כללי התכנון נשמרים.":"Weekly forecast (logged + remaining days) before and after. Past days don't change, and all planning rules are kept."}</div>
-        <div style={{background:"#FFFFFF",borderRadius:12,padding:"8px 12px",border:"1px solid #E2DED4",marginBottom:10}}>
-          {data.rows.map(r=>(<div key={r.k} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0",color:"#1E3A2B"}}>
-            <span style={{fontWeight:700}}>{DRI_LABELS[r.k]?.[lang]||r.k}</span>
-            <span><span style={{color:r.before>=98?"#256428":"#b3261e"}}>{r.before}%</span> → <b style={{color:r.after>=98?"#256428":"#b3261e"}}>{r.after}%</b></span></div>))}
-          {data.rows.some(r=>r.after<98) && <div style={{fontSize:11.5,color:"#8a4b08",marginTop:4}}>{he?"חלק מהחוסר גדול מדי להשלמה בימים שנותרו בלי לחרוג מכללי התכנון.":"Part of the shortfall is too large to make up in the remaining days without breaking the planning rules."}</div>}
-        </div>
-        {data.days.map(d=>{ const ch=diffDay(d.before,d.after); return (
-          <div key={d.dk} style={{background:"#FFFFFF",borderRadius:12,padding:"8px 12px",border:"1px solid #E2DED4",marginBottom:8}}>
-            <div style={{fontSize:13,fontWeight:800,color:"#1E3A2B",marginBottom:3}}>{he?WEEK_DAYS_HE[d.wd]:WEEK_DAYS_EN[d.wd]} {shortDate(d.dk)}</div>
-            {ch.length? ch.map((c,i)=>(<div key={i} style={{fontSize:12.5,color:"#2F3B34",padding:"2px 0"}}><span style={{color:"#6B7C72"}}>{T[lang][c.mk]}: </span>{c.txt}</div>))
-              : <div style={{fontSize:12,color:"#6B7C72"}}>{he?"ללא שינוי":"No change"}</div>}
-          </div>); })}
-        <div style={{display:"flex",gap:8,marginTop:6}}>
-          <button onClick={onApply} style={{flex:2,padding:"11px 0",borderRadius:10,border:"none",background:"#1E3A2B",color:"#FFFFFF",fontSize:14,fontWeight:800,cursor:"pointer"}}>{he?"✅ החל על התפריט":"✅ Apply to plan"}</button>
-          <button onClick={onClose} style={{flex:1,padding:"11px 0",borderRadius:10,border:"1px solid #E2DED4",background:"#FFFFFF",color:"#6B7C72",fontSize:14,fontWeight:700,cursor:"pointer"}}>{he?"ביטול":"Cancel"}</button>
-        </div>
+        {changed.length&&improved.length ? (<>
+          <div style={{fontSize:15,color:"#1E3A2B",lineHeight:1.6,background:"#FFFFFF",border:"1px solid #E2DED4",borderRadius:12,padding:"10px 12px",marginBottom:8}}>
+            {he?"העדכון ישפר: ":"The update improves: "}<b>{improved.map(r=>`${DRI_LABELS[r.k]?.[lang]||r.k} ${r.before}% → ${r.after}%`).join(" · ")}</b>.
+            <div>{he?`ישתנו ${changed.length===1?"יום אחד":changed.length+" ימים"}: ${changed.map(dayName).join(", ")}.`:`${changed.length} day(s) change: ${changed.map(dayName).join(", ")}.`}</div>
+          </div>
+          <button onClick={()=>setMore(o=>!o)} aria-expanded={more} style={{border:"none",background:"transparent",color:"#1f5f8b",fontSize:14,fontWeight:700,cursor:"pointer",padding:"2px 0",marginBottom:6}}>📋 {he?"מה ישתנה":"What changes"} {more?"▲":"▼"}</button>
+          {more&&changed.map(d=>(<div key={d.dk} style={{background:"#FFFFFF",borderRadius:12,padding:"8px 12px",border:"1px solid #E2DED4",marginBottom:8}}>
+            <div style={{fontSize:14,fontWeight:800,color:"#1E3A2B",marginBottom:3}}>{dayName(d)} {shortDate(d.dk)}</div>
+            {MEAL_KEYS.filter(mk=>d.ch.some(c=>c.mk===mk)).map(mk=>(<div key={mk} style={{fontSize:14,color:"#2F3B34",padding:"2px 0",lineHeight:1.5}}><span style={{color:"#6B7C72"}}>{T[lang][mk]}: </span>{d.ch.filter(c=>c.mk===mk).map(c=>c.t).join(" · ")}</div>))}
+          </div>))}
+          <div style={{display:"flex",gap:8,marginTop:6}}>
+            <button onClick={onApply} style={{...btn,flex:2,border:"none",background:"#1E3A2B",color:"#FFFFFF"}}>{he?"✅ עדכן":"✅ Update"}</button>
+            <button onClick={onClose} style={{...btn,flex:1,border:"1px solid #E2DED4",background:"#FFFFFF",color:"#6B7C72"}}>{he?"ביטול":"Cancel"}</button>
+          </div>
+        </>) : (<>
+          <div style={{fontSize:14.5,color:"#1E3A2B",lineHeight:1.6,marginBottom:10}}>{he?"לא נמצא שינוי קטן שמשפר. אפשר לבנות את השבוע מחדש ב״🤖 תכנון אוטומטי״.":"No small change that helps was found. You can rebuild the week in '🤖 Auto-plan'."}</div>
+          <button onClick={onClose} style={{...btn,width:"100%",border:"1px solid #E2DED4",background:"#FFFFFF",color:"#1E3A2B"}}>{he?"סגור":"Close"}</button>
+        </>)}
       </div>
     </div>
   );
@@ -22469,7 +22485,8 @@ function AppInner(){
     const proj=trackSum([consumed,...remaining.map(pt)]);
     // חוסרים שאפשר לתקן בעדכון שאר השבוע — מול יעד התכנון (ברזל לנשים בגיל הפוריות: 18 מ"ג; 32.4 לא בר-השגה מהמזון)
     const dP=planDRI(dri);
-    const deficits=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&dP[k]&&(proj[k]||0)<(isAiOnlyKey(k,dP[k])?dP[k].warn*7:wkDri(dP[k])*7*0.98))
+    // מוצע רק כשבאמת חסר — מתחת ל-90% מהיעד השבועי (לבקשת המשתמש: ב-96% לא שווה לשנות תפריט)
+    const deficits=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&dP[k]&&(proj[k]||0)<(isAiOnlyKey(k,dP[k])?dP[k].warn*7:wkDri(dP[k])*7*0.90))
       .map(k=>({k,pct:Math.round((proj[k]||0)/(wkDri(dP[k])*7)*100)})).sort((a,b)=>a.pct-b.pct);
     return {remaining,n:remaining.length,consumed,deficits};
   },[trackCur,trackHist,actualIntake,meals,dri,trackToday]);
