@@ -23706,7 +23706,7 @@ function AppInner(){
                 lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/></div>
             ))}
             {/* השלמה בתחתית, מתחת לארוחות — תמיד כשיש ארוחה ריקה, גם בשבוע ריק (לבקשת המשתמש) */}
-            {(dayHasGap||weekHasGap)&&!planBlock&&<div style={{fontSize:13,color:"#34443b",margin:"8px 2px 0",lineHeight:1.5}}>{lang==="he"?"בניתם חלק לבד ב״✏️ בנה וערוך״? השלימו את השאר:":"Built some meals yourself with '✏️ Build & edit'? Complete the rest:"}</div>}
+            {(dayHasGap||weekHasGap)&&!planBlock&&<div style={{fontSize:15,fontWeight:700,color:"#1E3A2B",margin:"10px 2px 0",lineHeight:1.5}}>{lang==="he"?"בניתם חלק לבד ב״✏️ בנה וערוך״? השלימו את השאר:":"Built some meals yourself with '✏️ Build & edit'? Complete the rest:"}</div>}
             {(dayHasGap||weekHasGap)&&!planBlock&&<div style={{display:"flex",gap:8,marginTop:6}}>
               {dayHasGap&&<button onClick={()=>askBudgetThen("day",()=>{setDayPlanMode("personal");setDayPlanOpen(true);})}
                 style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #d9c2a3",background:"#F7EFE3",color:"#8C6D53",fontSize:12,fontWeight:700,cursor:"pointer"}}>
