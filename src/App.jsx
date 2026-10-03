@@ -18821,13 +18821,17 @@ const CARRY_CATS=new Set(["מרקים","פשטידות","תבשילי קטניו
 function isCarryDish(fk){ const fd=TEMP_FDB[fk]; if (!fd||!fd._isRecipe) return false; return CARRY_CATS.has(recipeCatOfFk(fk))||/פשטיד/.test(fd.he||""); }
 const carryFkOf=(week,d,mk)=>((week&&week[`d${d}`]?.[mk])||[]).find(x=>mk==="dinner"?isCarryDish(x.fk):TEMP_FDB[x.fk]?._onePlate)?.fk||null;
 function cookNoteFkOf(week, dayIdx, mk="lunch"){ return carryFkOf(week,dayIdx,mk); }
-// 🎒 טיפ אריזה לכרטיס הארוחה ביום עבודה (לבקשת המשתמש)
-function packTipOf(mk, ings, lang){ const he=lang==="he"; const nm=x=>(TEMP_FDB[x.fk]||FDB[x.fk]||{}).he||"";
-  if (mk==="lunch") return he?"🎒 לארוז: קופסה למקרר, לחמם במיקרו · ירקות ופרי בקופסה נפרדת · הרוטב בצד":"🎒 To pack: a box for the fridge, microwave to heat · vegetables and fruit in a separate box · dressing on the side";
-  if (mk!=="breakfast") return null; const a=ings||[];
-  if (a.some(x=>/טורטי/.test(nm(x)))) return he?"🎒 לארוז: ראפ בטורטייה ביתית — המנה והירקות בפנים":"🎒 To pack: a homemade-tortilla wrap — the filling and vegetables inside";
-  if (a.some(x=>/חבית|מקושקש|שקשוק|פריטט/.test(nm(x)))) return he?"🎒 לארוז: בתוך פיתה מלאה / כריך לחם מלא":"🎒 To pack: inside a whole-wheat pita / wholegrain sandwich";
-  return he?"🎒 לארוז: כריך / פשטידה / קערה — מהתיק או מהמקרר":"🎒 To pack: sandwich / quiche / bowl — from the bag or the fridge"; }
+// 🎒 טיפ אריזה לכרטיס הארוחה ביום עבודה — קצר ולפי מה שבפועל בארוחה (לבקשת המשתמש: "לא ברור מה לארוז... הטקסט ארוך מאוד")
+function packTipOf(mk, ings, lang){ const he=lang==="he"; const a=ings||[]; const nm=x=>(TEMP_FDB[x.fk]||FDB[x.fk]||{}).he||"";
+  const has=re=>a.some(x=>re.test(nm(x)));
+  if (mk==="lunch") return he?"🎒 קופסה למקרר · לחמם במיקרו":"🎒 Fridge box · microwave to heat";
+  if (mk!=="breakfast") return null;
+  if (has(/טורטי/)) return he?"🎒 ראפ בטורטייה — הכל בפנים":"🎒 Tortilla wrap — everything inside";
+  if (has(/חבית|מקושקש|שקשוק|פריטט/)) return he?"🎒 בתוך הפיתה או הלחם":"🎒 Inside the pita or bread";
+  if (has(/קערת|קערה/)||a.some(x=>/^soyYogurt/.test(x.fk))&&!has(/לחם|פיתה|כריך|טוסט/)) return he?"🎒 קערה בקופסה סגורה — במקרר":"🎒 Bowl in a closed box — in the fridge";
+  if (has(/פשטיד|מאפינס|מאפה/)) return he?"🎒 פשטידה בקופסה":"🎒 Quiche in a box";
+  if (has(/לחם|פיתה|כריך|טוסט/)) return he?"🎒 כריך — ירקות בצד":"🎒 Sandwich — vegetables on the side";
+  return he?"🎒 לארוז בקופסה":"🎒 Pack in a box"; }
 function cookNoteOf(week, dayIdx, lang, mk="lunch"){
   const op=d=>carryFkOf(week,d,mk);
   const cur=op(dayIdx); if (!cur) return null; const he=lang==="he";
