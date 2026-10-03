@@ -18003,11 +18003,11 @@ const ONBOARD_STEPS = [
   {id:"onboard-dayselector", altId:"onboard-dayselector-mobile", tab:"meals", he:{title:"2. בחירת יום", desc:"בוחרים יום בשבוע — כל שינוי חל רק עליו."}, en:{title:"2. Day selector", desc:"Pick a day of the week — changes apply only to it."}},
     {id:"onboard-autoplan", altId:"onboard-autoplan-mobile", tab:"meals", he:{title:"3. הצעת תפריט", desc:"בראש מסך הארוחות: תפריט לשבוע או ליום בלחיצה אחת. בניתם חלק לבד? ״השלם יום״ או ״השלם שבוע״ בתחתית המסך ישלימו את השאר."}, en:{title:"3. Suggest a menu", desc:"At the top of the meals screen: a menu for the week or a day in one tap. Built some meals yourself? 'Complete day' or 'Complete week' at the bottom fill in the rest."}},
   {id:"onboard-build-btn", altId:"onboard-mealcard-mobile", tab:"meals", he:{title:"4. כרטיס הארוחה", desc:"״✏️ בנה וערוך״ — להוסיף או להסיר מזון; ליד כל פריט ״🔄 החלף״ מציע חלופות דומות. ליד מזון ברשימת החיפוש אפשר לסמן 🚫 כדי שלא יוצע לעולם."}, en:{title:"4. Meal card", desc:"'✏️ Build & edit' — add or remove foods; '🔄 Swap' next to each item offers similar alternatives. Mark 🚫 next to a food in the search list so it is never suggested."}},
-  {id:"onboard-more", fallbackId:"onboard-mealcard-mobile", tab:"meals", he:{title:"5. עוד פעולות", desc:"מתחת לארוחות: ניקוי יום או שבוע (ואז תפריט חדש), 💾 שמור יום שאהבתם, 📂 ימים שמורים לטעינתו והדפסת השבוע. לידו — 🛒 רשימת קניות לשבוע."}, en:{title:"5. More actions", desc:"Below the meals: clear a day or the week (then plan anew), 💾 save a day you liked, 📂 saved days to load it, and print the week. Next to it — a 🛒 shopping list for the week."}},
+  {id:"onboard-more", tab:"meals", he:{title:"5. עוד פעולות", desc:"מתחת לארוחות: ניקוי יום או שבוע (ואז תפריט חדש), 💾 שמור יום שאהבתם, 📂 ימים שמורים לטעינתו והדפסת השבוע. לידו — 🛒 רשימת קניות לשבוע."}, en:{title:"5. More actions", desc:"Below the meals: clear a day or the week (then plan anew), 💾 save a day you liked, 📂 saved days to load it, and print the week. Next to it — a 🛒 shopping list for the week."}},
   {id:"onboard-tab-recipes", tab:"recipes", he:{title:"6. מתכונים", desc:"כל המתכונים, עם הוראות הכנה. ״➕ הוסף לארוחה״ מכניס מתכון לתפריט, ואפשר גם להוסיף מתכון משלכם."}, en:{title:"6. Recipes", desc:"All the recipes, with instructions. '➕ Add to a meal' puts a recipe in your menu, and you can add your own."}},
   {id:"onboard-tab-micro", tab:"micro", he:{title:"7. תזונה", desc:"סיכום השבוע במילים — מה טוב ומה כדאי לחזק. המספרים המלאים נפתחים ב״הצג את המספרים״."}, en:{title:"7. Nutrition", desc:"The week summed up in words — what's good and what to boost. Full numbers open from 'Show the numbers'."}},
   {id:"onboard-tab-log", tab:"log", he:{title:"8. יומן", desc:"מסמנים מה אכלתם בפועל — לחיצה אחת לכל ארוחה. ב״📊 מעקב שבועי״ — מתוכנן מול בפועל ודוח לדיאטנית."}, en:{title:"8. Log", desc:"Mark what you actually ate — one tap per meal. '📊 Weekly tracking' shows planned vs actual and a report for your dietitian."}},
-  {id:"onboard-selfreport", altId:"onboard-selfreport-mobile", fallbackId:"onboard-tab-log", tab:"log", he:{title:"9. משקל ובריאות", desc:"ביומן, תחת ״⚖️ משקל ובריאות״: שקילה, היקף מותניים, בדיקות דם ויומן תוספים (B12, ויטמין D)."}, en:{title:"9. Weight & health", desc:"In the log, under '⚖️ Weight & health': weigh-ins, waist, blood tests and a supplement log (B12, vitamin D)."}},
+  {id:"onboard-selfreport", altId:"onboard-selfreport-mobile", fallbackId:"onboard-logsub-body", tab:"log", he:{title:"9. משקל ובריאות", desc:"ביומן, תחת ״⚖️ משקל ובריאות״: שקילה, היקף מותניים, בדיקות דם ויומן תוספים (B12, ויטמין D)."}, en:{title:"9. Weight & health", desc:"In the log, under '⚖️ Weight & health': weigh-ins, waist, blood tests and a supplement log (B12, vitamin D)."}},
   {id:"onboard-budget", altId:"onboard-budget-mobile", menuId:"onboard-menu-budget", fallbackId:"onboard-settings-mobile", tab:"meals", he:{title:"10. תקציב", desc:"כלי לבחירה: מפעילים ב״⚙️ הגדרות״ ← ״כלים נוספים״, ואז מוצגת עלות משוערת ותכנון לפי תקציב."}, en:{title:"10. Budget", desc:"Optional: turn it on in '⚙️ Settings' → 'More tools' to see estimated cost and plan by budget."}},
   {id:"onboard-datasources", altId:"onboard-datasources-mobile", menuId:"onboard-menu-datasources", fallbackId:"onboard-info-menu", tab:"meals", he:{title:"11. מקורות הנתונים", desc:"כל מזון הוצלב מול מאגר משרד הבריאות — הפירוט ב״ℹ️ מידע״. שם גם ❓ שאלות ותשובות — על האפליקציה ועל התזונה, עם מקורות."}, en:{title:"11. Data sources", desc:"Every food was checked against the Ministry of Health database — details under 'ℹ️ Info'. There's also ❓ Q&A — about the app and nutrition, with sources."}},
   {id:"onboard-settings", altId:"onboard-settings-mobile", tab:"meals", he:{title:"12. ההגדרות שלי", desc:"סגנון ארוחות, 🍳 פחות בישול (מבשלים פעם ל-3 ימים), 🎒 אוכל לעבודה (בוקר וצהריים לארוז), טבעוני או עם חלב וביצים, תקציב, שפה — והאם להציג ערכים תזונתיים בכל המסכים."}, en:{title:"12. My settings", desc:"Meal style, 🍳 less cooking (cook once for 3 days), 🎒 food for work (breakfast and lunch to pack), vegan or with dairy & eggs, budget, language — and whether to show nutrition values on every screen."}},
@@ -18061,7 +18061,8 @@ function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen,setInfoMe
         // תיקון (לבקשת המשתמש: "מה שמואר בשלב השמירה זה לא כפתור שמור יום") — הגלילה החלקה עדיין רצה כשנמדד המיקום,
         // ולכן המסגרת "נתקעה" במקום שגוי. עכשיו: גלילה מיידית, מדידה אחרי שהמסך התייצב, ומדידה חוזרת בכל גלילה/שינוי גודל
         tourElRef.current=el;
-        el.scrollIntoView({behavior:"auto", block:"center", inline:"nearest"});
+        // אלמנט גבוה (למשל הפרופיל כשהוא פתוח) — גוללים לתחילתו, ותיבת ההסבר יורדת לתחתית המסך (לבקשת המשתמש: "הסיור תקוע בשלב הפרופיל")
+        el.scrollIntoView({behavior:"auto", block:el.getBoundingClientRect().height>window.innerHeight*0.5?"start":"center", inline:"nearest"});
         const measure=()=>{ const e=tourElRef.current; if(!e) return; const r=e.getBoundingClientRect(); setRect({top:r.top,left:r.left,width:r.width,height:r.height}); };
         setTimeout(measure, 120); setTimeout(measure, 450);
       } else if (attemptsLeft>0) {
@@ -18095,15 +18096,16 @@ function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen,setInfoMe
     );
   }
   return(
-    <div style={{position:"fixed",inset:0,zIndex:410}}>
+    <div style={{position:"fixed",inset:0,zIndex:410,pointerEvents:"none"}}>{/* השכבה לא חוסמת: אפשר למלא את הפרופיל ולגלול בזמן הסיור */}
       {rect ? (
         <div style={{position:"fixed",top:rect.top-pad,left:rect.left-pad,width:rect.width+pad*2,height:rect.height+pad*2,borderRadius:12,boxShadow:"0 0 0 9999px rgba(0,0,0,0.12)",pointerEvents:"none",border:"2px solid #2e7d32",transition:"all .25s ease"}}/>
       ) : (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.12)"}}/>
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.12)",pointerEvents:"none"}}/>
       )}
       <div style={{
         position:"fixed",
-        ...(rect ? {
+        pointerEvents:"auto",
+        ...(rect&&rect.height>window.innerHeight*0.5 ? {bottom:76,left:"50%",transform:"translateX(-50%)"} : rect ? {
           top: rect.top+rect.height+pad*2+10 < window.innerHeight-220 ? rect.top+rect.height+pad*2+10 : Math.max(10,rect.top-pad-10-200), // מקום לטקסט ארוך יותר בלי לכסות את האלמנט המואר
           left: Math.min(Math.max(10, rect.left), window.innerWidth-Math.min(300,window.innerWidth-20)-10),
         } : {top:"50%",left:"50%",transform:"translate(-50%,-50%)"}),
@@ -22756,7 +22758,7 @@ function AppInner(){
   const logSubNav=(
     <div style={{display:"flex",gap:6,marginBottom:10}}>
       {[["log",lang==="he"?"📝 יומן":"📝 Log"],["track",(lang==="he"?"📊 מעקב שבועי":"📊 Weekly tracking")+(trackAlertList.length?" 🔸":"")],["body",lang==="he"?"⚖️ משקל ובריאות":"⚖️ Weight & health"]].map(([k,l])=>(
-        <button key={k} onClick={()=>setLogSub(k)} style={{flex:1,padding:"9px 4px",borderRadius:10,border:logSub===k?"2px solid #1E3A2B":"1px solid #D9D3C5",background:logSub===k?"#E8EFE9":"#FFFFFF",color:"#1E3A2B",fontSize:13,fontWeight:logSub===k?800:600,cursor:"pointer"}}>{l}</button>
+        <button key={k} id={`onboard-logsub-${k}`} onClick={()=>setLogSub(k)} style={{flex:1,padding:"9px 4px",borderRadius:10,border:logSub===k?"2px solid #1E3A2B":"1px solid #D9D3C5",background:logSub===k?"#E8EFE9":"#FFFFFF",color:"#1E3A2B",fontSize:13,fontWeight:logSub===k?800:600,cursor:"pointer"}}>{l}</button>
       ))}
     </div>);
   const bodyPanelNode=(<>
