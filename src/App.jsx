@@ -9817,6 +9817,18 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
           .filter(x=>x.g+(TEMP_FDB[x.fk]._servingG||200)*0.25<=(TEMP_FDB[x.fk]._servingG||200)*1.5).sort((x,y)=>x.g/(TEMP_FDB[x.fk]._servingG||200)-y.g/(TEMP_FDB[y.fk]._servingG||200))[0];
         if (!m) break; const sv=TEMP_FDB[m.fk]._servingG||200; m.g=Math.round((m.g+sv*0.25)*10)/10; if (dN(d).kcal>target*1.05) { m.g=Math.round((m.g-sv*0.25)*10)/10; break; } } } }
   for (const key of Object.keys(week)) balanceMealMix(week[key],target,dri,P.ok,+key.slice(1)||0);
+  // ויטמין E וסידן שבועיים (לבקשת המשתמש: "לתקן את השבועות החלשים"): כשהממוצע השבועי מתחת ליעד — אגוזי הבוקר מוחלפים
+  // בשקדים (ויטמין E וסידן) או בגרעיני חמנייה (ויטמין E). לא נוגעים בגרעיני דלעת ובבוטנים (לאוצין); נשמר רק אם היום לא עובר
+  // 105% קלוריות (או לא עולה), וויטמין E וסידן לא יורדים
+  { const NSK=new Set(["walnuts","cashews","pistachio","hazelnuts"]), ks=Object.keys(week), M4=["breakfast","snack","lunch","dinner"];
+    const dayN=d=>sumNuts(M4.flatMap(m=>d[m]||[]).concat(Object.values(d.__fx||{}).flat()).map(x=>ingNut(x.fk,x.g,x.soaked)));
+    const avg=key=>ks.reduce((t,k)=>t+(dayN(week[k])[key]||0),0)/(ks.length||1);
+    const eT=dri?.vitE?.dri||15, cT=dri?.calcium?.weekDri||dri?.calcium?.dri||1000;
+    for (const k of ks) { const lowE=avg("vitE")<eT, lowC=avg("calcium")<cT; if (!lowE&&!lowC) break;
+      const d=week[k], x=(d.breakfast||[]).find(y=>NSK.has(y.fk)); if (!x) continue;
+      const cand=(lowE?[["almonds",14],["sunflowerS",10]]:[["almonds",14]]).filter(([fk])=>P.ok(fk)&&FDB[fk]&&!(d.breakfast||[]).some(y=>y.fk===fk));
+      for (const [fk,g] of cand) { const old=[x.fk,x.g], e0=avg("vitE"), c0=avg("calcium"), k0=dayN(d).kcal; x.fk=fk; x.g=g;
+        if (dayN(d).kcal>Math.max(target*1.05,k0)+0.5||avg("vitE")<e0-0.01||avg("calcium")<c0-0.5) { x.fk=old[0]; x.g=old[1]; } else break; } } }
   for (const k of Object.keys(week)) { const day=week[k]; if (!day.__fx) continue; Object.entries(day.__fx).forEach(([mk,a])=>{ day[mk]=[...a,...(day[mk]||[])]; }); delete day.__fx; } // ארוחות המשתמש חוזרות למקומן (ותוספות ההשלמה אחריהן)
   return week;
 }
