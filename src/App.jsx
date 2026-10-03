@@ -9230,7 +9230,10 @@ const isVegNonStarchy=fk=>{ const c=FDB[fk]?.cat; return (c==="ירק"||c==="ע�
 // (לא עמילניים) במנה המוגשת, 80 גר' = יחידה
 // אותו דגן או קטנית בשתי מנות באותה ארוחה — לא (לבקשת המשתמש: קינואה עם פולי סויה ליד פשטידת קינואה)
 const STAPLE_BASE=fk=>String(fk).replace(/(Cooked|Raw|Dry|Boiled)$/,"");
-function staplesOf(fk){ const out=new Set(); const fd=TEMP_FDB[fk];
+// זיכרון (מהירות בניית התפריט): לכל מנה פעם אחת; מתכון שנערך מקבל רשומה חדשה ב-TEMP_FDB ולכן מחושב מחדש
+const __staples=new Map();
+function staplesOf(fk){ const fd=TEMP_FDB[fk], c=__staples.get(fk); if (c&&c.fd===fd) return c.out; const out=staplesOf__calc(fk); __staples.set(fk,{fd,out}); return out; }
+function staplesOf__calc(fk){ const out=new Set(); const fd=TEMP_FDB[fk];
   if (fd&&fd._isRecipe){ const I=fd._ings||[]; const tot=I.reduce((a,i)=>a+(i.g||0),0)||1;
     I.forEach(i=>{ const f=FDB[i.fk]; if (f&&(f.cat==="דגן"||f.cat==="קטנית")&&!/קמח/.test(f.he||"")&&(i.g||0)/tot>=0.1) out.add(STAPLE_BASE(i.fk)); }); }
   else { const f=FDB[fk]; if (f&&(f.cat==="דגן"||f.cat==="קטנית")) out.add(STAPLE_BASE(fk)); }
@@ -9358,9 +9361,11 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   const clean=a=>a.filter(Boolean);
   // מתכון שכבר יש בו סויה (משקה, יוגורט, טופו) — בלי משקה/יוגורט סויה לידו; מתכון שיש בו ירק — בלי ירק נוסף
   const ingsOf=id=>TEMP_FDB[id]?._ings||[]; const perSv=(id,f)=>{ const I=ingsOf(id); const tot=I.reduce((a,i)=>a+(i.g||0),0)||1; return I.filter(f).reduce((a,i)=>a+(i.g||0),0)/tot*svG(id); };
-  const hasSoy=id=>ingsOf(id).some(i=>SOY_FKS_ALL.has(i.fk));
+  // זיכרון לבדיקות מנה (מהירות): נשמר על המאגרים של השבוע — אותה תשובה, בלי לחשב שוב בכל אחד מ-700 הצירופים
+  const MC=P.__memo||(P.__memo={ing:new Map(),soy:new Map(),grain:new Map(),veg:new Map()}); const memo=(m,f)=>id=>{ let v=m.get(id); if (v===undefined){ v=f(id); m.set(id,v); } return v; };
+  const hasSoy=memo(MC.soy,id=>ingsOf(id).some(i=>SOY_FKS_ALL.has(i.fk)));
   // מנה שכבר יש בה דגן (גריסים, כוסמין, אורז...) — בלי לחם/פיתה לידה; עדיף פשטידה (לבקשת המשתמש)
-  const hasGrainIn=id=>{ const I=ingsOf(id); const tot=I.reduce((a,i)=>a+(i.g||0),0)||1; return I.filter(i=>FDB[i.fk]?.cat==="דגן"&&!/קמח/.test(FDB[i.fk]?.he||"")).reduce((a,i)=>a+(i.g||0),0)/tot>=0.1; }; const hasVeg=id=>perSv(id,i=>["ירק","עלים"].includes(FDB[i.fk]?.cat))>=40;
+  const hasGrainIn=memo(MC.grain,id=>{ const I=ingsOf(id); const tot=I.reduce((a,i)=>a+(i.g||0),0)||1; return I.filter(i=>FDB[i.fk]?.cat==="דגן"&&!/קמח/.test(FDB[i.fk]?.he||"")).reduce((a,i)=>a+(i.g||0),0)/tot>=0.1; }); const hasVeg=memo(MC.veg,id=>perSv(id,i=>["ירק","עלים"].includes(FDB[i.fk]?.cat))>=40);
   const used=opts.used||{}; const newBOk=opts.newBreakfastOk!==false;
   const fixed=opts.existing||{}; const isFixed=mk=>(fixed[mk]||[]).length>0;
   const npBase=opts.onePlate?[opts.onePlate]:(P.oneL.filter(id=>(used[id]||0)<2).length?P.oneL.filter(id=>(used[id]||0)<2):P.oneL);
@@ -9426,7 +9431,9 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     best.forEach(x=>{ if (FDB[x.fk]?.cat==="פרי") dayFr.add(x.fk); }); return best; }
   const KEYS=["protein","fiber","calcium","iron","zinc","magnesium","potassium","vitA","vitC","vitE","vitK","vitB1","vitB2","vitB3","vitB6","vitB9","selenium","iodine","choline","copper","vitB5"];
   const caW=(caHigh||opts.caDayTarget)?2:1; /* יעד סידן גבוה — משקל כפול בבחירת היום */ const naCap=dri._naCap||hp?.sodiumMax||2300;
-  const nutOf=items=>sumNuts((items||[]).map(x=>ingNut(x.fk,x.g,x.soaked)));
+  // ערכי "פריט בכמות" מחושבים פעם אחת (sumNuts לא משנה אותם) — אותם סכומים בדיוק, בלי לחשב 40 רכיבים שוב ושוב
+  const ingC=(fk,g,sk)=>{ const key=fk+"|"+g+"|"+(sk?1:0); let v=MC.ing.get(key); if (!v){ v=ingNut(fk,g,sk); MC.ing.set(key,v); } return v; };
+  const nutOf=items=>sumNuts((items||[]).map(x=>ingC(x.fk,x.g,x.soaked)));
   const leuOf=items=>nutOf(items).leucine||0;
   // אחרי כף גרעיני דלעת — אגוזים מתחלפים (לבקשת המשתמש: גיוון): סוג אחד בארוחה, סוג שעוד לא הופיע ביום, ב-7 גר' עד 21 גר'
   const nutStep=(mk)=>{ const a=plan0Ref.p[mk]; if (!a) return false; let x=a.find(y=>NUT_ROT.includes(y.fk));
@@ -9444,11 +9451,13 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     const grainA=()=>a.some(x=>P.bread.includes(x.fk)||FDB[x.fk]?.cat==="דגן"||(TEMP_FDB[x.fk]?._isRecipe&&(hasGrainIn(x.fk)||isGrainDominantGlobal(TEMP_FDB[x.fk])))); // מנת דגנים אחת לכל היותר בארוחה
     if (mk==="breakfast"&&kA(a)<target*0.27&&!grainA()) { const b=bread(1); if (add(b)) { const sp=spreadOrYog(soyA()); if (sp) add(sp); } }
     a.slice(n0).forEach(x=>{ x._added=true; }); return a; }
-  function score(plan){ const all=["breakfast","snack","lunch","dinner"].flatMap(mk=>plan[mk]||[]); const t=nutOf(all); const k=t.kcal||0;
-    // הבסיס נבחר ב-93%–101% מהיעד — משאיר מקום לתוספות (פשתן, גרעינים) שמתווספות אחר כך
-    if (k<target*0.93||k>target*1.01) return null; if ((t.sodium||0)>naCap) return null;
+  function score(plan){ const all=["breakfast","snack","lunch","dinner"].flatMap(mk=>plan[mk]||[]);
+    // הבסיס נבחר ב-93%–101% מהיעד — משאיר מקום לתוספות (פשתן, גרעינים) שמתווספות אחר כך. קודם רק קלוריות (מהיר) — רוב הצירופים נפסלים כאן
+    let k=0; for (const x of all){ const v=ingC(x.fk,x.g,x.soaked).kcal; if (v) k+=v; }
+    if (k<target*0.93||k>target*1.01) return null; const t=nutOf(all); if ((t.sodium||0)>naCap) return null;
+    const mN={}, mealN=mk=>mN[mk]||(mN[mk]=nutOf(plan[mk])); // סכום אחד לכל ארוחה — ללאוצין ולחלק בקלוריות
     let sc=0; for (const key of KEYS){ const tg=key==="protein"?(wKg||70)*0.9:key==="fiber"?14*target/1000:(key==="choline"||key==="vitK"||key==="vitB5")?(dri[key]?.warn||dri[key]?.dri):dri[key]?.dri; /* כולין, ויטמין K ו-B5 (AI בלבד) — עד הסף המינימלי; אשלגן נשאר ביעד המלא (לחץ דם, יחס אשלגן:נתרן) */ if(!tg) continue; const tgK=key==="calcium"?(opts.caDayTarget||dri.calcium?.weekDri||tg):tg; /* "השלם שבוע": יעד יומי מוגדל לפיצוי על ימי המשתמש */ sc+=Math.min(1,(t[key]||0)/tgK)*(key==="calcium"?caW:key==="vitE"?1.5:1); } // סידן — מול היעד המלא (לבקשת המשתמש: 100% בשבוע)
-    ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)) return; const l=leuOf(plan[mk]); sc+=l>=LEU?3:l+0.45>=LEU?2:l>=2?1:-3; }); // לאוצין: ביעד, או בהישג יד עם גרעיני דלעת (עד 2 כפות)
+    ["breakfast","lunch","dinner"].forEach(mk=>{ if (isFixed(mk)) return; const l=mealN(mk).leucine||0; sc+=l>=LEU?3:l+0.45>=LEU?2:l>=2?1:-3; }); // לאוצין: ביעד, או בהישג יד עם גרעיני דלעת (עד 2 כפות)
     const v=mealShareViolation(plan,isFixed); if (v>0.03) return null; sc-=v*25;
     // אותה מנה פעמיים ביום (לבקשת המשתמש: בטטה ממולאת בשעועית בצהריים וגם בערב) — קנס כבד, כמעט פסילה
     if (mealsDuplicate(plan.lunch,plan.dinner)||mealsDuplicate(plan.breakfast,plan.lunch)||mealsDuplicate(plan.breakfast,plan.dinner)) sc-=15;
@@ -9456,7 +9465,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
     // צהריים עד 36% וערב עד 34% — לפני התוספות (זרעים, טחינה), שמוסיפות לצהריים ולערב עוד כ-2%
     { const vu=["breakfast","snack","lunch","dinner"].reduce((a,mk)=>a+simpleVegUnits(plan[mk]),0); sc-=Math.max(0,SIMPLE_VEG_MIN-vu)*0.4; } // העדפה לימים עשירים בירקות
     // תמהיל (לבקשת המשתמש): ביניים 6% והיתרה לארוחות העיקריות — כ-31% לכל אחת (טווח 25%–36%), ועונש על כל סטייה
-    const sh=mk=>nutOf(plan[mk]).kcal/k;
+    const sh=mk=>mealN(mk).kcal/k;
     for (const mk of ["breakfast","lunch","dinner"]) { if (isFixed(mk)) continue; const x=sh(mk); if (x<SHR[0]||x>SHR[1]) return null; sc-=Math.abs(x-0.313)*40; }
     // מועדפים (לבקשת המשתמש): תוספת קטנה לכל מתכון מועדף ביום (עד 2) — מכריעה בין צירופים דומים, לא גוברת על היעדים
     if (P.fav&&P.fav.size) { const f=new Set(["breakfast","snack","lunch","dinner"].filter(mk=>!isFixed(mk)).flatMap(mk=>(plan[mk]||[]).map(x=>x.fk)).filter(fk=>P.fav.has(fk)&&(used[fk]||0)<2)); sc+=Math.min(2,f.size)*FAV_BONUS; } // היתרה אחרי ביניים של 6% — כ-31% לכל ארוחה עיקרית
