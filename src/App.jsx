@@ -16595,6 +16595,17 @@ function BudgetBadge({lang,budget,kind,cost}){
     </div>
   );
 }
+// שדה מחיר (לבקשת המשתמש: "לא מצליח למחוק את המחיר") — כשמחקו את כל הספרות, השדה חזר מיד למחיר ברירת המחדל.
+// עכשיו הטקסט נשמר בזמן ההקלדה (גם ריק), ונשמר כמחיר רק כשיש מספר תקין; ביציאה מהשדה כשהוא ריק — חוזר למחיר הקודם
+function PriceInput({value,onCommit}){
+  const [draft,setDraft]=useState(String(value??"")); const [focus,setFocus]=useState(false);
+  useEffect(()=>{ if (!focus) setDraft(String(value??"")); },[value,focus]);
+  return <input type="number" inputMode="decimal" step="0.1" min="0" value={draft}
+    onFocus={e=>{ setFocus(true); e.target.select(); }}
+    onChange={e=>{ const t=e.target.value; setDraft(t); if (t!==""&&!/\.$/.test(t)&&isFinite(Number(t))) onCommit(t); }}
+    onBlur={()=>{ setFocus(false); setDraft(String(value??"")); }}
+    style={{width:56,padding:"4px 6px",borderRadius:7,border:"1px solid #E2DED4",fontSize:12,textAlign:"center"}}/>;
+}
 function PriceEditorModal({lang,onClose}){
   const tx=T[lang];
   const isDesktop=useIsDesktop();
@@ -16671,8 +16682,7 @@ function PriceEditorModal({lang,onClose}){
             <div key={fk} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#FFFFFF",borderRadius:9,padding:"7px 10px",marginBottom:5,border:"1px solid #E2DED4"}}>
               <span style={{fontSize:12,color:"#1E3A2B",flex:1}}>{foodName(fk,lang)}{isOverridden && <span style={{color:"#2e7d32",fontSize:9}}> ✎</span>}</span>
               <div style={{display:"flex",alignItems:"center",gap:5}}>
-                <input type="number" step="0.1" min="0" value={val} onChange={e=>setPrice(fk,e.target.value)}
-                  style={{width:56,padding:"4px 6px",borderRadius:7,border:"1px solid #E2DED4",fontSize:12,textAlign:"center"}}/>
+                <PriceInput value={val} onCommit={v=>setPrice(fk,v)}/>
                 <span style={{fontSize:9,color:"#6B7C72"}}>₪/100{tx.grams}</span>
                 {isOverridden && <button onClick={()=>setPrice(fk,"")} title={lang==="he"?"אפס לברירת מחדל":"Reset to default"} style={{background:"none",border:"none",color:"#a6440f",fontSize:13,cursor:"pointer",padding:"0 2px"}}>↺</button>}
               </div>
