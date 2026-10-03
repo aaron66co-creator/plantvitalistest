@@ -4253,21 +4253,30 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   };
   // ציון-כללים: כמה כללי הרכב נשברים ביום (הצמדות, מאפה↔ממרח, פרי בכל ארוחה עיקרית ו-4 ביום, סלט-ירקות עם
   // עלים). הסרת פריט מותרת רק אם הציון לא מחמיר — כך שעיגול/הסרה לעולם לא שוברים כלל-הרכב
-  const rulesScore=()=>{ let v=0;
-    for (const m of ["breakfast","lunch","dinner"]) { const its=plan[m]||[]; if(!its.length) continue;
-      if (grainUnpaired(its)) v++; if (hasLeg(its)&&!hasGrain(its)) v++;
+  // ביצועים: החלק של כל ארוחה (כללי ההרכב, יחידות הירק ומבנה הארוחה) נשמר לפי רשימת הפריטים שלה — נקרא לכל מהלך נבדק,
+  // וברוב המהלכים רק ארוחה אחת משתנה. אותה תוצאה בדיוק (מספרים שלמים ורבעים, ואותו סדר חיבור ביחידות הירק)
+  const __rs=new Map();
+  const mealRules=(m,its)=>{ const n=its.length, c=__rs.get(m);
+    if (c&&c.n===n&&c.arr.every((x,i)=>x===its[i]&&c.g[i]===x.g&&c.fk[i]===x.fk)) return c;
+    let v=0;
+    if (n){ if (grainUnpaired(its)) v++; if (hasLeg(its)&&!hasGrain(its)) v++;
       if (its.some(it=>isSpread(it.fk))&&!its.some(it=>isBreadLike(it.fk))) v++;
       if (its.some(it=>isBreadLike(it.fk))&&!breadPartnered(its)) v++;
-      if (its.some(it=>panDish(it.fk))&&!its.some(it=>isBreadLike(it.fk))) v++; // מנת מחבת — חייבת לחם/מאפה דמוי-לחם לצידה
-      { const fams=its.map(it=>legumeFamilyOfItem(it)).filter(Boolean); if (new Set(fams).size<fams.length) v++; } // אותה משפחת קטנית פעמיים בארוחה
-      if (fruitUnitsOf(its)<1) v+=0.25; // פרי בכל ארוחה עיקרית — העדפה רכה: מוותרים עליה רק כשזה מתקן כלל אחר
-      if (!vegVisibleIn(its)) v++; } // ירק (גלוי) בכל ארוחה עיקרית
-    { const dv=["breakfast","lunch","dinner"].reduce((a,m)=>a+vegUnitsIn(plan[m]||[]),0); if (dv<7) v+=7-dv; } // לפחות 7 יחידות ירק ביום
+      if (its.some(it=>panDish(it.fk))&&!its.some(it=>isBreadLike(it.fk))) v++;
+      { const fams=its.map(it=>legumeFamilyOfItem(it)).filter(Boolean); if (new Set(fams).size<fams.length) v++; }
+      if (fruitUnitsOf(its)<1) v+=0.25;
+      if (!vegVisibleIn(its)) v++; }
+    let st=0; for (const it of its) { if(!it||!it.fk||it._user) continue; const u=sUnitG(it); if(!u) continue; const k=it.g/u; if (YOG_FKS.has(it.fk)&&k>1.05) st++; if (isHeavyDish(it.fk)&&k>1.5) st++; }
+    if (saladDishCount(its)>1) st++;
+    const r={n,arr:its.slice(),g:its.map(x=>x&&x.g),fk:its.map(x=>x&&x.fk),v,veg:vegUnitsIn(its),st}; __rs.set(m,r); return r; };
+  const rulesScore=()=>{ let v=0; const R=["breakfast","lunch","dinner"].map(m=>mealRules(m,plan[m]||[]));
+    for (const r of R) v+=r.v;
+    { const dv=R.reduce((a,r)=>a+r.veg,0); if (dv<7) v+=7-dv; } // לפחות 7 יחידות ירק ביום
     const fu=fruitUnitsOf(Object.values(plan).flat().filter(x=>x&&x.fk)); if (fu<3) v+=3-fu+0.5; else if (fu<4) v+=0.5; else if (fu>FRUIT_DAY_MAX) v+=fu-FRUIT_DAY_MAX; // 4 פירות ביום; 3 רק כשאין ברירה; עד 5
     const sal=["breakfast","lunch","dinner"].flatMap(m=>plan[m]||[]).filter(it=>isVegSalad(it.fk));
     if (!sal.some(it=>hasLeaves(it.fk))) v++;
     { const tot={}; Object.values(plan).flat().forEach(it=>{ if(it&&DAY_ITEM_CAP_G[it.fk]) tot[it.fk]=(tot[it.fk]||0)+it.g; }); Object.keys(tot).forEach(k=>{ if(tot[k]>DAY_ITEM_CAP_G[k]+0.5) v++; }); } // תקרות יומיות (נבט חיטה, פירות מיובשים)
-    v+=structureScore(); // מבנה ארוחה: יוגורט אחד, מנה כבדה אחת, סלט אחד
+    v+=R.reduce((a,r)=>a+r.st,0); // מבנה ארוחה: יוגורט אחד, מנה כבדה אחת, סלט אחד
     return v; };
   // עיגול: כמות ≥½ יחידה → מספר שלם הקרוב; פחות מ-½ יחידה → מוסר אם זה לא שובר כלל, אחרת יחידה אחת
   for (const mk of Object.keys(plan)) {
