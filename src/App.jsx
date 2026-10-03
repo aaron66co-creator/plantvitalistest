@@ -414,6 +414,12 @@ function zeroNut(){const o={};for(let i=0;i<ALL_KEYS.length;i++)o[ALL_KEYS[i]]=0
 function ingNut(fk,g,soaked){const fd=FDB[fk]||TEMP_FDB[fk];if(!fd)return zeroNut();const f=g/100;const p=fd.per100;const nut={};for(let i=0;i<ALL_KEYS.length;i++){const k=ALL_KEYS[i];nut[k]=(p[k]||0)*f;}if(soaked&&SOAKABLE_CATS.has(fd.cat)&&!fd._isRecipe){Object.keys(SOAK_BIOAVAIL_BOOST).forEach(k=>{nut[k]=(nut[k]||0)*SOAK_BIOAVAIL_BOOST[k];});}nut.kcal=calcKcalActual(nut);return nut;}
 // ביצועים (לבקשת המשתמש: "לקצר את זמן התכנון השבועי"): זו הפונקציה החמה ביותר בתכנון (כשליש מהזמן). אותה תוצאה
 // בדיוק — acc מתחיל באפס לכל מפתח, וערך לא-מספרי/אפס מדולג (כמו n[k]||0) — רק בלי קריאות וכתיבות מיותרות בלולאה
+// ביצועים (לבקשת המשתמש: "לקצר את זמן התכנון"): סכום קלוריות בלבד — אותה תוצאה בדיוק כמו sumNuts(...).kcal (אותו
+// סדר חיבור, ואפס מדולג), בלי לסכם את כל 45 הרכיבים. הקלוריות לכל פריט+כמות נשמרות לפי רשומת המזון עצמה (מתכון שנערך — רשומה חדשה)
+const __kcalMemo=new WeakMap();
+function itemKcal(fk,g,soaked){ const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return 0; let m=__kcalMemo.get(fd); if(!m){ m=new Map(); __kcalMemo.set(fd,m); }
+  const k=soaked?g+"s":g; let v=m.get(k); if (v===undefined){ v=ingNut(fk,g,soaked).kcal; if (m.size>4000) m.clear(); m.set(k,v); } return v; }
+function kcalSum(items){ let a=0; for (let i=0;i<items.length;i++){ const x=items[i]; if (!x) continue; const v=itemKcal(x.fk,x.g,x.soaked); if (v) a+=v; } return a; }
 function sumNuts(arr){const acc=zeroNut();const K=ALL_KEYS,L=K.length;for(let j=0;j<arr.length;j++){const n=arr[j];if(!n)continue;for(let i=0;i<L;i++){const k=K[i];const v=n[k];if(v)acc[k]+=v;}}return acc;}
 // לבקשת המשתמש: "האם הספיגה המשוערת... יכולה להיות מדד משמעותי יותר מאשר עמידה ב-RDA?" — הערכה לא-מחייבת,
 // מוצגת כמידע נוסף בלבד, שלא משנה שום החלטת-תכנון בפועל (לא בוחרת מזון, לא קובעת יעד). מבוססת בחלקה על
@@ -461,7 +467,7 @@ function capCatOf(fk){
 // אחרי כל התיקונים הקודמים. פונקציה משותפת אחת שמריצים *שוב* אחרי תוספת המלח, בכל שלושת מנגנוני היצירה
 // וגם בשני מנגנוני ההפצה ברמת השבוע — כדי שהתקרה הקשיחה תמיד תהיה המילה האחרונה באמת, לא משנה מה נוסף אחריה
 function trimToCalorieTarget(plan, tgt){
-  const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const totalKcalNow = () => kcalSum(Object.values(plan).flat());
   const TRIM_PRIORITY = ["oliveOil","almondbutter","peanutButter","walnuts","cashews","sunflowerS","pumpkinS","hazelnuts","brazilNuts","flaxseed","pistachio","almonds","chiaseeds","avocado","tahiniFullRaw"];
   let guardTrim=0;
   while (totalKcalNow() > tgt+0.5 && guardTrim<60) {
@@ -1299,7 +1305,7 @@ function ensureDailyVegQuota(day, tgt){
   const VEG_POOL = ["cucumber","tomato","carrot","redPepper","yellowPepper","greenPepper","cabbageRed","radish","zucchini","cauliflower","broccoli","beet","eggplant","spinach","kale","celery","asparagus","mushroom","greenBeans","butternut","lentilSprouts","romaine","arugula"];
   const MEALS = ["breakfast","lunch","dinner"].filter(mk=>(day[mk]||[]).length);
   if (!MEALS.length) return day;
-  const dayKcalNow = () => sumNuts(Object.values(day).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(day).flat());
   let guard=0;
   while (MEALS.reduce((s,mk)=>s+vegUnitsOf(day[mk]),0) < 7 && guard<20) {
     guard++;
@@ -1460,7 +1466,7 @@ function enforceGrainLegumePairing(plan, tgt){
   // הבדיקה לא הייתה מזהה שהם כן ענו על הדרישה, גם אחרי שהם נוספו בפועל לארוחה
   const SOY_PROTEIN_ALT = new Set(["soyYogurtOrgPlain","soyYogurtPlain","soymilkFortified","soymilkOrgPlain"]);
   const finalMealHasLegume = its => (its||[]).some(it=>capCatOf(it.fk)==="קטנית"||SOY_PROTEIN_ALT.has(it.fk));
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   const usedTodayFinal = () => new Set(Object.values(plan).flat().map(it=>it.fk));
   // תיקון (לבקשת המשתמש: "יחס 2/3 תבשילי קטניות/דגנים, לא קטניות/דגנים מבושלות גולמיות") — זו הפונקציה
   // המשותפת שרצה הכי הרבה פעמים מכל מנגנוני-ההשלמה (עד 11 קריאות שונות על פני מחולל-יום+שבוע ביחד), ומעולם
@@ -1584,7 +1590,7 @@ function ensureLegumeInAtLeastTwoMeals(plan, tgt, recipeUsage={}){
   const hasLegume = mk => (plan[mk]||[]).some(containsLegume);
   let mealsWithLegume = NON_SNACK.filter(mk=>plan[mk] && plan[mk].length && hasLegume(mk));
   if (mealsWithLegume.length >= 2) return plan;
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   const usedToday = () => new Set(Object.values(plan).flat().map(it=>it.fk));
   const legumeStewFromTempFdb = () => Object.keys(TEMP_FDB).filter(id=>{
     const fd=TEMP_FDB[id]; if(!fd||!fd._isRecipe) return false;
@@ -1699,7 +1705,7 @@ function ensureStewRecipeUsed(plan, tgt, recipeUsage={}){
     const fd = TEMP_FDB[it.fk]; if (!fd || !fd._isRecipe) return false;
     return bookCategoryOf({name:fd.he,type:fd._recipeType,foodGroup:fd._foodGroup,ings:fd._ings})===wantCat && isPureNamed(fd, wantCat);
   });
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   const usedToday = () => new Set(Object.values(plan).flat().map(it=>it.fk));
   const stewPool = wantCat => Object.keys(TEMP_FDB).filter(id=>{
     const fd=TEMP_FDB[id]; if(!fd||!fd._isRecipe) return false;
@@ -2398,7 +2404,7 @@ function roundSpoonPortions(plan, tgt, dri){
 // ואם הסלט הנבחר לא מכיל אחד מהירקות שהוסרו, משאירים אותו הירק הזה לצד הסלט (לא את שניהם, רק את מה שלא כפול)
 function preferSaladOverStackedRawVeg(plan, tgt){
   if (!tgt) return plan;
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   ["breakfast","lunch","dinner"].forEach(mk=>{
     const items = plan[mk]||[];
     const rawVegIdxs = items.map((it,idx)=>({it,idx})).filter(({it})=>{
@@ -2700,7 +2706,7 @@ function capSweetBakedGoodOncePerDay(plan, tgt){
 // זו גרסה-עצמאית של אותו מנגנון בדיוק, לשימוש כרשת-ביטחון-אחרונה-ממש ברמת-השבוע (לכל יום בנפרד, אחרי הכל)
 function enforceOmegaRatioFinal(plan, tgt){
   if (!tgt) return plan;
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   const currentRatio = () => { const n=sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))); return (n.omega3||0)<ALA_PLAN_MIN ? 99 : 0; }; // ביקורת דיאטנית: מפעיל רק כשה-ALA מתחת למינימום (היחס — מידע בלבד)
   const O3_BOOST_CAPS = {flaxseed:24, chiaseeds:28, walnuts:15};
   const HIGH_O6_ITEMS = new Set(); // לא מקטינים אומגה 6 (ההנחיות העדכניות לא ממליצות על כך)
@@ -2763,7 +2769,7 @@ function ensureFlaxOrChiaPresence(plan, tgt, dayIdx=null){
   const g = wholeUnitStepG(fk) || 10;
   const nut = ingNut(fk, g);
   if (!(nut.kcal>0)) return plan;
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   if (dayKcalNow()+nut.kcal > tgt*1.00) return plan;
   const mk = ["breakfast","lunch","dinner"].find(m=>(plan[m]||[]).length) || Object.keys(plan)[0];
   if (mk) plan[mk] = [...(plan[mk]||[]), {fk, g}];
@@ -2788,7 +2794,7 @@ function enforceFruitOnePerMeal(plan, tgt){
     });
     return total;
   };
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   Object.keys(plan).forEach(mk=>{
     const items = plan[mk]||[];
     const fruitEntries = items.map((it,idx)=>({it,idx})).filter(({it})=>{
@@ -2878,7 +2884,7 @@ function enforceRawVegCapPreferSalad(plan, tgt){
     });
     return total;
   };
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   const usedToday = new Set(Object.values(plan).flat().map(x=>x.fk));
   Object.keys(plan).forEach(mk=>{
     const items = plan[mk]||[];
@@ -2946,7 +2952,7 @@ function ensureNutsSeedsDailyRepresentative(plan, tgt){
   const g = su && su.g ? su.g/(su.count||1) : 15;
   const nut = ingNut(cand, g);
   if (!(nut.kcal>0)) return plan;
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   const dayFatNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).fat||0;
   const fatCapG = tgt ? (tgt*0.26)/9 : Infinity;
   if (dayFatNow()+(nut.fat||0) > fatCapG*1.02) return plan;
@@ -2968,7 +2974,7 @@ function enforceBreadSpreadPairing(plan, tgt){
   const RAW_SPREAD_FKS = new Set(["avocado","tahiniFullRaw","tahiniRaw","peanutButter","almondbutter"]);
   const hasSpreadOf = it => { const fd=FDB[it.fk]||TEMP_FDB[it.fk]; return catOf(fd)==="ממרחים" || RAW_SPREAD_FKS.has(it.fk); };
   const usedToday = new Set(Object.values(plan).flat().map(x=>x.fk));
-  const dayKcalNow2 = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow2 = () => kcalSum(Object.values(plan).flat());
   // תיקון-באג (לבקשת המשתמש, אחרי דיווח על ממרח אבוקדו בבוקר בלי שום מאפה/לחם לצידו): אותו דפוס-באג בדיוק כמו
   // "לחם בלי ממרח" — ensureSpreadHasBakedGood הישנה כן ניסתה להוסיף מאפה, אבל רצה מוקדם מדי בתהליך ומה שהיא
   // הוסיפה יכול היה להימחק לגמרי אחר-כך (מתכון נמחק בשלמותו ע"י קיצוץ-התקרה, לא מוקטן בהדרגה). addItemFitted
@@ -3111,7 +3117,7 @@ function enforceLegumeVarietyAcrossDay(plan, tgt){
   const FALLBACK_BY_FAMILY = {
     beans: ["blackBeans","whiteBeans"], lentils:["redLentils"], chickpeas:["chickpeas"], peas:["greenPeas"], soy:["tofu","edamame"]
   };
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   ["breakfast","lunch","dinner"].forEach(mk=>{
     if (!(plan[mk]||[]).length) return;
     const items = plan[mk];
@@ -3156,7 +3162,7 @@ function ensureFatSourceInEveryMeal(plan, tgt){
     return fd._ings.some(ing=>{ const ifd=FDB[ing.fk]; return ifd && FAT_CATS.has(ifd.cat) && (ing.g||0)>=5; });
   });
   const NUTS_SEEDS_POOL = ["sunflowerS","pumpkinS","almonds","walnuts","sesame","cashews","hazelnuts","chiaseeds"].filter(fk=>FDB[fk]);
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   const dayFatNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).fat||0;
   const fatCapG = tgt ? (tgt*0.26)/9 : Infinity;
   ["breakfast","lunch","dinner"].forEach(mk=>{
@@ -3219,7 +3225,7 @@ function finalTrimOnlyIfOverCeiling(plan, tgt){
   // או enforceBreadSpreadPairing שרצות ממש לפני) — מה שגרם לימים "לצנוח" מתחת ל-91% במקום להיעצר קרוב ל-100%.
   // עכשיו מצמצמים בכמות מדויקת (לא ביחידות-נקיות) שסוגרת בדיוק את החריגה, לא יותר — זהו תיקון-מיקרו אחרון,
   // לא הקיצוץ הראשי (שכבר שמר על יחידות-נקיות למעלה בתהליך)
-  const dayKcalFinal = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalFinal = () => kcalSum(Object.values(plan).flat());
   const isProtected = (fk) => {
     const fd = FDB[fk]||TEMP_FDB[fk]; if (!fd) return false;
     if (!fd._isRecipe) return fd.cat==="פרי"; // תיקון: פרי מוגן (יחידה-אחת-בדיוק-לארוחה, לא אמור להיחתך חלקית)
@@ -3291,7 +3297,7 @@ function finalTrimOnlyIfOverCeiling(plan, tgt){
 function ensureMealShareFloor(plan, tgt){
   if (!tgt) return plan;
   const MIN_SHARE = {breakfast:0.20, lunch:0.20, dinner:0.16};
-  const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(plan).flat());
   const mealKcal = mk => sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
   ["breakfast","lunch","dinner"].forEach(mk=>{
     if (!plan[mk]) return;
@@ -3607,7 +3613,7 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   const SOYF=new Set(["edamame","tofu","tempeh","natto","soymilkOrgPlain","soymilkFortified","soyYogurtPlain","soyYogurtOrgPlain"]);
   const SOY_PROT=new Set(["soyYogurtOrgPlain","soyYogurtPlain","soymilkFortified","soymilkOrgPlain"]);
   const SPREAD_RAW=new Set(["tahiniFullRaw","tahiniRaw","peanutButter","almondbutter"]);
-  const bcat=fk=>{ const fd=fdOf(fk); if(!fd||!fd._isRecipe) return null; return bookCategoryOf({name:fd.he||"",foodGroup:fd._foodGroup||"",type:fd._recipeType||"",ings:fd._ings||[]}); };
+  const __bc=new Map(); /* ביצועים: קטגוריה לכל מזון — פעם אחת בכל קריאה */ const bcat=fk=>{ if (__bc.has(fk)) return __bc.get(fk); const fd=fdOf(fk); const v=(!fd||!fd._isRecipe)?null:bookCategoryOf({name:fd.he||"",foodGroup:fd._foodGroup||"",type:fd._recipeType||"",ings:fd._ings||[]}); __bc.set(fk,v); return v; };
   const isSoy=fk=>{ if (SOYF.has(fk)) return true; const fd=fdOf(fk); return !!(fd&&fd._isRecipe&&(fd._ings||[]).some(i=>SOYF.has(i.fk))); };
   const hasGrain=its=>its.some(it=>grainKind(it)!=null);
   // מתכון שיש בו מנת סויה של ממש (≥80 גר' למנה — יוגורט/משקה סויה, טופו) נחשב גם הוא "קטנית" לצורך הצמדת דגן-קטנית
@@ -3630,7 +3636,8 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   const breadPartnered=its=>its.some(it=>isSpread(it.fk)||SOY_YOG.has(it.fk)||it.fk==="avocado"||panDish(it.fk));
   // סוג הדגן לצורך הצמדה: "cereal" — שיבולת שועל/דייסה/קערה (יכולים לבוא עם משקה/יוגורט סויה); "grain" — דגן
   // מבושל/תבשיל דגנים/סלט דגנים (דורשים קטנית אמיתית או תבשיל קטניות). לחם, מאפים וממרחים — לא "דגן" להצמדה
-  const grainKind=it=>{ const fd=fdOf(it.fk); if(!fd) return null;
+  const __gk=new Map(); const grainKind=it=>{ if (__gk.has(it.fk)) return __gk.get(it.fk); const v=grainKind__(it); __gk.set(it.fk,v); return v; }; /* ביצועים: לפי המזון בלבד */
+  const grainKind__=it=>{ const fd=fdOf(it.fk); if(!fd) return null;
     if (!fd._isRecipe) { if (fd.cat!=="דגן"||BREAD.has(it.fk)) return null; return /^oat/.test(it.fk)?"cereal":"grain"; }
     const c=bcat(it.fk); if (c==="מאפים"||c==="ממרחים") return null; if (c==="דייסות"||c==="קערות") return "cereal";
     if (panDish(it.fk)) return null; // חביתה/שקשוקה (קמח חומוס/עדשים) — הצמדה משלה: לחם
@@ -3640,7 +3647,8 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
     return (catsInFoodGlobal(it.fk)||[]).includes("דגן")?"grain":null; };
   // קטנית לצורך הצמדה: קטנית גולמית, תבשיל/סלט קטניות, מתכון עם מנת סויה של ממש. משקה/יוגורט סויה — "soy" (רק לדגן
   // מסוג cereal). ממרחים (חומוס וכו') ומנות מחבת — יש להם הצמדה משלהם (לחם), לא נחשבים כאן
-  const legKind=it=>{ const fd=fdOf(it.fk); if(!fd) return null; if (SOY_PROT.has(it.fk)) return "soy";
+  const __lk=new Map(); const legKind=it=>{ if (__lk.has(it.fk)) return __lk.get(it.fk); const v=legKind__(it); __lk.set(it.fk,v); return v; };
+  const legKind__=it=>{ const fd=fdOf(it.fk); if(!fd) return null; if (SOY_PROT.has(it.fk)) return "soy";
     if (!fd._isRecipe) return capCatOf(it.fk)==="קטנית"||fd.cat==="קטנית"?"leg":null;
     const c=bcat(it.fk); if (c==="ממרחים"||c==="מאפים"||c==="פשטידות"||panDish(it.fk)) return null;
     // מתכון שהסויה בו היא רק משקה/יוגורט סויה (משקה סויה וקינמון, קערת יוגורט) — "soy", לא תחליף לתבשיל קטניות
@@ -3660,7 +3668,22 @@ function enforceDailyCalorieBand__impl(plan, tgt, dri, excl){
   const recipeOnly=fk=>RECIPE_ONLY_FKS.has(fk);
   const blocked=fk=>(recipeOnly(fk)&&!fdOf(fk)?._isRecipe) || (!!excl&&(excl.has(fk)||((fdOf(fk)?._ings)||[]).some(i=>excl.has(i.fk))));
   const add=(mk,fk,g)=>{ if (blocked(fk)) return false; plan[mk]=[...(plan[mk]||[]),{fk,g:Math.round(g*10)/10}]; return true; };
-  const dayT=()=>sumNuts(Object.values(plan).flat().filter(x=>x&&x.fk).map(({fk,g,soaked})=>nutC(fk,g,soaked)));
+  // ביצועים (לבקשת המשתמש: "לקצר את זמן התכנון במגוון רחב"): dayT נקרא כמה פעמים לכל מהלך נבדק — אם רשימת הפריטים לא
+  // השתנתה (אותם מזון, כמות והשריה, באותו סדר) מחזירים את הסכום הקודם. אותה תוצאה בדיוק
+  let __dtSig=null, __dtVal=null, __dtCk=null;
+  // גם כשהרשימה השתנתה רק בארוחה מאוחרת — ממשיכים מהסכום החלקי בסוף הארוחה האחרונה שלא השתנתה (אותו סדר חיבור בדיוק)
+  const dayT=()=>{ const its=[], bounds=[]; for (const v of Object.values(plan)) { if (Array.isArray(v)) { for (const x of v) if (x&&x.fk) its.push(x); bounds.push(its.length); } else if (v&&v.fk) { its.push(v); bounds.push(its.length); } }
+    const n=its.length; let pre=0;
+    if (__dtSig){ const m=Math.min(n,__dtSig.length/3); while (pre<m){ const x=its[pre]; if (__dtSig[pre*3]!==x.fk||__dtSig[pre*3+1]!==x.g||__dtSig[pre*3+2]!==!!x.soaked) break; pre++; }
+      if (pre===n&&__dtSig.length===n*3) return __dtVal; }
+    let start=0, acc=null; if (__dtCk) for (const [idx,snap] of __dtCk) { if (idx<=pre&&idx>start) { start=idx; acc=snap; } }
+    acc=acc?Object.assign({},acc):zeroNut(); const K=ALL_KEYS, L=K.length; const ck=[]; if (start>0) ck.push([start,Object.assign({},acc)]);
+    let bi=0; while (bi<bounds.length&&bounds[bi]<=start) bi++;
+    for (let j=start;j<n;j++){ const x=its[j]; const nn=nutC(x.fk,x.g,x.soaked); if (nn) for (let i=0;i<L;i++){ const k=K[i]; const v=nn[k]; if (v) acc[k]+=v; }
+      if (bi<bounds.length&&bounds[bi]===j+1){ ck.push([j+1,Object.assign({},acc)]); bi++; while (bi<bounds.length&&bounds[bi]===j+1) bi++; } }
+    if (__dtCk) for (const c of __dtCk) if (c[0]<=start&&c[0]>0&&!ck.some(z=>z[0]===c[0])) ck.push(c);
+    const sig=new Array(n*3); for (let i=0;i<n;i++){ const x=its[i]; sig[i*3]=x.fk; sig[i*3+1]=x.g; sig[i*3+2]=!!x.soaked; }
+    __dtSig=sig; __dtCk=ck; __dtVal=acc; return __dtVal; };
   const hasCat=(its,cat)=>its.some(it=>(catsInFoodGlobal(it.fk)||[]).includes(cat));
 
   // ── הצמדות ──
@@ -5028,7 +5051,7 @@ function enforceCalorieCeilingAndFloor(plan, tgt){
   // הטווח 98%-100%, לא ממשיך להקטין הלאה. שלב ב' (אם הקיטוע החמיץ את הטווח וירד מתחת ל-98%, למשל בגלל צעד גדול
   // מדי) ממלא בחזרה, באותה לוגיקה כמו רצפת-הקלוריות של סעיף 9
   if (tgt) {
-    const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+    const dayKcalNow = () => kcalSum(Object.values(plan).flat());
     let guardCeil=0;
     while (dayKcalNow() > tgt*1.00 && guardCeil<60) {
       guardCeil++;
@@ -5477,7 +5500,7 @@ function applyMealHygieneFinalRules(plan, tgt){
           }
           if (addedFk) {
             const addedKcal = ingNut(addedFk, addedG).kcal;
-            const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+            const totalKcalNow = () => kcalSum(Object.values(plan).flat());
             if (!tgt || totalKcalNow()+addedKcal <= tgt*1.00) items = [...items, {fk:addedFk, g:addedG}];
           }
         }
@@ -5506,7 +5529,7 @@ function applyMealHygieneFinalRules(plan, tgt){
         }
         if (addedFk) {
           const addedKcal = ingNut(addedFk, addedG).kcal;
-          const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+          const totalKcalNow = () => kcalSum(Object.values(plan).flat());
           if (!tgt || totalKcalNow()+addedKcal <= tgt*1.00) items = [...items, {fk:addedFk, g:addedG}];
         }
       }
@@ -5697,7 +5720,7 @@ function applyMealHygieneFinalRules(plan, tgt){
       });
       if (!hasAccompaniment) {
         const usedTodayForAdd = new Set(Object.values(plan).flat().map(x=>x.fk));
-        const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+        const totalKcalNow = () => kcalSum(Object.values(plan).flat());
         const avocadoSpreadCand = Object.keys(TEMP_FDB).find(id=>{
           const fd=TEMP_FDB[id];
           return fd && fd._isRecipe && bookCatOfEntry(fd)==="ממרחים" && !usedTodayForAdd.has(id) && (fd.he||"").includes("אבוקדו");
@@ -5735,7 +5758,7 @@ function applyMealHygieneFinalRules(plan, tgt){
       const hasBakedGoodNow = items.some(it=>isBreadLikeFk(it.fk));
       if (hasSpreadOrPanFried && !hasBakedGoodNow) {
         const usedTodayForAdd = new Set(Object.values(plan).flat().map(x=>x.fk));
-        const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+        const totalKcalNow = () => kcalSum(Object.values(plan).flat());
         // תיקון-באג (לבקשת המשתמש, אחרי ממרח אבוקדו בבוקר בלי מאפה לידו): אם כל מתכוני-המאפים כבר בשימוש היום,
         // לא מוותרים בשקט — עדיף לחזור על מאפה שכבר קיים באותו יום מאשר להשאיר ממרח בלי מאפה לצידו בכלל
         const bakedCand = shuffleArr(Object.keys(TEMP_FDB).filter(id=>isBreadLikeFk(id) && !usedTodayForAdd.has(id)))[0]
@@ -5856,7 +5879,7 @@ function applyMealHygieneFinalRules(plan, tgt){
         guardMealVeg++;
         const usedTodayForAdd = new Set(Object.values(plan).flat().map(x=>x.fk));
         const usedInThisMeal = new Set((plan[mk]||[]).map(x=>x.fk));
-        const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+        const totalKcalNow = () => kcalSum(Object.values(plan).flat());
         // עדיפות ל"סלט בסיס" (קטן/בינוני/גדול) — סלט-ירקות אמיתי, לא דגן/קטנית-דומיננטי (לבקשת המשתמש: "עשה
         // שימוש רב יותר בסלט בסיס"); אחרת, עגבנייה+מלפפון ספציפית כברירת מחדל (לא רשימה אקראית של 5 ירקות)
         const baseSaladCand = Object.keys(TEMP_FDB).find(id=>{
@@ -5888,7 +5911,7 @@ function applyMealHygieneFinalRules(plan, tgt){
     MAIN_MEALS.forEach(mk=>{
       if (hasFruit(mk)) return;
       const usedTodayForAdd = new Set(Object.values(plan).flat().map(x=>x.fk));
-      const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const totalKcalNow = () => kcalSum(Object.values(plan).flat());
       const ff = SAFE_FRUIT_FALLBACK.find(fk=>!usedTodayForAdd.has(fk));
       if (ff) {
         const addedG = getServingUnit(ff,FDB[ff],"he")?.g||120;
@@ -5926,7 +5949,7 @@ function applyMealHygieneFinalRules(plan, tgt){
     });
     if (!hasSaladToday()) {
       const usedTodayForAdd = new Set(Object.values(plan).flat().map(x=>x.fk));
-      const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const totalKcalNow = () => kcalSum(Object.values(plan).flat());
       const saladCand = Object.keys(TEMP_FDB).find(id=>{
         const fd=TEMP_FDB[id];
         return fd && isRealVegSaladEntry(fd) && !usedTodayForAdd.has(id);
@@ -5946,7 +5969,7 @@ function applyMealHygieneFinalRules(plan, tgt){
     while (countVegUnits() < 7 && guardVeg<20) {
       guardVeg++;
       const usedTodayForAdd = new Set(Object.values(plan).flat().map(x=>x.fk));
-      const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const totalKcalNow = () => kcalSum(Object.values(plan).flat());
       const vegCountInMeal = mk => (plan[mk]||[]).filter(it=>{ const fd=FDB[it.fk]; return fd && !fd._isRecipe && (fd.cat==="ירק"||fd.cat==="עלים"); }).length;
       const targetMeal = MAIN_MEALS.find(mk=>vegCountInMeal(mk)<2);
       const vf = VEG_FALLBACK_POOL.find(fk=>!usedTodayForAdd.has(fk));
@@ -6000,7 +6023,7 @@ function applyMealHygieneFinalRules(plan, tgt){
     while (countFruitUnits() < 5 && guardFruit<15) {
       guardFruit++;
       const usedTodayForAdd = new Set(Object.values(plan).flat().map(x=>x.fk));
-      const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const totalKcalNow = () => kcalSum(Object.values(plan).flat());
       const vf = FRUIT_FALLBACK_POOL.find(fk=>!usedTodayForAdd.has(fk));
       let acted=false;
       if (vf) {
@@ -6018,7 +6041,7 @@ function applyMealHygieneFinalRules(plan, tgt){
           if (su && !su.weightOnly && su.g) {
             const unitG = su.g/(su.count||1);
             const addedKcal = ingNut(fruitItem.orig.fk, unitG).kcal;
-            const totalKcalNow2 = sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+            const totalKcalNow2 = kcalSum(Object.values(plan).flat());
             if (!tgt || totalKcalNow2+addedKcal <= tgt*1.00) {
               plan[fruitItem.mk][fruitItem.idx] = {...fruitItem.orig, g: Math.round((fruitItem.orig.g+unitG)*100)/100};
               acted=true;
@@ -6094,7 +6117,7 @@ function applyMealHygieneFinalRules(plan, tgt){
     });
     if (!hasAnyToday) {
       const usedTodayForAdd = new Set(Object.values(plan).flat().map(x=>x.fk));
-      const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const totalKcalNow = () => kcalSum(Object.values(plan).flat());
       const avocadoSpreadCand = Object.keys(TEMP_FDB).find(id=>{
         const fd=TEMP_FDB[id];
         return fd && fd._isRecipe && bookCatOfEntry(fd)==="ממרחים" && !usedTodayForAdd.has(id) && (fd.he||"").includes("אבוקדו");
@@ -6143,7 +6166,7 @@ function applyMealHygieneFinalRules(plan, tgt){
       return fd.cat==="פרי" || fd.cat==="קטנית" || BEVERAGE_FKS.has(fk) || fk==="soyYogurtPlain" || fk==="soyYogurtOrgPlain";
     };
     const servingGLocal = fk => { const fd=FDB[fk]||TEMP_FDB[fk]; if(!fd) return 100; return fd._isRecipe?fd._servingG:(getServingUnit(fk,fd,"he")?.g||100); };
-    const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+    const totalKcalNow = () => kcalSum(Object.values(plan).flat());
     const mealKcalOf = mk => sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
     const mealHasRoom = (mk, addedKcal) => !MEAL_SHARE_MAX[mk] || mealKcalOf(mk)+addedKcal <= tgt*MEAL_SHARE_MAX[mk]*1.02;
     const FILLER_POOL_FINAL = ["brownRiceCooked","quinoaCooked","bulgurCooked","buckwheatCooked","banana","apple","orange","kiwi","grapes","mango","avocado","chickpeas","blackBeans","whiteBeans"];
@@ -6277,7 +6300,7 @@ function applyMealHygieneFinalRules(plan, tgt){
       if (f1) {
         const g1 = getServingUnit(f1,FDB[f1],"he")?.g||120;
         const addedKcal = ingNut(f1,g1).kcal;
-        const totalKcalNow = sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+        const totalKcalNow = kcalSum(Object.values(plan).flat());
         if (!tgt || totalKcalNow+addedKcal <= tgt*1.00) plan.snack = [...(plan.snack||[]), {fk:f1, g:g1}];
       }
     }
@@ -6311,7 +6334,7 @@ function applyMealHygieneFinalRules(plan, tgt){
       const t = sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
       return t.kcal>0 ? (t.protein*4/t.kcal)*100 : 0;
     };
-    const totalKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+    const totalKcalNow = () => kcalSum(Object.values(plan).flat());
 
     // שלב א: גדילה/הוספה, אך אך ורק בתוך המרווח הקלורי הקיים עד 100% מהיעד — לעולם לא מעבר
     let guardP=0;
@@ -8433,7 +8456,7 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
     // תיקון-באג (לבקשת המשתמש, אחרי ארוחת צהריים ב-37.7% מהיעד היומי): תקרת-חלק לכל ארוחה, כדי שמנגנון המילוי
     // הזה לא ידחוף ארוחה ספציפית מעבר לתקרת ה-30-35%/30-35%/20-30% שלה, גם אם סך היום עדיין תקין
     const FILLER_MEAL_CAP = mk => mk==="dinner" ? tgt*0.26 : tgt*0.35;
-    const totalKcal = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+    const totalKcal = () => kcalSum(Object.values(plan).flat());
     const fatOkAfter = (mk, trialList) => mealMacroPctOf(trialList).f <= 25.5;
     let guardTop=0;
     // תיקון-באג (לבקשת המשתמש, אחרי תקרית "9 כוסות משקה סויה"): הלולאה הקודמת בחרה תמיד את אותו פריט-ממלא
@@ -8521,7 +8544,7 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
   // השלבים האלה יכולים להזיז קלוריות בין ארוחות בדרך שמפירה את החלוקה שנאכפה מוקדם יותר בפונקציה
   {
     const mealKcalF = mk => sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
-    const totalKcalF = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+    const totalKcalF = () => kcalSum(Object.values(plan).flat());
     const FILLER_POOL_F = ["chickpeas","redLentils","blackBeans","whiteBeans","greenLentils","brownRiceCooked","quinoaCooked","banana","apple","orange","soymilkOrgPlain","soyYogurtPlain","soyYogurtOrgPlain","mungBeans","pearlBarleyCooked","freekeh","couscousCooked","sweetPotatoCooked","splitPeas"];
     const fatOkAfterF = (mk, trialList) => mealMacroPctOf(trialList).f <= 25.5;
     const growSafeF = (mk, minKcal) => {
@@ -8814,7 +8837,7 @@ function generateDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},exc
   const finalMealHasLegume = its => (its||[]).some(it=>capCatOf(it.fk)==="קטנית"||SOY_PROTEIN_ALT.has(it.fk));
     shuffleArr(["breakfast","lunch","dinner"]).forEach(mk=>{
       if (!(plan[mk]||[]).length) return;
-      const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const dayKcalNow = () => kcalSum(Object.values(plan).flat());
       const usedTodayFinal = () => new Set(Object.values(plan).flat().map(it=>it.fk));
       if (!finalMealHasGrain(plan[mk])) {
         const cand = FINAL_GRAIN_FALLBACK.find(fk=>!usedTodayFinal().has(fk)) || shuffleArr(FINAL_GRAIN_FALLBACK)[0];
@@ -11349,7 +11372,7 @@ function generatePersonalDayPlan__impl(target, recipes=[], existingMeals=null, d
     // תיקון-באג (לבקשת המשתמש, אחרי ארוחת צהריים ב-37.7% מהיעד היומי): תקרת-חלק לכל ארוחה, כדי שמנגנון המילוי
     // הזה לא ידחוף ארוחה ספציפית מעבר לתקרת ה-30-35%/30-35%/20-30% שלה, גם אם סך היום עדיין תקין
     const FILLER_MEAL_CAP = mk => mk==="dinner" ? tgt*0.26 : tgt*0.35;
-    const totalKcal = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+    const totalKcal = () => kcalSum(Object.values(plan).flat());
     const fatOkAfter = (mk, trialList) => mealMacroPctOf(trialList).f <= 25.5;
     let guardTop=0;
     // תיקון-באג (לבקשת המשתמש, אחרי תקרית "9 כוסות משקה סויה"): הלולאה הקודמת בחרה תמיד את אותו פריט-ממלא
@@ -11587,7 +11610,7 @@ function generatePersonalDayPlan__impl(target, recipes=[], existingMeals=null, d
     shuffleArr(["breakfast","lunch","dinner"]).forEach(mk=>{
       if (!(plan[mk]||[]).length) return;
       const curKcal = () => sumNuts(plan[mk].map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
-      const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const dayKcalNow = () => kcalSum(Object.values(plan).flat());
       const usedTodayFinal = () => new Set(Object.values(plan).flat().map(it=>it.fk));
       if (!mealHasGrain(plan[mk])) {
         const cand = FINAL_GRAIN_FALLBACK.find(fk=>!usedTodayFinal().has(fk)) || shuffleArr(FINAL_GRAIN_FALLBACK)[0];
@@ -12915,7 +12938,7 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
     // נוצל היום, ורק אם אף אחד לא מתאים לתקציב (≤120% מהיעד), נופלים לגולמי כמקודם
     const tryStewFirst = (pool, mk) => {
       const usedTodayFinal2 = new Set(Object.values(plan).flat().map(it=>it.fk));
-      const dayKcalNow2 = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const dayKcalNow2 = () => kcalSum(Object.values(plan).flat());
       for (const rfk of usageWeightedOrder(pool.filter(f=>!usedTodayFinal2.has(f)), recipeUsage)) {
         const rfd = TEMP_FDB[rfk]; if (!rfd) continue;
         // תיקון (לבקשת המשתמש: "אל תציע רבעי מנות, רק שלמות") — רק מנה מלאה
@@ -12927,7 +12950,7 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
     };
     shuffleArr(["breakfast","lunch","dinner"]).forEach(mk=>{
       if (!(plan[mk]||[]).length) return;
-      const dayKcalNow = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const dayKcalNow = () => kcalSum(Object.values(plan).flat());
       const usedTodayFinal = () => new Set(Object.values(plan).flat().map(it=>it.fk));
       if (!finalMealHasGrain2(plan[mk]) && !tryStewFirst(grainStewPool, mk)) {
         const cand = FINAL_GRAIN_FALLBACK.find(fk=>!usedTodayFinal().has(fk)) || shuffleArr(FINAL_GRAIN_FALLBACK)[0];
@@ -12963,7 +12986,7 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
       if (!cand) return;
       const g = getServingUnit(cand,FDB[cand],"he")?.g || 150;
       const nut = ingNut(cand,g);
-      const dayKcalNow2 = sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const dayKcalNow2 = kcalSum(Object.values(plan).flat());
       if (nut.kcal>0 && dayKcalNow2+nut.kcal <= tgt*1.01) plan[mk].push({fk:cand,g});
     });
   }
@@ -13140,7 +13163,7 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
     // תיקון-באג (לבקשת המשתמש, אחרי ארוחת צהריים ב-37.7% מהיעד היומי): תקרת-חלק לכל ארוחה, כדי שמנגנון המילוי
     // הזה לא ידחוף ארוחה ספציפית מעבר לתקרת ה-30-35%/30-35%/20-30% שלה, גם אם סך היום עדיין תקין
     const FILLER_MEAL_CAP = mk => mk==="dinner" ? tgt*0.26 : tgt*0.35;
-    const totalKcal = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+    const totalKcal = () => kcalSum(Object.values(plan).flat());
     const fatOkAfter = (mk, trialList) => mealMacroPctOf(trialList).f <= 25.5;
     // תיקון-באג (לבקשת המשתמש, אחרי גילוי שהמילוי כאן ובהמשך הפונקציה מעולם לא בדק נתרן בכלל): sodiumUsed החיצוני
     // כבר לא אמין בשלב הזה (balanceMealMacros/trimMealS יכלו להסיר פריטים בלי לעדכן אותו) — לכן מחשבים כאן נתרן
@@ -13313,7 +13336,7 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
           const step = wholeUnitStepG(it.fk) || Math.round(it.g*0.25*10)/10;
           if (step<=0) continue;
           const addedNut = ingNut(it.fk, step);
-          const curTotal = sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+          const curTotal = kcalSum(Object.values(plan).flat());
           if (curTotal+addedNut.kcal > tgt*1.00) continue;
           // תיקון-באג (לבקשת המשתמש, אחרי עלייה חדה בהפרות שומן≤25% שנצפתה): בודקים שההגדלה לא דוחפת את שומן
           // הארוחה מעל 25% — לא מספיק לשלול רק קטגוריות שומן/אגוזים, כי פריטים "מותרים" אחרים (למשל טופו) גם
@@ -13347,7 +13370,7 @@ function generateRecipesNSFDayPlan__impl(target, recipes=[], dri=null, wKg=0, hp
     // או פריט גולמי) נבדקת גם מול תקרת-הארוחה שלה עצמה (עם מרווח סביר של 10% מעבר לתקרה, כדי לא לחסום לגמרי
     // השלמה קטנה), לא רק מול התקרה היומית הכוללת
     {
-      const totalKcalF = () => sumNuts(Object.values(plan).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+      const totalKcalF = () => kcalSum(Object.values(plan).flat());
       const fatOkAfterF = (mk, trialList) => mealMacroPctOf(trialList).f <= 25.5;
       const mealCapF = mk => mk==="breakfast" ? bfMaxS2*1.2 : mk==="lunch" ? lunchMaxS2*1.2 : dinnerTargetS2*1.4;
       // תיקון-באג (לבקשת המשתמש): כמו בשלב FILLER_POOL הקודם, גם ההשלמה הזו מעולם לא בדקה נתרן — מחשבים טרי
@@ -14058,7 +14081,7 @@ function ensureVegInEveryMainMeal(day, tgt){
   // תיקון-באג (לבקשת המשתמש, אחרי דיווח על יום שחרג ל-104.6% מהיעד): הפונקציה הזו הוסיפה ירקות ללא שום התייחסות
   // לתקציב הקלורי היומי — בניגוד לתקרה הקשיחה (100%) שכבר נאכפת בשלב קודם בפונקציה הקוראת. עכשיו כל תוספת
   // נבדקת קודם מול היעד, בדיוק כמו ש-ensureCalorieFloor כבר עושה לתוספות שלה
-  const dayKcalNow = () => sumNuts(Object.values(day).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(day).flat());
   // תיקון (לבקשת המשתמש, אחרי סימולציות שהראו שארוחת הערב נכשלת הרבה יותר משאר הארוחות): הסדר הקבוע
   // ["breakfast","lunch","dinner"] גרם לארוחת הערב להיות תמיד האחרונה שמקבלת תור על התקציב הנותר — כשהתקציב
   // מוגבל, היא זו שתמיד מפסידה. סדר אקראי מבטיח שעל פני הרבה ימים/הרצות, אף ארוחה לא מקופחת שיטתית
@@ -14210,7 +14233,7 @@ function ensureSaladAtLeastOncePerDay(day, tgt){
   };
   const hasSaladAlready = Object.values(day).flat().some(isSaladRecipe);
   if (hasSaladAlready) return;
-  const dayKcalNow = () => sumNuts(Object.values(day).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(day).flat());
   const usedToday = new Set(Object.values(day).flat().map(x=>x.fk));
   const saladCand = shuffleArr(Object.keys(TEMP_FDB).filter(id=>{
     const fd = TEMP_FDB[id];
@@ -14357,7 +14380,7 @@ function ensureFruitDailyMinimum(day, tgt){
     });
     return total;
   };
-  const dayKcalNow = () => sumNuts(Object.values(day).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(day).flat());
   const pool = ["apple","orange","banana","pear","kiwi","grapes","mango","peach","pomegranate"];
   let guard=0;
   while (countFruitUnits() < 5 && guard<10) {
@@ -14389,7 +14412,7 @@ function ensureSpreadHasBakedGood(day, tgt){
   // שונות צריכות מאפה, שתיהן קיבלו את אותו מתכון בדיוק — ו-preventSameRecipeAcrossMeals (שרצה אחר-כך) הסירה
   // אחת מהן, משאירה ארוחה אחת עדיין בלי מאפה. עכשיו בוחרים מועמד-חדש-ולא-בשימוש לכל ארוחה בנפרד
   const bakedPool = () => Object.keys(TEMP_FDB).filter(id=>catOf(TEMP_FDB[id])==="מאפים" && isBreadLikeFk(id));
-  const dayKcalNow = () => sumNuts(Object.values(day).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(day).flat());
   const usedToday = () => new Set(Object.values(day).flat().map(it=>it.fk));
   shuffleArr(["breakfast","lunch","dinner"]).forEach(mk=>{
     if (!day[mk]) return;
@@ -14426,7 +14449,7 @@ function ensureDailyVegSalad(day, tgt){
   const isVegSalad = fd => { const c = catOf(fd); return (c==="סלטי ירקות" || c==="ארוחות סלט") && !isLegumeDominantGlobal(fd) && !isGrainDominantGlobal(fd); };
   const hasSaladToday = Object.values(day).flat().some(it=>isVegSalad(FDB[it.fk]||TEMP_FDB[it.fk]));
   if (hasSaladToday) return;
-  const dayKcalNow = () => sumNuts(Object.values(day).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(day).flat());
   const usedToday = new Set(Object.values(day).flat().map(x=>x.fk));
   const candidates = shuffleArr(Object.keys(TEMP_FDB).filter(id=>isVegSalad(TEMP_FDB[id]) && !usedToday.has(id)));
   const orderedMeals = ["breakfast","lunch","dinner"].filter(mk=>day[mk]).sort((a,b)=>{
@@ -14451,7 +14474,7 @@ function ensureDailyVegSalad(day, tgt){
 // פונקציה עצמאית זו רצה ממש אחרונה מכל השאר, ומשלימה בחזרה אם היום נפל מתחת ל-98% מהיעד
 function ensureCalorieFloor(day, tgt){
   if (!tgt) return;
-  const dayKcalNow = () => sumNuts(Object.values(day).flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))).kcal;
+  const dayKcalNow = () => kcalSum(Object.values(day).flat());
   const minKcal = tgt*0.98;
   // תיקון (לבקשת המשתמש: "שוב יש נפילה מיעד הקלורי") — אותר: תיקון-תקרת-המנגן הקודם יכול לחסום גם את הדגנים
     // כאן (קינואה/כוסמת עתירי-מנגן) כשמנגן כבר קרוב לתקרה, ומצומצם מדי אם גם באנана/תפוח כבר "בשימוש" באותו
