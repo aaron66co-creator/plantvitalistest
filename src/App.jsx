@@ -51,6 +51,8 @@ function resolveHealthProfile(profile){
 }
 
 const MEAL_KEYS=["breakfast","snack","lunch","dinner"];
+// סדר התצוגה (לבקשת המשתמש): ארוחת הביניים בין הצהריים לערב. MEAL_KEYS נשאר כמו שהוא לחישובים ולמחוללים
+const MEAL_DISPLAY=["breakfast","lunch","snack","dinner"];
 const WEEK_DAYS_HE=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
 const WEEK_DAYS_EN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 // "מן החי" — קטגוריה חדשה לגרסה הצמחונית (חלב/ביצים) בלבד. ממוקמת אחרונה בכוונה כדי לא לשבש שום קוד קיים
@@ -17070,7 +17072,7 @@ function DayPlanModal({plan,target,wKg,profile,lang,recipes,onClose,onApply,onRe
             {mode==="recipesNSF"?tx.recipesNSFDayPlanEmpty:tx.personalDayPlanEmpty}
           </div>
         ) : null}
-        {MEAL_KEYS.map(mk=>{
+        {MEAL_DISPLAY.map(mk=>{
           const mealTotals = sumNuts((plan[mk]||[]).map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
           return(
           <div key={mk} style={{background:"#FFFFFF",borderRadius:10,padding:"8px 10px",marginBottom:8,border:"1px solid #E2DED4"}}>
@@ -17215,7 +17217,7 @@ function MixedDayPlanModal({data,target,wKg,hp,profile,lang,onClose,onApply,onRe
 
         <div style={{background:"#FFFFFF",borderRadius:12,padding:"10px 12px",marginBottom:10,border:"1px solid #E2DED4"}}>
           <div style={{fontSize:11,fontWeight:700,color:"#1E3A2B",marginBottom:8}}>{lang==="he"?"📋 פירוט רכיבים לפי ארוחה (הגרסה המעורבת)":"📋 Ingredient breakdown by meal (mixed version)"}</div>
-          {MEAL_KEYS.map(mk=>{
+          {MEAL_DISPLAY.map(mk=>{
             const mealItems=mixedPlan[mk]||[];
             if(!mealItems.length) return null;
             return(
@@ -17354,7 +17356,7 @@ function MixedWeekPlanModal({data,target,wKg,hp,profile,lang,recipes,onClose,onA
                 <span style={{fontSize:11,fontWeight:700,color:"#1E3A2B"}}>{dayLabelsArr[i]} <span style={{fontSize:9,color:"#b06a1a",fontWeight:600}}>🥚🥛×{daySubs}</span></span>
                 <span style={{fontSize:10,color:"#6B7C72"}}>{!simple&&<>{dayKcal} kcal </>}{openDay===dk?"▲":"▼"}</span>
               </div>
-              {openDay===dk&&MEAL_KEYS.map(mk=>{
+              {openDay===dk&&MEAL_DISPLAY.map(mk=>{
                 const dayMealItems=mixedWeek[dk]?.[mk]||[];
                 if (!dayMealItems.length) return null;
                 return(
@@ -17434,7 +17436,7 @@ function WeekPlanModal({week,target,wKg,profile,lang,recipes,onClose,onApply,onR
               <span style={{fontSize:13,fontWeight:700,color:"#1E3A2B"}}>{tx.weekPlanDayLabel} {dayLabels[i]}</span>
               <span style={{fontSize:11,fontWeight:600,color:"#6B7C72"}}>{openDay===dk?"▲":"▼"}</span>
             </div>
-            {openDay===dk&&MEAL_KEYS.map(mk=>{
+            {openDay===dk&&MEAL_DISPLAY.map(mk=>{
               const dayMealItems = week[dk]?.[mk]||[];
               if (!dayMealItems.length) return null;
               const mealTotals = sumNuts(dayMealItems.map(({fk,g,soaked})=>ingNut(fk,g,soaked)));
@@ -18378,7 +18380,7 @@ function SavedDaysModal({onClose,onLoad,onSaveToday,lang}){
               <div style={{fontSize:9,color:"#6B7C72"}}>{d.ts?new Date(d.ts).toLocaleDateString():""}</div>
             </div>
             <div style={{fontSize:9,color:"#6B7C72",marginBottom:6}}>
-              {MEAL_KEYS.filter(mk=>(d.dayData?.[mk]||[]).length).map(mk=>`${mealIcon[mk]} ${(d.dayData[mk]||[]).length}`).join("  ·  ")}
+              {MEAL_DISPLAY.filter(mk=>(d.dayData?.[mk]||[]).length).map(mk=>`${mealIcon[mk]} ${(d.dayData[mk]||[]).length}`).join("  ·  ")}
             </div>
             <div style={{display:"flex",gap:5,marginBottom:7}}>
               {[{l:"kcal",v:Math.round(calcKcalActual(tot)),c:"#8C6D53"},{l:tx.carb,v:c+"%",c:"#b8860b"},{l:tx.prot,v:p+"%",c:"#3a7bc8"},{l:tx.fat,v:f+"%",c:"#5c8a63"}].map(({l,v,c:cl})=>(
@@ -18855,7 +18857,7 @@ function buildWeekMenuPrintHTML(week, lang){ const he=lang==="he";
   const ML={breakfast:he?"🌅 בוקר":"🌅 Breakfast",snack:he?"🍎 ביניים":"🍎 Snack",lunch:he?"☀️ צהריים":"☀️ Lunch",dinner:he?"🌙 ערב":"🌙 Dinner"};
   const body=[0,1,2,3,4,5,6].map(d=>{ const day=week[`d${d}`]||{}; const any=MEAL_KEYS.some(mk=>(day[mk]||[]).length); if(!any) return "";
     const k=Math.round(sumNuts(MEAL_KEYS.flatMap(mk=>day[mk]||[]).map(x=>ingNut(x.fk,x.g,x.soaked))).kcal||0);
-    return `<div class="box"><h2>${he?"יום":""} ${DAYS[d]} <span class="muted">· ${k} ${he?"קק\"ל":"kcal"}</span></h2>${MEAL_KEYS.map(mk=>{ const its=day[mk]||[]; if(!its.length) return "";
+    return `<div class="box"><h2>${he?"יום":""} ${DAYS[d]} <span class="muted">· ${k} ${he?"קק\"ל":"kcal"}</span></h2>${MEAL_DISPLAY.map(mk=>{ const its=day[mk]||[]; if(!its.length) return "";
       const note=(mk==="lunch"||mk==="dinner")?cookNoteOf(week,d,lang,mk):null; const nfk=note?cookNoteFkOf(week,d,mk):null; // ההערה ליד המנה עצמה
       return `<h3>${ML[mk]}</h3><ul>${its.map(x=>`<li>${escH(itemTextOf(x.fk,x.g,lang))}${OMEGA_SEED_TBSP_G[x.fk]!=null||SALAD_ADDON_FKS.has(x.fk)?addonWord(x.fk,he?"he":"en"):""}${note&&x.fk===nfk?` <span class="muted">${escH(note)}</span>`:""}</li>`).join("")}</ul>`; }).join("")}</div>`; }).join("");
   return `<!doctype html><html dir="${he?"rtl":"ltr"}"><head><meta charset="utf-8"><title>PlantVitalis</title><style>${PRINT_CSS}</style></head><body><h1>${he?"תפריט השבוע":"This week's menu"}</h1><div class="muted">PlantVitalis</div>${body||`<p class="muted">${he?"עוד לא נבנה תפריט לשבוע הזה.":"No menu has been built for this week yet."}</p>`}</body></html>`; }
@@ -19466,7 +19468,7 @@ function buildPractitionerReportHTML({lang,profile,dri,hp,target,hist,weekStart,
   // מזונות שנאכלו — לשבוע הנוכחי בלבד (לשבועות קודמים, ארוחות שסומנו "כמתוכנן" מפנות לתפריט שכבר השתנה)
   let foodsHtml="";
   if (isCur && itemsOf) foodsHtml=sum.docs.map(dk=>{ const day=itemsOf(dk)||{};
-    const meals=MEAL_KEYS.map(mk=>{ const its=(day[mk]||[]).filter(x=>x&&x.fk); if(!its.length) return ""; return `<div class="meal"><b>${esc(T[lang][mk])}:</b> ${its.map(x=>`${esc(foodName(x.fk,lang))} ${Math.round(x.g)}${he?"ג'":"g"}`).join(" · ")}</div>`; }).join("");
+    const meals=MEAL_DISPLAY.map(mk=>{ const its=(day[mk]||[]).filter(x=>x&&x.fk); if(!its.length) return ""; return `<div class="meal"><b>${esc(T[lang][mk])}:</b> ${its.map(x=>`${esc(foodName(x.fk,lang))} ${Math.round(x.g)}${he?"ג'":"g"}`).join(" · ")}</div>`; }).join("");
     return `<div class="day"><h4>${esc(dayName(dk))} ${esc(dispDate(dk))}</h4>${meals}</div>`; }).join("");
   const summaryLines=[];
   if (sum.assumed) summaryLines.push(he?`שימו לב: ${sum.assumed} מתוך ${sum.docs.length} הימים לא תועדו וחושבו לפי התפריט המתוכנן — ייתכן שבפועל נאכל אחרת.`:`Note: ${sum.assumed} of ${sum.docs.length} days were not logged and were counted from the planned menu — actual intake may differ.`);
@@ -19787,7 +19789,7 @@ function RestOfWeekModal({lang,data,onApply,onClose}){
           <button onClick={()=>setMore(o=>!o)} aria-expanded={more} style={{border:"none",background:"transparent",color:"#1f5f8b",fontSize:14,fontWeight:700,cursor:"pointer",padding:"2px 0",marginBottom:6}}>📋 {he?"מה ישתנה":"What changes"} {more?"▲":"▼"}</button>
           {more&&changed.map(d=>(<div key={d.dk} style={{background:"#FFFFFF",borderRadius:12,padding:"8px 12px",border:"1px solid #E2DED4",marginBottom:8}}>
             <div style={{fontSize:14,fontWeight:800,color:"#1E3A2B",marginBottom:3}}>{dayName(d)} {shortDate(d.dk)}</div>
-            {MEAL_KEYS.filter(mk=>d.ch.some(c=>c.mk===mk)).map(mk=>(<div key={mk} style={{fontSize:14,color:"#2F3B34",padding:"2px 0",lineHeight:1.5}}><span style={{color:"#6B7C72"}}>{T[lang][mk]}: </span>{d.ch.filter(c=>c.mk===mk).map(c=>c.t).join(" · ")}</div>))}
+            {MEAL_DISPLAY.filter(mk=>d.ch.some(c=>c.mk===mk)).map(mk=>(<div key={mk} style={{fontSize:14,color:"#2F3B34",padding:"2px 0",lineHeight:1.5}}><span style={{color:"#6B7C72"}}>{T[lang][mk]}: </span>{d.ch.filter(c=>c.mk===mk).map(c=>c.t).join(" · ")}</div>))}
           </div>))}
           <div style={{display:"flex",gap:8,marginTop:6}}>
             <button onClick={onApply} style={{...btn,flex:2,border:"none",background:"#1E3A2B",color:"#FFFFFF"}}>{he?"✅ עדכן":"✅ Update"}</button>
@@ -19843,7 +19845,7 @@ function FoodLogPanel({logDate,onDateChange,meals,actualIntake,onMarkPlanned,onF
         </div>
         <button onClick={()=>onDateChange(shiftDateKey(logDate,lang==="he"?-1:1))} style={{background:"transparent",border:"none",color:"#8C6D53",fontSize:16,cursor:"pointer",padding:"4px 10px"}}>{lang==="he"?"◀":"▶"}</button>
       </div>
-      {MEAL_KEYS.map(mk=>(
+      {MEAL_DISPLAY.map(mk=>(
         <FoodLogMealRow key={mk} mealKey={mk} lang={lang} simple={simple}
           status={actualDay[mk]?.status||"unset"}
           items={actualDay[mk]?.status && actualDay[mk].status!=="asPlanned" ? (actualDay[mk]?.items||[]) : (plannedDay[mk]||[])}
@@ -21956,7 +21958,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop,sim
           {/* הוספה לארוחה — כפתור אחד במקום ארבעה אימוג'ים (לבקשת המשתמש) */}
           {addForId===r.id
             ?<div style={{display:"flex",gap:4,marginBottom:isExp?8:0,flexWrap:"wrap"}}>
-              {MEAL_KEYS.map(mk=>(
+              {MEAL_DISPLAY.map(mk=>(
                 <button key={mk} onClick={()=>{ onAddToMeal(mk,r); setAddForId(null); }} style={{flex:"1 1 22%",padding:"6px 0",borderRadius:8,border:"1px solid #c9b8e8",background:"#F5F2EB",color:"#4527a0",fontSize:11.5,fontWeight:700,cursor:"pointer"}}>
                   {lang==="he"?{breakfast:"🌅 בוקר",snack:"🍎 ביניים",lunch:"☀️ צהריים",dinner:"🌙 ערב"}[mk]:{breakfast:"🌅 Breakfast",snack:"🍎 Snack",lunch:"☀️ Lunch",dinner:"🌙 Dinner"}[mk]}
                 </button>))}
@@ -23654,7 +23656,7 @@ function AppInner(){
         {tab==="meals"&&<MedicalNotice profile={profile} lang={lang}/>}
         {tab==="meals"&&!desktopMealsLayout&&(
           <>
-            {MEAL_KEYS.map(mk=>(<div key={mk} id={mk==="breakfast"?"onboard-mealcard-mobile":undefined}>
+            {MEAL_DISPLAY.map(mk=>(<div key={mk} id={mk==="breakfast"?"onboard-mealcard-mobile":undefined}>
               <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang,mk):null} noteFk={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteFkOf(meals,dayIdx,mk):null}
                 pack={packOf(mk,getMeal(mk))} onTimeChange={t=>setMealTime(mk,t)}
                 onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
@@ -23767,14 +23769,7 @@ function AppInner(){
                   </button>
                   {saveDayToast && <div style={{fontSize:10,color:"#2e7d32",textAlign:"center"}}>{saveDayToast}</div>}
                 </div>
-                <MealCard key="snack" mealKey="snack" ings={dashSource==="actual"?getActualMealEffective(logDate,"snack"):getMeal("snack")} time={mealTimes.snack||""}
-                  onTimeChange={t=>setMealTime("snack",t)}
-                  onBuild={()=>planGuard(()=>setBuilderOpen({mk:"snack",mode:dashSource}),dashSource)}
-                  onSaved={()=>planGuard(()=>setSavedOpen("snack"),dashSource)}
-                  onToggleSoak={idx=>toggleSoaked("snack",idx)}
-                  onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
-                  lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
-                {["lunch","dinner"].map(mk=>(
+                {["lunch","snack","dinner"].map(mk=>(
                   <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang,mk):null} noteFk={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteFkOf(meals,dayIdx,mk):null}
                     pack={packOf(mk,getMeal(mk))} onTimeChange={t=>setMealTime(mk,t)}
                     onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
