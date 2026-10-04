@@ -23683,11 +23683,14 @@ function AppInner(){
     setDayIdx(d); if (dashSource==="actual") setLogDate(dateForWeekday(weekDates,d));
     const p=(dateForWeekday(weekDates,d)||"").split("-"); setSwipeToast(`${step>0?(lang==="he"?"◀":"▶"):(lang==="he"?"▶":"◀")} ${lang==="he"?DAYS_HE[d]:DAYS_EN[d]}${p.length===3?` ${+p[2]}.${+p[1]}`:""}`);
     clearTimeout(swipeToastT.current); swipeToastT.current=setTimeout(()=>setSwipeToast(null),900); return true; }
+  // מגע: נקודת התחלה + המיקום האחרון (touchmove), כדי להחליט גם ב-touchcancel (יש טלפונים ששולחים ביטול כשהדפדפן מתחיל לגלול)
   const onMealsTouchStart=e=>{ const t=e.touches&&e.touches[0]; if (!t||e.touches.length>1){ swipeRef.current=null; return; }
     let el=e.target, block=false; while (el&&el!==e.currentTarget){ if (el.tagName==="INPUT"||el.tagName==="TEXTAREA"||el.tagName==="SELECT"||(el.dataset&&el.dataset.noswipe!=null)||(el.scrollWidth>el.clientWidth+2&&/(auto|scroll)/.test(getComputedStyle(el).overflowX))){ block=true; break; } el=el.parentElement; }
-    swipeRef.current=block?null:{x:t.clientX,y:t.clientY,t:Date.now()}; };
-  const onMealsTouchEnd=e=>{ const s0=swipeRef.current; swipeRef.current=null; const t=e.changedTouches&&e.changedTouches[0]; if (!s0||!t) return;
-    const dx=t.clientX-s0.x, dy=t.clientY-s0.y; if (Math.abs(dx)<70||Math.abs(dx)<2*Math.abs(dy)||Date.now()-s0.t>700) return;
+    swipeRef.current=block?null:{x:t.clientX,y:t.clientY,lx:t.clientX,ly:t.clientY,t:Date.now()}; };
+  const onMealsTouchMove=e=>{ const s0=swipeRef.current, t=e.touches&&e.touches[0]; if (!s0||!t) return; if (e.touches.length>1){ swipeRef.current=null; return; } s0.lx=t.clientX; s0.ly=t.clientY; };
+  const onMealsTouchEnd=e=>{ const s0=swipeRef.current; swipeRef.current=null; if (!s0) return; const t=e.changedTouches&&e.changedTouches[0];
+    const x=t&&e.type!=="touchcancel"?t.clientX:s0.lx, y=t&&e.type!=="touchcancel"?t.clientY:s0.ly;
+    const dx=x-s0.x, dy=y-s0.y; if (Math.abs(dx)<50||Math.abs(dx)<1.3*Math.abs(dy)||Date.now()-s0.t>1500) return; /* ספים נוחים לאגודל */
     const rtl=lang==="he"; goDay((dx>0)===rtl?1:-1); /* עברית: ימינה = היום הבא (הבא נמצא משמאל בבורר) */ };
   const dayHasGap=MEAL_KEYS.some(mk=>!flexOwnMeal(dayIdx,mk)&&!(((meals||{})[dayKey]||{})[mk]||[]).length); /* ארוחה משלי (אוכל/ת הכל) — לא "חסרה" */
   const weekHasGap=[0,1,2,3,4,5,6].some(d=>MEAL_KEYS.some(mk=>!flexOwnMeal(d,mk)&&!(((meals||{})[`d${d}`]||{})[mk]||[]).length));
@@ -24318,7 +24321,7 @@ function AppInner(){
           ?<>🍖 <b>יום משלי</b> — לפי מה שבחרתם (״🍖 אני אוכל/ת הכל״), היום הזה לא מתוכנן ולא נספר בסיכום התזונתי. רוצים בכל זאת תפריט צמחי להיום? ״📅 תפריט ליום״ בראש המסך. הבחירה נשאלת בכל ״תפריט לשבוע״.</>
           :<>🍖 <b>My own day</b> — per your choice ('🍖 I eat everything'), this day isn't planned and isn't counted in the nutrition summary. Want a plant-based menu today anyway? '📅 Day menu' at the top. You're asked again with each 'Week menu'.</>}</div>}
         {tab==="meals"&&!desktopMealsLayout&&(
-          <div onTouchStart={onMealsTouchStart} onTouchEnd={onMealsTouchEnd} data-swipe-days="1">
+          <div onTouchStart={onMealsTouchStart} onTouchMove={onMealsTouchMove} onTouchEnd={onMealsTouchEnd} onTouchCancel={onMealsTouchEnd} data-swipe-days="1" style={{touchAction:"pan-y"}} /* הדפדפן גולל רק אנכית — תנועה אופקית נשארת להחלקה בין ימים */>
             {swipeToast&&<div style={{position:"fixed",top:"42%",left:"50%",transform:"translateX(-50%)",zIndex:300,background:"rgba(30,58,43,0.9)",color:"#fff",fontSize:17,fontWeight:800,padding:"10px 18px",borderRadius:14,pointerEvents:"none"}}>{swipeToast}</div>}
             {MEAL_DISPLAY.map(mk=>(<div key={mk} id={mk==="breakfast"?"onboard-mealcard-mobile":undefined}>
               <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang,mk):null} noteFk={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteFkOf(meals,dayIdx,mk):null} leftFks={dashSource!=="actual"?prevDayRecipeSet(meals,dayIdx):null} own={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)}
