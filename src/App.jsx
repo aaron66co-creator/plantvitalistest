@@ -19782,7 +19782,13 @@ const OMNI_ADDONS=[
 ];
 // "שדרוג" — דגן מלא במקום לבן, באותם גרמים (לבקשת המשתמש)
 // תוספת שכל רכיביה כבר במנה (למשל סלט ליד מנה שיש בה סלט) — לא מוצעת
-const omniAddonOk=(dish,a)=>!dish||!a.items.every(([fk])=>dish.items.some(([d])=>d===fk));
+// לחם/פיתה/לחמניה/טורטייה ↔ ממרח (לבקשת המשתמש, אוק' 2026 — כמו הכלל בתפריט הצמחי): במנה שיש בה כבר לחם (למשל
+// "חביתה בפיתה") לא מציעים עוד לחם; ממרח מוצע רק כשיש לחם במנה או בתוספות, ולחם מוצע רק יחד עם ממרח
+const OMNI_BREAD=new Set(["omPita","wholePita","omWhiteBread","wholeWheatBread","omBun","omChallah","tortilla","wholeTortilla"]);
+const OMNI_SPREAD=new Set(["tahiniRaw","omHummusSalad","avocado","whiteCheese5","creamCheese5","cottageCheese5","butter"]);
+const OMNI_SPREAD_ADDONS=["hummus","tahini","avocado"];
+const omniDishHas=(dish,set)=>!!dish&&dish.items.some(([fk])=>set.has(fk)||set.has(OMNI_SWAPS[fk]));
+const omniAddonOk=(dish,a)=>!dish||(!a.items.every(([fk])=>dish.items.some(([d])=>d===fk))&&!(a.id==="bread"&&omniDishHas(dish,OMNI_BREAD)));
 const OMNI_SWAPS={omWhiteRice:"brownRiceCooked",omWhiteBread:"wholeWheatBread",omPita:"wholePita",omPasta:"wholeWPasta"};
 const OMNI_SIZE_LABEL={T:{he:"לפי היעד",en:"to target"},...Object.fromEntries(OMNI_SIZES.map(z=>[z.k,z]))};
 const omniK=list=>(list||[]).reduce((a,it)=>a+(ingNut(it.fk,it.g,it.soaked).kcal||0),0);
@@ -19822,9 +19828,18 @@ function omniSuggestSides(dish,swaps,chosen,mealTarget,excl,mk){ if(!dish||!meal
   if (!omniHasPlant(dish,ids)){ const order=isSnack?["fruit"]:mk==="breakfast"?["fruit","veg","salad"]:OMNI_VEG_ORDER; const minF=isSnack?0.6:OMNI_F_MIN;
     const pick=order.find(id=>{ if(!ok(id)) return false; const n=new Set(ids); n.add(id); return fits(n,minF); }); if (pick){ ids.add(pick); out.push(pick); } }
   const order=isSnack?["fruit","nuts"]:mk==="breakfast"?["fruit","bread","avocado","nuts","tahini","salad"]:OMNI_SUGGEST_ORDER;
+  // זוג לחם↔ממרח: תוספת לחם באה עם ממרח, ותוספת ממרח רק כשיש לחם (במנה או שנוסף איתו) — אחרת לא מוצעת
+  const hasBread=n=>omniDishHas(dish,OMNI_BREAD)||n.has("bread"), hasSpread=n=>omniDishHas(dish,OMNI_SPREAD)||OMNI_SPREAD_ADDONS.some(x=>n.has(x));
+  const withPair=id=>{ const n=new Set(ids); n.add(id); const extra=[id];
+    if (id==="bread"&&!hasSpread(n)){ const sp=OMNI_SPREAD_ADDONS.find(x=>ok(x)&&fits(new Set([...n,x]),OMNI_F_MIN)); if(!sp) return null; n.add(sp); extra.push(sp); }
+    if (OMNI_SPREAD_ADDONS.includes(id)&&hasSpread(ids)) return null; // ממרח אחד בארוחה — לא שניים
+    if (OMNI_SPREAD_ADDONS.includes(id)&&!hasBread(n)){ if(!ok("bread")) return null; n.add("bread"); extra.unshift("bread"); }
+    return fits(n,OMNI_F_MIN)?extra:null; };
   for (let guard=0; guard<6 && (fOf(ids)>OMNI_F_DIV||omniTotalAtTarget(dish,swaps,ids,mealTarget)<0.9*mealTarget); guard++) {
-    const pick=order.find(id=>{ if(!ok(id)) return false; const n=new Set(ids); n.add(id); return fits(n,OMNI_F_MIN); });
-    if (!pick) break; ids.add(pick); out.push(pick); }
+    let add=null; for (const id of order){ if(!ok(id)) continue; add=withPair(id); if(add) break; }
+    if (!add) break; add.forEach(id=>{ ids.add(id); out.push(id); }); }
+  // מנה עם לחם/פיתה בלי ממרח (בארוחה עיקרית) — מוסיפים ממרח צמחי, אם נכנס ביעד
+  if (!isSnack&&hasBread(ids)&&!hasSpread(ids)){ const sp=OMNI_SPREAD_ADDONS.find(x=>ok(x)&&fits(new Set([...ids,x]),OMNI_F_MIN)); if(sp){ ids.add(sp); out.push(sp); } }
   return out; }
 // יחידות מידה מקובלות לרכיבי המנות מן החי (לבקשת המשתמש: "לתרגם את המשקלים ליחידות מקובלות"). g = גרם ליחידה (מוכן
 // לאכילה), הערכה של יחידה נפוצה; c=1 — יחידה שנספרת (מעוגלת לחצאים: "2 קציצות", "שניצל וחצי"), אחרת לרבעים ("¾ כוס")
