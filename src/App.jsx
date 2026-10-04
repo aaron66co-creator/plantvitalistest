@@ -19576,7 +19576,7 @@ function buildWeekMenuPrintHTML(week, lang){ const he=lang==="he";
 // מתכונים מאתמול (לבקשת המשתמש — פחות בישול): כל מתכון שהופיע ביום הקודם מסומן "♻️ מאתמול" — אין צורך לבשל שוב
 function prevDayRecipeSet(week, dayIdx){ if (!week||!(dayIdx>0)) return null; const pd=week[`d${dayIdx-1}`]; if (!pd) return null;
   return new Set(MEAL_KEYS.flatMap(mk=>pd[mk]||[]).map(x=>x&&x.fk).filter(fk=>TEMP_FDB[fk]?._isRecipe&&recipeCatOfFk(fk)!=="משקאות")); }
-function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple,note,noteFk,pack,leftFks,own,omni}){
+function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple,note,noteFk,pack,leftFks,own,omni,flexSwitch}){
   const omniId=omni?omniIdOf(ings):null, omniDish=omniId?omniById(omniId):null; // ארוחה משלי עם הצעת מנה מן החי
   const[omniPickOpen,setOmniPickOpen]=useState(false); const[omniBetterOpen,setOmniBetterOpen]=useState(false);
   const omniFl=omniDish&&omni.dayTarget?omniMealFlags(ings,omni.target,omni.dayTarget,omni.naCap,omni.others):null;
@@ -19614,6 +19614,10 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
           <span style={{fontSize:12,color:"#1E3A2B",fontWeight:700}}>{icons[mealKey]} {tx[mealKey]}{pack&&<span style={{fontSize:11,fontWeight:700,color:"#1E5631",background:"#EEF6EC",border:"1px solid #cfe3cb",borderRadius:7,padding:"1px 6px",marginInlineStart:6,whiteSpace:"nowrap"}}>{lang==="he"?"🎒 לארוז":"🎒 To pack"}</span>}{note&&!noteOnItem&&<span style={{fontSize:11,fontWeight:700,color:"#8C6D53",marginInlineStart:6}}>{note}</span>}</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {/* החלפת סוג הארוחה (לבקשת המשתמש, אוק' 2026): צמחית ⇄ מן החי — רק הארוחה הזו, בלי לבנות את כל השבוע מחדש */}
+          {flexSwitch&&<button data-flex-switch onClick={()=>{ if (window.confirm(lang==="he"?(own?`להפוך את ${tx[mealKey]} לארוחה צמחית? התוכן הנוכחי יוחלף.`:`להפוך את ${tx[mealKey]} לארוחה מן החי? התוכן הנוכחי יוחלף.`):(own?`Make ${tx[mealKey]} plant-based? Its current content will be replaced.`:`Make ${tx[mealKey]} animal-based? Its current content will be replaced.`))) flexSwitch(); }}
+            title={lang==="he"?"החלפה בין ארוחה צמחית לארוחה מן החי":"Switch between plant-based and animal-based"}
+            style={{background:own?"#F7EFE3":"#EEF6EC",border:`1px solid ${own?"#D9C7AE":"#cfe3cb"}`,borderRadius:9,color:own?"#8C4A1E":"#1E5631",padding:"5px 8px",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{own?"🍖":"🌿"} ⇄</button>}
           {/* שעת האכילה והכפתור 📂 הוסרו (לבקשת המשתמש: לא היו בשימוש; ארוחות שמורות — מתוך "בנה וערוך") */}
           {!omniId&&<button id={mealKey==="breakfast"?"onboard-build-btn":undefined} onClick={onBuild} style={{background:"#FFFFFF",border:"1.5px solid #6FA07A",borderRadius:9,color:"#1E5631",padding:"6px 12px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{tx.build}</button>}{/* בולט יותר (לבקשת המשתמש: "לא רואים את בנה וערוך") */}
           {/* קלוריות הארוחה — רק בפירוט המלא (לבקשת המשתמש: בתצוגה הפשוטה מספיק הסיכום היומי). העלות — רק בסיכום היומי */}
@@ -24119,6 +24123,14 @@ function AppInner(){
     next:()=>{ const used=new Set(); [0,1,2,3,4,5,6].forEach(d=>MEAL_KEYS.forEach(m2=>{ if (d===dayIdx&&m2===mk) return; const id=omniIdOf((meals[`d${d}`]||{})[m2]); if (id) used.add(id); }));
       const dish=omniPick(mk,userExclFks,used,omniIdOf(getMeal(mk)),noEgg); if (dish) setMeal(mk,omniBuildMeal(dish,mk,target,userExclFks,mt)); },
     set:list=>setMeal(mk,list.map(it=>({...it,_id:uid()}))) }; }
+  // החלפת ארוחה בודדת בין צמחית למן החי (לבקשת המשתמש): מעדכן את בחירת הארוחות הצמחיות (flexGrid — נשמרת גם לתכנון הבא)
+  // ומחליף רק את תוכן הארוחה: למן החי — מנה לפי יעד הארוחה; לצמחית — הארוחה מתרוקנת ו"השלם יום" בונה אותה לפי היעד
+  function flexSwitchMeal(mk){ const d=dayIdx, toPlant=flexOwnMeal(d,mk); const g0=flexGridOf(profile);
+    const grid=Object.fromEntries([0,1,2,3,4,5,6].map(i=>[`d${i}`,[...(g0[`d${i}`]||[])]])); const a=grid[`d${d}`];
+    grid[`d${d}`]=toPlant?FLEX_DEFAULT_MEALS.filter(x=>x===mk||a.includes(x)):a.filter(x=>x!==mk);
+    setProfile(p=>({...p,flexGrid:grid}));
+    if (toPlant){ setMeal(mk,[]); askBudgetThen("day",()=>{setDayPlanMode("personal");setDayPlanOpen(true);}); }
+    else omniCardApi(mk).next(); }
   // משקל יום "בפועל": יום עם אוכל בפועל = 1 פחות חלקן של הארוחות החופשיות ו"משלי" שלא תועדו
   function actualDayWeight(dk){ if (!MEAL_KEYS.some(mk=>getActualMealEffective(dk,mk).length)) return 0;
     const w=1-MEAL_KEYS.reduce((a,mk)=>a+((actualIntake?.[dk]?.[mk]?.status==="free"||ownAuto(dk,mk))?(MEAL_DAY_SHARE[mk]||0):0),0); return Math.max(0,Math.round(w*100)/100); }
@@ -25088,7 +25100,7 @@ function AppInner(){
           <div onTouchStart={onMealsTouchStart} onTouchMove={onMealsTouchMove} onTouchEnd={onMealsTouchEnd} onTouchCancel={onMealsTouchEnd} data-swipe-days="1" style={{touchAction:"pan-y"}} /* הדפדפן גולל רק אנכית — תנועה אופקית נשארת להחלקה בין ימים */>
             {swipeToast&&<div style={{position:"fixed",top:"42%",left:"50%",transform:"translateX(-50%)",zIndex:300,background:"rgba(30,58,43,0.9)",color:"#fff",fontSize:17,fontWeight:800,padding:"10px 18px",borderRadius:14,pointerEvents:"none"}}>{swipeToast}</div>}
             {MEAL_DISPLAY.map(mk=>(<div key={mk} id={mk==="breakfast"?"onboard-mealcard-mobile":undefined}>
-              <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang,mk):null} noteFk={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteFkOf(meals,dayIdx,mk):null} leftFks={dashSource!=="actual"?prevDayRecipeSet(meals,dayIdx):null} own={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)} omni={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)?omniCardApi(mk):null}
+              <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang,mk):null} noteFk={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteFkOf(meals,dayIdx,mk):null} leftFks={dashSource!=="actual"?prevDayRecipeSet(meals,dayIdx):null} own={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)} flexSwitch={profile.flex&&dashSource!=="actual"&&!planBlock?()=>flexSwitchMeal(mk):null} omni={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)?omniCardApi(mk):null}
                 pack={packOf(mk,getMeal(mk))} onTimeChange={t=>setMealTime(mk,t)}
                 onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
                 onSaved={()=>planGuard(()=>setSavedOpen(mk),dashSource)}
@@ -25165,7 +25177,7 @@ function AppInner(){
               {(hasAnyLog||dashSource==="actual")&&dashSourceToggleNode}
               <div style={{display:"grid",gridTemplateColumns:"1fr 44px 1fr",gap:10}}>
                 <div id="onboard-mealcard">
-                <MealCard key="breakfast" mealKey="breakfast" ings={dashSource==="actual"?getActualMealEffective(logDate,"breakfast"):getMeal("breakfast")} time={mealTimes.breakfast||""}
+                <MealCard key="breakfast" mealKey="breakfast" ings={dashSource==="actual"?getActualMealEffective(logDate,"breakfast"):getMeal("breakfast")} time={mealTimes.breakfast||""} own={dashSource!=="actual"&&flexOwnMeal(dayIdx,"breakfast")} omni={dashSource!=="actual"&&flexOwnMeal(dayIdx,"breakfast")?omniCardApi("breakfast"):null} flexSwitch={profile.flex&&dashSource!=="actual"&&!planBlock?()=>flexSwitchMeal("breakfast"):null}
                   pack={packOf("breakfast",getMeal("breakfast"))} onTimeChange={t=>setMealTime("breakfast",t)}
                   onBuild={()=>planGuard(()=>setBuilderOpen({mk:"breakfast",mode:dashSource}),dashSource)}
                   onSaved={()=>planGuard(()=>setSavedOpen("breakfast"),dashSource)}
@@ -25201,7 +25213,7 @@ function AppInner(){
                   {saveDayToast && <div style={{fontSize:10,color:"#2e7d32",textAlign:"center"}}>{saveDayToast}</div>}
                 </div>
                 {["lunch","snack","dinner"].map(mk=>(
-                  <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang,mk):null} noteFk={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteFkOf(meals,dayIdx,mk):null} leftFks={dashSource!=="actual"?prevDayRecipeSet(meals,dayIdx):null} own={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)} omni={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)?omniCardApi(mk):null}
+                  <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang,mk):null} noteFk={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteFkOf(meals,dayIdx,mk):null} leftFks={dashSource!=="actual"?prevDayRecipeSet(meals,dayIdx):null} own={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)} flexSwitch={profile.flex&&dashSource!=="actual"&&!planBlock?()=>flexSwitchMeal(mk):null} omni={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)?omniCardApi(mk):null}
                     pack={packOf(mk,getMeal(mk))} onTimeChange={t=>setMealTime(mk,t)}
                     onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
                     onSaved={()=>planGuard(()=>setSavedOpen(mk),dashSource)}
