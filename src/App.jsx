@@ -23512,7 +23512,12 @@ function AppInner(){
   // היסטוריית לשוניות לכפתור "חזור" של הטלפון (לבקשת המשתמש: "חזור" זרק אותו מהאפליקציה) — חזרה ללשונית הקודמת
   const tabHist=useRef([]); const tabNow=useRef(tab); tabNow.current=tab;
   const setTab = t => { if (t!==tabNow.current) { tabHist.current=[...tabHist.current.slice(-19),tabNow.current]; } setTabRaw(t); };
-  const[exitHint,setExitHint]=useState(false);
+  // אישור יציאה (לבקשת המשתמש, אוק' 2026 — "למנוע לחיצה שגויה ויציאה"): במקום "לחיצה נוספת יוצאת" — חלון עם
+  // "הישאר" / "צא". בזמן שהחלון פתוח לא מוחזר משמר ההיסטוריה, כך ש"חזור" נוסף בטלפון (או "צא") יוצא באמת
+  const[exitAsk,setExitAskRaw]=useState(false); const exitAskRef=useRef(false);
+  const setExitAsk=v=>{ exitAskRef.current=v; setExitAskRaw(v); };
+  const exitStay=()=>{ setExitAsk(false); try{ window.history.pushState({pvGuard:1},""); }catch{ /* ignore */ } };
+  const exitLeave=()=>{ setExitAsk(false); try{ window.history.back(); }catch{ /* ignore */ } setTimeout(()=>{ try{ window.close(); }catch{ /* ignore */ } },300); };
   useEffect(()=>{
     // "חזור": קודם סוגרים חלון פתוח (כמו לחיצה על ✕ / מחוץ לחלון), אחר כך חוזרים ללשונית הקודמת, ואחר כך ללשונית
     // הארוחות. רק במסך הראשי, בלי היסטוריה — הודעה, ולחיצה נוספת יוצאת מהאפליקציה
@@ -23525,14 +23530,13 @@ function AppInner(){
       const btn=[...top.querySelectorAll("button")].find(b=>{ const t=(b.textContent||"").trim(); return t==="✕"||t==="×"||t==="✕ סגור"||/^סגור$/.test(t)||t==="דלג"||t==="Skip"||t==="Close"; });
       if (btn) { btn.click(); return true; }
       top.dispatchEvent(new MouseEvent("click",{bubbles:true})); return true; };
-    let armed=false;
     const onPop=()=>{
+      if (exitAskRef.current) { exitAskRef.current=false; try{ window.history.back(); }catch{ /* ignore */ } return; } // "חזור" בזמן חלון היציאה — יוצאים
       if (closeTopOverlay()) { guard(); return; }
       let prev=tabHist.current.pop(); while (prev&&prev===tabNow.current) prev=tabHist.current.pop(); // בלי "חזרה" ללשונית שכבר נמצאים בה
       if (prev) { setTabRaw(prev); guard(); return; }
       if (tabNow.current!=="meals") { setTabRaw("meals"); guard(); return; }
-      if (!armed) { armed=true; setExitHint(true); guard(); setTimeout(()=>{ armed=false; setExitHint(false); },2500); return; }
-      try{ window.history.back(); }catch{ /* ignore */ } }; // לחיצה שנייה תוך 2.5 שניות — יוצאים
+      setExitAsk(true); }; // במסך הראשי — שואלים לפני יציאה
     guard(); window.addEventListener("popstate",onPop);
     return ()=>window.removeEventListener("popstate",onPop);
   },[]);
@@ -25404,7 +25408,13 @@ function AppInner(){
           onClearWeek={()=>{ clearEntireWeek(); setWeekPlanOpen(false); }}/>
       )}
       {foodSrcOpen&&<FoodSourcesModal lang={lang} onClose={()=>setFoodSrcOpen(false)}/>}
-      {exitHint&&<div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:"#1E3A2B",color:"#fff",padding:"8px 16px",borderRadius:20,fontSize:13,zIndex:99999,boxShadow:"0 2px 8px rgba(0,0,0,.25)",whiteSpace:"nowrap"}}>{lang==="he"?"לחיצה נוספת על ״חזור״ תצא מהאפליקציה":"Press back again to exit"}</div>}
+      {exitAsk&&<div data-exit-ask onClick={exitStay} style={{position:"fixed",inset:0,background:"rgba(20,30,25,0.45)",zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+        <div onClick={e=>e.stopPropagation()} dir={lang==="he"?"rtl":"ltr"} style={{background:"#FFFFFF",borderRadius:16,padding:"18px 18px 14px",maxWidth:320,width:"100%",boxShadow:"0 8px 24px rgba(0,0,0,.25)",textAlign:"center"}}>
+          <div style={{fontSize:17,fontWeight:800,color:"#1E3A2B",marginBottom:14}}>{lang==="he"?"לצאת מהאפליקציה?":"Exit the app?"}</div>
+          <div style={{display:"flex",gap:8}}>
+            <button data-exit-stay onClick={exitStay} style={{flex:1,background:"#1E3A2B",color:"#FFFFFF",border:"none",borderRadius:12,padding:"11px 0",fontSize:15,fontWeight:800,cursor:"pointer"}}>{lang==="he"?"הישאר":"Stay"}</button>
+            <button data-exit-leave onClick={exitLeave} style={{flex:1,background:"#FFFFFF",color:"#a6440f",border:"1px solid #e3cfb2",borderRadius:12,padding:"11px 0",fontSize:15,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"צא":"Exit"}</button>
+          </div></div></div>}
       {planBlockOpen&&<div onClick={()=>setPlanBlockOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:130,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
         <div onClick={e=>e.stopPropagation()} style={{background:"#FFFFFF",borderRadius:14,maxWidth:440,width:"100%",padding:14}}>
           <PlanBlockedNotice block={planBlock} lang={lang}/>
