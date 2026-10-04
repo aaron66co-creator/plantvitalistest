@@ -20718,7 +20718,7 @@ function SimpleMicroPanel({weekTotals,days,profile,lang,full,sourceLabel,weekIte
     if ((weekTotals.sodium||0)>(hp.sodiumMax||2300)*days*1.02) lines.push(simpleLine("⛔",he?"נתרן מעל התקרה השבועית — פחות מלח ומזון מעובד.":"Sodium above the weekly ceiling — less salt and processed food.","#b3261e"));
     const low=MICRO_KEYS.filter(k=>k!=="vitB12"&&k!=="vitD"&&k!=="sodium"&&!(k==="iodine"&&iodineSuppOn())&&dri[k]&&(weekTotals[k]||0)<dri[k].warn*days).sort((a,b)=>(weekTotals[a]||0)/wk(a)-(weekTotals[b]||0)/wk(b));
     lines.push(...simpleWeekVerdict(low,lang,naKInRange(weekTotals,hp),flex));
-    { const fib=(weekTotals.fiber||0)/days, cap=fiberCapOf({_age:+profile.age||35},null); if (fib>cap) lines.push(simpleLine("💧",he?`הרבה סיבים — כ-${Math.round(fib)} גר' ${flex?"ליום צמחי מלא":"ביום"}. מי שלא רגיל: להעלות בהדרגה ולשתות מספיק מים.`:`Plenty of fiber — about ${Math.round(fib)} g a day. Not used to it? Increase gradually and drink enough water.`)); } // סקירת דיאטן
+    { const fib=flex?flex.fullFiber:(weekTotals.fiber||0)/days, cap=fiberCapOf({_age:+profile.age||35},null); if (fib!=null&&fib>cap) lines.push(simpleLine("💧",he?`הרבה סיבים — כ-${Math.round(fib)} גר' ביום${flex?" (בימים הצמחיים המלאים)":""}. מי שלא רגיל: להעלות בהדרגה ולשתות מספיק מים.`:`Plenty of fiber — about ${Math.round(fib)} g a day${flex?" (on full plant-based days)":""}. Not used to it? Increase gradually and drink enough water.`)); } // סקירת דיאטן
     lines.push(simpleLine("💊",he?"B12 וויטמין D — לפי יומן התוספים.":"B12 and vitamin D — see the supplement log."));
     lines.push(flex?flexBasisLine(flex,lang):<div key="n" style={{fontSize:14,color:"#34443b",marginTop:4}}>{he?`מבוסס על ${days===1?"יום אחד":days+" ימים"} עם תפריט השבוע (${sourceLabel}).`:`Based on ${days} days with a menu this week (${sourceLabel}).`}</div>);
   }
@@ -23440,9 +23440,11 @@ function AppInner(){
     const n=!profile.flex?full.length:dashSource==="actual"?Math.round(weekDates.reduce((a,dk)=>a+actualDayWeight(dk),0)*10)/10:Math.round([0,1,2,3,4,5,6].reduce((a,d)=>a+plannedDayWeight(d),0)*10)/10; /* אוכל/ת הכל — ימים חלקיים בחלקם */
     // אוכל/ת הכל (תצוגת "מתוכנן"): הסיכום מתאר רק את הארוחות הצמחיות — כמה ארוחות, באילו ימים, ומשקל היום המוצג
     let flex=null; if (dashSource!=="actual"&&profile.flex){ let main=0,snack=0,dd=0; [0,1,2,3,4,5,6].forEach(d=>{ let any=false; MEAL_KEYS.forEach(mk=>{ if (!flexOwnMeal(d,mk)&&((meals[`d${d}`]||{})[mk]||[]).length){ any=true; if (mk==="snack") snack++; else main++; } }); if (any) dd++; });
-      flex={main,snack,days:dd,dayW:plannedDayWeight(dayIdx)}; }
+      const fd=[0,1,2,3,4,5,6].filter(d=>plannedDayWeight(d)>=0.999); /* סיבים — רק ימים צמחיים מלאים (לא הערכה מוגדלת מארוחה בודדת) */
+      flex={main,snack,days:dd,dayW:plannedDayWeight(dayIdx),fullFiber:fd.length?fd.reduce((a,d)=>a+(sumNuts(MEAL_KEYS.flatMap(mk=>(meals[`d${d}`]||{})[mk]||[]).map(x=>ingNut(x.fk,x.g,x.soaked))).fiber||0),0)/fd.length:null}; }
     else if (dashSource==="actual"&&profile.flex){ let main=0,snack=0,dd=0; weekDates.forEach(dk=>{ let any=false; MEAL_KEYS.forEach(mk=>{ if (actualIntake?.[dk]?.[mk]?.status!=="free"&&getActualMealEffective(dk,mk).length){ any=true; if (mk==="snack") snack++; else main++; } }); if (any) dd++; });
-      flex={main,snack,days:dd,dayW:actualDayWeight(logDate),actual:true}; }
+      const fd=weekDates.filter(dk=>actualDayWeight(dk)>=0.999);
+      flex={main,snack,days:dd,dayW:actualDayWeight(logDate),actual:true,fullFiber:fd.length?fd.reduce((a,dk)=>a+(sumNuts(MEAL_KEYS.flatMap(mk=>getActualMealEffective(dk,mk)).map(x=>ingNut(x.fk,x.g,x.soaked))).fiber||0),0)/fd.length:null}; }
     return {n, totals:sumNuts(full.flat().map(({fk,g,soaked})=>ingNut(fk,g,soaked))), flex};
   },[dashSource,meals,actualIntake,weekDates,dayIdx,logDate,profile.flex,profile.flexGrid,profile.flexDays,profile.flexMeals]);
   const displayHasAddedPhosphate = useMemo(()=>displayItemsFlat.some(it=>FDB[it.fk]?.addedPhosphate),[displayItemsFlat]);
