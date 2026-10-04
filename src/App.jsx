@@ -23600,11 +23600,19 @@ function AppInner(){
   const[exitAsk,setExitAskRaw]=useState(false); const exitAskRef=useRef(false);
   const setExitAsk=v=>{ exitAskRef.current=v; setExitAskRaw(v); };
   const exitStay=()=>{ setExitAsk(false); try{ window.history.pushState({pvGuard:1},""); }catch{ /* ignore */ } };
-  const exitLeave=()=>{ setExitAsk(false); try{ window.history.back(); }catch{ /* ignore */ } setTimeout(()=>{ try{ window.close(); }catch{ /* ignore */ } },300); };
+  const leavingRef=useRef(false);
+  const exitLeave=()=>{ leavingRef.current=true; setExitAsk(false); try{ window.history.back(); }catch{ /* ignore */ } setTimeout(()=>{ try{ window.close(); }catch{ /* ignore */ } },300); };
   useEffect(()=>{
     // "חזור": קודם סוגרים חלון פתוח (כמו לחיצה על ✕ / מחוץ לחלון), אחר כך חוזרים ללשונית הקודמת, ואחר כך ללשונית
     // הארוחות. רק במסך הראשי, בלי היסטוריה — הודעה, ולחיצה נוספת יוצאת מהאפליקציה
+    // תיקון (לבקשת המשתמש: "חזור" עדיין יצא בלי לשאול): כרום מדלג ב"חזור" על רשומת היסטוריה שנוספה בלי פעולת משתמש
+    // (לחיצה/הקלדה) — כך שהמשמר שנוסף בטעינה או בתוך טיפול ה"חזור" הקודם לא עצר את היציאה. עכשיו המשמר מוחזר גם בכל
+    // לחיצה/נגיעה/הקלדה כשהוא חסר, כך שתמיד יש משמר "אמיתי"; ובטלפון — גם אזהרת הדפדפן לפני עזיבה כרשת ביטחון
+    const isGuard=()=>{ try{ return !!(window.history.state&&window.history.state.pvGuard); }catch{ return false; } };
     const guard=()=>{ try{ window.history.pushState({pvGuard:1},""); }catch{ /* ignore */ } };
+    let fresh=false; // המשמר הנוכחי נוסף בלי פעולת משתמש — מחליפים אותו במשמר חדש בפעולה הבאה
+    const onAct=()=>{ if (exitAskRef.current||leavingRef.current) return; if (!isGuard()||fresh) { guard(); fresh=false; } };
+    const reGuard=()=>{ if (!isGuard()) guard(); fresh=true; };
     const closeTopOverlay=()=>{
       const W=window.innerWidth, H=window.innerHeight;
       const ov=[...document.querySelectorAll("body div")].filter(el=>{ const cs=getComputedStyle(el); if (cs.position!=="fixed"||cs.display==="none"||cs.visibility==="hidden") return false;
@@ -23614,14 +23622,20 @@ function AppInner(){
       if (btn) { btn.click(); return true; }
       top.dispatchEvent(new MouseEvent("click",{bubbles:true})); return true; };
     const onPop=()=>{
-      if (exitAskRef.current) { exitAskRef.current=false; try{ window.history.back(); }catch{ /* ignore */ } return; } // "חזור" בזמן חלון היציאה — יוצאים
-      if (closeTopOverlay()) { guard(); return; }
+      if (leavingRef.current||exitAskRef.current) { exitAskRef.current=false; leavingRef.current=true; try{ window.history.back(); }catch{ /* ignore */ } return; } // "צא" או "חזור" בזמן חלון היציאה — ממשיכים לצאת
+      if (closeTopOverlay()) { reGuard(); return; }
       let prev=tabHist.current.pop(); while (prev&&prev===tabNow.current) prev=tabHist.current.pop(); // בלי "חזרה" ללשונית שכבר נמצאים בה
-      if (prev) { setTabRaw(prev); guard(); return; }
-      if (tabNow.current!=="meals") { setTabRaw("meals"); guard(); return; }
-      setExitAsk(true); }; // במסך הראשי — שואלים לפני יציאה
-    guard(); window.addEventListener("popstate",onPop);
-    return ()=>window.removeEventListener("popstate",onPop);
+      if (prev) { setTabRaw(prev); reGuard(); return; }
+      if (tabNow.current!=="meals") { setTabRaw("meals"); reGuard(); return; }
+      if (isGuard()) fresh=true; setExitAsk(true); }; // במסך הראשי — שואלים לפני יציאה (בלי משמר נוסף: "חזור" שוב או "צא" — יוצאים)
+    if (!isGuard()) { guard(); fresh=true; }
+    window.addEventListener("popstate",onPop);
+    const evs=["pointerdown","keydown"]; evs.forEach(e=>window.addEventListener(e,onAct,true));
+    // רשת ביטחון בטלפון: אם בכל זאת "חזור" עוזב את האתר — הדפדפן שואל לפני יציאה (לא אחרי "צא" בחלון שלנו)
+    const coarse=(()=>{ try{ return window.matchMedia("(pointer: coarse)").matches; }catch{ return false; } })();
+    const onBU=e=>{ if (!coarse||leavingRef.current) return; e.preventDefault(); e.returnValue=""; return ""; };
+    window.addEventListener("beforeunload",onBU);
+    return ()=>{ window.removeEventListener("popstate",onPop); evs.forEach(e=>window.removeEventListener(e,onAct,true)); window.removeEventListener("beforeunload",onBU); };
   },[]);
   const[dayIdx,setDayIdxRaw]=useState(()=>load("wfpb_last_dayidx", new Date().getDay()));
   const setDayIdx = d => { setDayIdxRaw(d); save("wfpb_last_dayidx", d); };
