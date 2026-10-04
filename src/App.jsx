@@ -20774,7 +20774,7 @@ function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,set
         </div>
       </div>
       )}
-      {open&&(<div style={compact?{position:"absolute",top:"100%",insetInlineEnd:0,marginTop:8,background:"#FFFFFF",border:"1px solid #E2DED4",borderRadius:14,padding:14,boxShadow:"0 8px 24px rgba(30,58,43,0.18)",zIndex:70,width:320,direction:tx.dir}:{marginTop:12}}>
+      {open&&(<div data-profile-panel style={compact?{position:"absolute",top:"100%",insetInlineEnd:0,marginTop:8,background:"#FFFFFF",border:"1px solid #E2DED4",borderRadius:14,padding:14,boxShadow:"0 8px 24px rgba(30,58,43,0.18)",zIndex:70,width:320,direction:tx.dir,maxHeight:"calc(100vh - 90px)",overflowY:"auto",overscrollBehavior:"contain"}:{marginTop:12}}>{/* דסקטופ: החלונית יושבת בכותרת הדביקה — בלי גלילה פנימית שאלת המצב הרפואי נשארה מתחת לתחתית המסך ואי אפשר היה לענות עליה (לבקשת המשתמש: "נתקע במילוי הפרופיל") */}
         {bmi&&(<div style={{display:"flex",alignItems:"center",gap:5,marginBottom:9}}>
           <span style={{fontSize:12,fontWeight:800,color:bmiColor}}>BMI {bmi}</span>
           <InfoTag infoKey="bmi" lang={lang} onClick={()=>onInfo("bmi")}/>
