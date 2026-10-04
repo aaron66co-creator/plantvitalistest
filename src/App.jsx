@@ -21274,7 +21274,8 @@ const SIMPLE_TIPS={
 const underTag=(k,lang)=>OMNI_UNDER.has(k)?(lang==="he"?" (ייתכן שמוערך בחסר)":" (may be underestimated)"):"";
 function OmniUnderNote({lang}){ if (!OMNI_UNDER.size) return null; const he=lang==="he"; const ks=[...OMNI_UNDER].filter(k=>DRI_LABELS[k]);
   return <div data-omni-under style={{fontSize:12.5,color:"#6b4a30",background:"#F7EFE3",border:"1px solid #e3cfb2",borderRadius:8,padding:"6px 9px",marginBottom:9,lineHeight:1.5}}>{he?`⚠ ייתכן שמוערכים בחסר: ${ks.map(k=>DRI_LABELS[k].he).join(", ")} — במאגר משרד הבריאות חסר להם ערך בחלק מהמנות מן החי (שמהן מגיעות יותר מ־20% מהקלוריות), והחסר נספר כאפס. בפועל הצריכה כנראה גבוהה יותר.`:`⚠ May be underestimated: ${ks.map(k=>DRI_LABELS[k].en).join(", ")} — the Ministry of Health database lacks a value for some animal-based dishes (over 20% of calories), counted as zero. Actual intake is likely higher.`}</div>; }
-const simpleTipOf=(k,lang)=>(k==="iodine"&&DRI_PLANT_SHARE<1?{he:"מלח מיודד, או תוסף יוד לפי הנחיה קלינית מדיאטנית/רופא — הבחירה שלך; לידיעה: הנתרן בתפריט כבר גבוה, בעיקר מהמנות מן החי",en:"iodized salt, or an iodine supplement per clinical guidance from a dietitian/doctor — your choice; for your information: sodium in the menu is already high, mainly from the animal-based dishes"}:null)||(SIMPLE_TIPS[k]||{he:"דגנים מלאים, קטניות ואגוזים",en:"whole grains, legumes and nuts"})[lang==="he"?"he":"en"];
+// תיקון באג (לבקשת המשתמש): ההצעה ליוד באוכל/ת הכל הוחזרה כאובייקט שלם ולא כטקסט בשפה — הוצג "[object Object]"
+const simpleTipOf=(k,lang)=>((k==="iodine"&&DRI_PLANT_SHARE<1?{he:"מלח מיודד, או תוסף יוד לפי הנחיה קלינית מדיאטנית/רופא — הבחירה שלך; לידיעה: הנתרן בתפריט כבר גבוה, בעיקר מהמנות מן החי",en:"iodized salt, or an iodine supplement per clinical guidance from a dietitian/doctor — your choice; for your information: sodium in the menu is already high, mainly from the animal-based dishes"}:null)||(SIMPLE_TIPS[k]||{he:"דגנים מלאים, קטניות ואגוזים",en:"whole grains, legumes and nuts"}))[lang==="he"?"he":"en"];
 function SimpleShell({title,children,full,lang,folded}){
   const [open,setOpen]=useState(false); const he=lang==="he"; const [shown,setShown]=useState(!folded);
   return (<div style={{background:"#FFFFFF",borderRadius:16,padding:14,marginBottom:10,border:"1px solid #E2DED4",boxShadow:"0 4px 12px rgba(30, 58, 43, 0.05)",direction:he?"rtl":"ltr"}}>
@@ -21296,7 +21297,9 @@ function simpleWeekVerdict(low,lang,naKOk,flex){
   if (!low.length) { out.push(simpleLine("✓",flex?(he?`הארוחות הצמחיות מצוינות — כל הוויטמינים והמינרלים בטווח, ביחס לחלקן מהיום${naKOk?", וגם יחס נתרן:אשלגן בטווח":""}.`:`The plant-based meals are excellent — all vitamins and minerals on target for their share of the day${naKOk?", and the sodium:potassium ratio too":""}.`):(he?`שבוע מצוין — כל הוויטמינים והמינרלים בטווח${naKOk?", וגם יחס נתרן:אשלגן בטווח":""}.`:`An excellent week — all vitamins and minerals on target${naKOk?", and the sodium:potassium ratio too":""}.`),"#2e7d32")); return out; }
   const names=low.slice(0,3).map(k=>nm(k)+underTag(k,lang)).join(he?", ":", ")+(low.length>3?(he?` ועוד ${low.length-3}`:` and ${low.length-3} more`):"");
   out.push(simpleLine(low.length<=3?"🙂":"•",(flex?(low.length<=3?(he?"ארוחות צמחיות טובות. כדאי לחזק: ":"Good plant-based meals. Worth boosting: "):(he?"יש מה לחזק בארוחות הצמחיות: ":"Some things to boost in the plant-based meals: ")):(low.length<=3?(he?"שבוע טוב. כדאי לחזק: ":"A good week. Worth boosting: "):(he?"יש מה לחזק השבוע: ":"Some things to boost this week: ")))+names+".",low.length<=3?"#1E3A2B":"#a6440f"));
-  out.push(simpleLine("💡",he?`הצעה אחת: להוסיף ${simpleTipOf(low[0],lang)} (ל${nm(low[0])}).`:`One tip: add ${simpleTipOf(low[0],lang)} (for ${nm(low[0])}).`));
+  // ההצעה האחת — לרכיב שבאמת חסר, לא לרכיב שכנראה רק מוערך בחסר (ערך חסר במאגר למנות מן החי, למשל יוד)
+  const tk=low.find(k=>!OMNI_UNDER.has(k));
+  if (tk) out.push(simpleLine("💡",he?`הצעה אחת: להוסיף ${simpleTipOf(tk,lang)} (ל${nm(tk)}).`:`One tip: add ${simpleTipOf(tk,lang)} (for ${nm(tk)}).`));
   return out;
 }
 // שורת בסיס לאוכל/ת הכל: על כמה ארוחות צמחיות הסיכום מבוסס, ושארוחות משלי לא נכללות
