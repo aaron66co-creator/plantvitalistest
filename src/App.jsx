@@ -18568,7 +18568,7 @@ const ONBOARD_SHORT_TEXT=[
   ["לחיצה אחת — תפריט ליום או לשבוע שלם.","One tap — a menu for a day or a whole week."],
   ["״בנה וערוך״ — להוסיף מזון, או ״🔄 החלף״ ליד מנה שלא מתאימה.","'Build & edit' — add foods, or '🔄 Swap' next to a dish that doesn't suit you."],
   ["כל המתכונים של התפריט, עם הוראות הכנה.","All the menu's recipes, with instructions."],
-  ["כאן מסמנים מה אכלתם בפועל. לא חובה.","Mark here what you actually ate. Optional."],
+  ["כאן מסמנים מה אכלתם בפועל. לא חובה. אוכלים הכל? ״ארוחות משלי״ לא נספרות כחוסר.","Mark here what you actually ate. Optional. Eat everything? 'My own meals' don't count as a shortfall."],
   ["כאן משנים סגנון ארוחות (פשוט או מגוון), 🍖 אוכלים הכל, 🍳 פחות בישול, 🎒 אוכל לעבודה, טבעוני או צמחוני, תקציב והצגת ערכים תזונתיים. בהצלחה! רוצים להכיר הכל? ℹ️ מידע ← 🧭 סיור מודרך מלא.","Change meal style (Simple or Varied), 🍖 eat everything, 🍳 less cooking, 🎒 food for work, vegan or vegetarian, budget and nutrition values here. Enjoy! Want to see everything? ℹ️ Info → 🧭 Full guided tour."]];
 const ONBOARD_STEPS_SHORT=[0,3,4,6,8,1].map((i,n)=>{ const st=ONBOARD_STEPS[i], t=x=>x.title.replace(/^\d+\.\s*/,"");
   return {...st,he:{title:`${n+1}. ${t(st.he)}`,desc:ONBOARD_SHORT_TEXT[n][0]},en:{title:`${n+1}. ${t(st.en)}`,desc:ONBOARD_SHORT_TEXT[n][1]}}; });
