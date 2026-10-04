@@ -19798,7 +19798,8 @@ const OMNI_WHOLE=new Set(["yogurtPlain3","eggWhole","omOmelette","omShakshuka","
 // לבקשת המשתמש (אוק' 2026): לחם/פיתה/לחמניה ופרוסות נקניק — רק ביחידות שלמות (לא "פרוסה וחצי"); לא יותר משתי ביצים;
 // ירקות בנדיבות — לא פחות מעגבנייה/מלפפון שלמים, 2 עלי חסה וכוס סלט, וירקות לא מוקטנים יחד עם המנה
 const OMNI_WHOLE_COUNT=new Set(["omWhiteBread","omChallah","omPita","omBun","omPastrami","omSalami"]);
-const OMNI_MAXG={omOmelette:110,eggWhole:100,omShakshuka:260,omOmeletteDeli:130};
+// עד 2 פרוסות לחם / פיתה אחת / לחמניה אחת בארוחה — כמו בתפריט הצמחי (לבקשת המשתמש, אוק' 2026)
+const OMNI_MAXG={omOmelette:110,eggWhole:100,omShakshuka:260,omOmeletteDeli:130,omWhiteBread:60,wholeWheatBread:60,omChallah:80,omPita:100,wholePita:60,omBun:80,almonds:40,avocado:100};
 const OMNI_VEG_MIN={tomato:120,cucumber:119,lettuce:70,omIsraeliSalad:150,broccoli:150};
 const omniCountStep=fk=>{ const u=OMNI_UNITS[fk]; return u.g*(u.g<30||OMNI_WHOLE_COUNT.has(fk)?1:0.5); };
 const omniCap=(fk,g)=>OMNI_MAXG[fk]?Math.min(g,OMNI_MAXG[fk]):g;
@@ -19935,11 +19936,18 @@ function omniBuildMeal(dish,mk,target,excl,mealTarget){ const mt=mealTarget||Mat
     const f2=Math.min(OMNI_F_MAX,Math.max(OMNI_F_MIN,(mt-fixedK)/k1)); items=items.map((it,i)=>isOmniSnap(it.fk)?it:{fk:it.fk,g:Math.max(1,Math.round(dish.items[i][1]*f2))}); }
   // יחידות שלמות בלבד (רגל עוף, דג שלם, משולש פיצה) — הסך יכול לסטות מהיעד; מוסיפים/מורידים חצי יחידה (או כף סלט)
   // ברכיב שמקרב הכי הרבה ליעד, עד ±5%
-  const stepOf=fk=>isOmniCount(fk)&&!OMNI_WHOLE.has(fk)?omniCountStep(fk):fk==="omIsraeliSalad"?OMNI_SALAD_TBSP:0;
-  for (let guard=0; guard<8; guard++){ const all=[...items,...add2], cur=omniK(all), dev=cur-mt; if (Math.abs(dev)<=0.05*mt) break; let best=null;
+  const stepOf=fk=>isOmniCount(fk)&&!OMNI_WHOLE.has(fk)?omniCountStep(fk):fk==="omIsraeliSalad"?OMNI_SALAD_TBSP:fk==="almonds"?10:fk==="avocado"?25:0; // שקדים/אבוקדו — משלימים קלוריות במקום עוד לחם
+  const tune=()=>{ for (let guard=0; guard<8; guard++){ const all=[...items,...add2], cur=omniK(all), dev=cur-mt; if (Math.abs(dev)<=0.05*mt) break; let best=null;
     all.forEach((it,i)=>{ const st=stepOf(it.fk); if(!st) return; if (it.fk==="omIsraeliSalad"&&it.g>8*OMNI_SALAD_TBSP) return; const g=it.g+(dev>0?-st:st); if (g<(it.fk==="omIsraeliSalad"?Math.max(2*st,OMNI_VEG_MIN.omIsraeliSalad):st)-0.01) return; if (OMNI_MAXG[it.fk]&&g>OMNI_MAXG[it.fk]+0.01) return;
       const nk=cur-omniK([it])+omniK([{fk:it.fk,g}]); if (Math.abs(nk-mt)<Math.abs(dev)&&(!best||Math.abs(nk-mt)<best.d)) best={i,g:Math.round(g),d:Math.abs(nk-mt)}; });
-    if (!best) break; if (best.i<items.length) items=items.map((x,i)=>i===best.i?{...x,g:best.g}:x); else add2[best.i-items.length]={...add2[best.i-items.length],g:best.g}; }
+    if (!best) break; if (best.i<items.length) items=items.map((x,i)=>i===best.i?{...x,g:best.g}:x); else add2[best.i-items.length]={...add2[best.i-items.length],g:best.g}; } };
+  tune();
+  // מגבלת הלחם (וביצים) יכולה להשאיר את הארוחה מתחת ליעד — משלימים בתוספת צמחית נוספת ולא בעוד לחם
+  const have=new Set(sides);
+  for (const id of ["nuts","fruit"]){ if (omniK([...items,...add2])>=0.93*mt) break;
+    const ad=OMNI_ADDONS.find(a=>a.id===id); if (!ad||have.has(id)||!omniAddonOk(dish,ad)||(excl&&ad.items.some(([fk])=>excl.has(fk)))) continue;
+    const ni=ad.items.map(([fk,g])=>({fk,g:Math.round(omniSnap(fk,g))})); if (omniK([...items,...add2,...ni])>1.05*mt) continue;
+    have.add(id); add2.push(...ni); tune(); }
   return [...items.map(it=>({...it,_id:uid(),_omni:dish.id+":T"})),...add2.map(it=>({...it,_id:uid(),_omniSide:1}))]; }
 // לארוחת צהריים/ערב — קודם מנות עיקריות (אות ראשונה l/d), כדי שלא תוצע ארוחת בוקר בצהריים כשיש עיקריות פנויות
 function omniPick(mk,excl,used,avoid){ const c=omniCands(mk,excl); if(!c.length) return null; const L=OMNI_MEAL_LETTER[mk];
