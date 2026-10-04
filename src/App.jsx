@@ -19921,7 +19921,8 @@ function omniPick(mk,excl,used,avoid){ const c=omniCands(mk,excl); if(!c.length)
 // ממלא את ארוחות "משלי" בשבוע: ריקה → מנה; מנה קיימת נשמרת (fresh=true — מוחלפת במנה חדשה); ארוחה משלי שהמשתמש
 // מילא בעצמו בפריטים צמחיים — לא נוגעים
 function omniPlanFill(week,isOwn,target,excl,fresh){ const out={}; const used=new Set(); const todo=[];
-  for (let d=0; d<7; d++){ const dk=`d${d}`; if (!week||!week[dk]) continue; out[dk]={...week[dk]};
+  for (let d=0; d<7; d++){ const dk=`d${d}`; /* יום שכולו "משלי" אצל משתמש חדש עדיין לא קיים — נוצר ריק ומקבל מנות (היה נשאר ריק) */
+    if (!week) continue; if (!week[dk]){ if (!MEAL_KEYS.some(mk=>isOwn(d,mk))) continue; out[dk]={breakfast:[],snack:[],lunch:[],dinner:[]}; } else out[dk]={...week[dk]};
     MEAL_KEYS.forEach(mk=>{ if (!isOwn(d,mk)) return; const a=out[dk][mk]||[]; const id=omniIdOf(a);
       if (a.length&&!id) return; if (id&&!fresh) { used.add(id); return; } todo.push([dk,mk]); }); }
   const byDay={}; todo.forEach(([dk,mk])=>{ (byDay[dk]=byDay[dk]||[]).push(mk); });
