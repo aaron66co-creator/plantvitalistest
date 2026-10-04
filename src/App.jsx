@@ -379,6 +379,14 @@ const PROFILE_SESSION_STORAGE="wfpb_profile_session";
 const REMOVED_FKS=new Set(["cranberriesFresh","tamarind","jackfruit","dragonfruit","breadfruit","cocoaButter","tomatoSalsa","nutritionalYeast"]);
 function stripRemovedFks(v){ if(Array.isArray(v)){ const out=[]; for(const x of v){ if(x&&typeof x==="object"&&!Array.isArray(x)&&REMOVED_FKS.has(x.fk)) continue; out.push(stripRemovedFks(x)); } return out; }
   if(v&&typeof v==="object"){ for(const k of Object.keys(v)) v[k]=stripRemovedFks(v[k]); } return v; }
+// התחלה מחדש (לבקשת המשתמש, אוק' 2026 — "כדי שאבחן מהתחלה"): פעם אחת בכל מכשיר, כשהגרסה כאן עולה, נמחקים כל נתוני
+// האפליקציה במכשיר (פרופיל, תפריט, יומן, מסך פתיחה, אישור הסיסמה) — והכניסה הבאה מתחילה ממסך הסיסמה וממסך הפתיחה.
+// כדי לאפס שוב בעתיד — להעלות את FRESH_START_V ב-1
+const FRESH_START_V=1, FRESH_START_KEY="wfpb_fresh_start_v";
+(function freshStart(){ try{ if (localStorage.getItem(FRESH_START_KEY)===String(FRESH_START_V)) return;
+  Object.keys(localStorage).filter(k=>k.startsWith("wfpb_")).forEach(k=>localStorage.removeItem(k));
+  Object.keys(sessionStorage).filter(k=>k.startsWith("wfpb_")).forEach(k=>sessionStorage.removeItem(k));
+  localStorage.setItem(FRESH_START_KEY,String(FRESH_START_V)); }catch{} })();
 function load(k,d){try{const v=localStorage.getItem(k);return v?stripRemovedFks(JSON.parse(v)):d;}catch{return d;}}
 // שמירה שנכשלה (אחסון מלא/חסום) — מסומנת ומודיעה לאפליקציה פעם אחת (לבקשת המשתמש: בדסקטופ ההגדרות "נמחקו" בכל כניסה)
 let STORAGE_FAILED=false;
@@ -401,6 +409,7 @@ function idleTooLong(){ try{ const t=+localStorage.getItem(LAST_SEEN_KEY)||0; re
       localStorage.removeItem("wfpb_meals");
       // כניסה חדשה נפתחת ביום הנוכחי (לבקשת המשתמש: נפתח היום האחרון שנצפה) — רענון או חזרה תוך 30 דקות נשארים ביום שנבחר
       localStorage.removeItem("wfpb_last_dayidx");
+      sessionStorage.removeItem("wfpb_unlocked_v1"); // כניסה חדשה (גם טאב ששוחזר בטלפון אחרי 30 דקות) — שוב מסך הסיסמה
       sessionStorage.setItem("wfpb_session_active","1");
     }
     markSeen();
@@ -23391,7 +23400,8 @@ async function pbkdf2Hex(password, saltHex, iterations, keylenBytes){
 
 function PasswordGate({children}){
   const[unlocked,setUnlocked]=useState(()=>{
-    try{ return sessionStorage.getItem(APP_UNLOCK_KEY)==="1"||localStorage.getItem(APP_KNOWN_DEVICE_KEY)==="1"; }catch{ return false; }
+    // חובת סיסמה הוחזרה (לבקשת המשתמש, אוק' 2026): המכשיר כבר לא "נזכר" — סיסמה בכל כניסה חדשה (שורדת רק רענון של הדף)
+    try{ return sessionStorage.getItem(APP_UNLOCK_KEY)==="1"; }catch{ return false; }
   });
   const[input,setInput]=useState("");
   const[error,setError]=useState(false);
@@ -23416,7 +23426,7 @@ function PasswordGate({children}){
     const hash = await pbkdf2Hex(normalizedInput, APP_PASSWORD_SALT, APP_PASSWORD_ITERATIONS, 32);
     setChecking(false);
     if(hash===APP_PASSWORD_HASH){
-      try{ sessionStorage.setItem(APP_UNLOCK_KEY,"1"); localStorage.setItem(APP_KNOWN_DEVICE_KEY,"1"); }catch{}
+      try{ sessionStorage.setItem(APP_UNLOCK_KEY,"1"); localStorage.removeItem(APP_KNOWN_DEVICE_KEY); }catch{}
       setUnlocked(true);
     } else {
       setError(true);
