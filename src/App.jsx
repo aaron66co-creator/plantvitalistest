@@ -19845,7 +19845,7 @@ const OMNI_ADDONS=[
 ];
 // השלמה מהצומח אחרי "➖ פחות" (לבקשת המשתמש): יום שכולו "משלי" — לארוחה מן החי נוספות תוספות צמחיות (מסומנות "+")
 // עד ~95%–102% מיעד הקלוריות; המנה עצמה לא משתנה. מחזיר את היום המעודכן (או את אותו יום כשאין מה להשלים)
-const OMNI_TOPUP_ORDER=["salad","bread","fruit","hummus","yogurt","nuts","avocado","veg"];
+const OMNI_TOPUP_ORDER=["salad","bread","fruit","hummus","nuts","avocado","veg","tahini"]; // רק מהצומח (בלי יוגורט)
 function omniTopUpDay(day,d,isOwn,target,excl,added){ const T=target||0; if (!T||!day) return day; const out={...day}; const dk=()=>MEAL_KEYS.reduce((a,mk)=>a+omniK(out[mk]),0);
   // הארוחה שהוקטנה ("➖ פחות" — _omniCut) קודמת; עד ~יעד (חוסר של עד 40 קק"ל נשאר), בלי לעבור 103%
   const cands=()=>{ const all=[]; MEAL_KEYS.forEach(mk=>{ const a=out[mk]||[]; const dish=omniById(omniIdOf(a)); if (!isOwn(d,mk)||!dish) return;
