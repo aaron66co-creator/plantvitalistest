@@ -19846,13 +19846,19 @@ const OMNI_ADDONS=[
 // השלמה מהצומח אחרי "➖ פחות" (לבקשת המשתמש): יום שכולו "משלי" — לארוחה מן החי נוספות תוספות צמחיות (מסומנות "+")
 // עד ~95%–102% מיעד הקלוריות; המנה עצמה לא משתנה. מחזיר את היום המעודכן (או את אותו יום כשאין מה להשלים)
 const OMNI_TOPUP_ORDER=["salad","bread","fruit","hummus","yogurt","nuts","avocado","veg"];
-function omniTopUpDay(day,d,isOwn,target,excl){ const T=target||0; if (!T||!day) return day; const out={...day}; const dk=()=>MEAL_KEYS.reduce((a,mk)=>a+omniK(out[mk]),0);
-  for (let guard=0; guard<6 && dk()<0.95*T; guard++){ let best=null; const cur=dk();
-    MEAL_KEYS.forEach(mk=>{ const a=out[mk]||[]; const dish=omniById(omniIdOf(a)); if (!isOwn(d,mk)||!dish) return;
+function omniTopUpDay(day,d,isOwn,target,excl,added){ const T=target||0; if (!T||!day) return day; const out={...day}; const dk=()=>MEAL_KEYS.reduce((a,mk)=>a+omniK(out[mk]),0);
+  // הארוחה שהוקטנה ("➖ פחות" — _omniCut) קודמת; עד ~יעד (חוסר של עד 40 קק"ל נשאר), בלי לעבור 103%
+  const cands=()=>{ const all=[]; MEAL_KEYS.forEach(mk=>{ const a=out[mk]||[]; const dish=omniById(omniIdOf(a)); if (!isOwn(d,mk)||!dish) return;
       OMNI_TOPUP_ORDER.forEach(id=>{ const ad=OMNI_ADDONS.find(x=>x.id===id); if (!ad||!omniAddonOk(dish,ad)||(excl&&ad.items.some(([fk])=>excl.has(fk)))||a.some(it=>it._omniSide&&ad.items.some(([fk])=>fk===it.fk))) return;
-        const add=ad.items.map(([fk,g])=>({fk,g:Math.round(omniSnap(fk,g))})), nk=cur+omniK(add); if (nk>1.02*T) return;
-        const sc=Math.abs(T-nk); if (!best||sc<best.sc) best={mk,add,sc}; }); });
-    if (!best) break; out[best.mk]=[...(out[best.mk]||[]),...best.add.map(it=>({...it,_id:uid(),_omniSide:1}))]; }
+        const add=ad.items.map(([fk,g])=>({fk,g:Math.round(omniSnap(fk,g))})); all.push({mk,ad,add,k:omniK(add),cut:a.some(it=>it._omniCut)}); }); });
+    const cut=all.filter(c=>c.cut); return cut.length?cut:all; };
+  const hadCut=MEAL_KEYS.some(mk=>(out[mk]||[]).some(it=>it._omniCut));
+  for (let guard=0; guard<6 && (dk()<T-40||(guard===0&&hadCut&&dk()<T)); guard++){ const cur=dk(), cs=cands(); if (!cs.length) break; /* אחרי "➖ פחות" — לפחות תוספת אחת כשהיום מתחת ליעד */
+    let best=null; cs.forEach(c=>{ const nk=cur+c.k; if (nk>1.03*T) return; const sc=Math.abs(T-nk); if (!best||sc<best.sc) best={...c,sc}; });
+    if (!best) best=cs.slice().sort((x,y)=>x.k-y.k)[0]; /* אף תוספת לא נכנסת עד 103% — הקטנה ביותר */
+    out[best.mk]=[...(out[best.mk]||[]),...best.add.map(it=>({...it,_id:uid(),_omniSide:1}))]; if (added) added.push({mk:best.mk,ad:best.ad});
+    if (best.sc==null) break; }
+  MEAL_KEYS.forEach(mk=>{ if ((out[mk]||[]).some(it=>it._omniCut)) out[mk]=out[mk].map(({_omniCut,...it})=>it); });
   return out; }
 // "שדרוג" — דגן מלא במקום לבן, באותם גרמים (לבקשת המשתמש)
 // תוספת שכל רכיביה כבר במנה (למשל סלט ליד מנה שיש בה סלט) — לא מוצעת
@@ -24134,6 +24140,7 @@ function AppInner(){
   };
   const [weekPlanProgress,setWeekPlanProgress]=useState(null);
   const [moreOpen,setMoreOpen]=useState(false); // "⋯ עוד פעולות" במסך הארוחות
+  const [topupToast,setTopupToast]=useState(null); // אישור אחרי השלמה מהצומח (לבקשת המשתמש: "אין שינוי")
   const [completeNote,setCompleteNote]=useState(null); // "השלם" בתוך "עוד פעולות" כשאין ארוחה ריקה — הסבר במקום לחיצה שלא עושה כלום
   const morePanelRef=useRef(null); // גלילה אל תוכן "עוד פעולות" כשנפתח (לבקשת המשתמש: "לא נפתח כלום")
   useEffect(()=>{ if (!moreOpen) { setCompleteNote(null); return; } const t=setTimeout(()=>{ try{ const el=morePanelRef.current; if (el) { const r=el.getBoundingClientRect(), H=window.innerHeight; if (r.bottom>H-80) window.scrollBy({top:Math.max(0,Math.min(r.bottom-(H-80),r.top-160)),behavior:"smooth"}); } }catch{ /* ignore */ } },60); return ()=>clearTimeout(t); },[moreOpen]);
@@ -24347,7 +24354,10 @@ function AppInner(){
     // סקירת דיאטן: שינוי כמות במנה (קטן/גדול ב-20%) — אותה מנה, נבנית מחדש ליעד החדש
     resize:dir=>{ const cur=getMeal(mk), d0=omniById(omniIdOf(cur)); if (!d0) return; const fz=(cur.find(it=>it._omniForce)||{})._omniForce;
       const fav=MEAL_KEYS.filter(m2=>m2!==mk).flatMap(m2=>((meals[dayKey]||{})[m2]||[]).map(x=>x.fk)).filter(fk=>OMNI_FRUIT.has(fk));
-      const nb=omniBuildMeal(d0,mk,target,userExclFks,Math.max(80,Math.round(omniK(cur)*(dir>0?1.2:0.8))),{...(bo||{}),force:fz?fz.split(","):[],avoid:fav}); setMeal(mk,fz?nb.map(it=>({...it,_omniForce:fz})):nb); },
+      const nb=omniBuildMeal(d0,mk,target,userExclFks,Math.max(80,Math.round(omniK(cur)*(dir>0?1.2:0.8))),{...(bo||{}),force:fz?fz.split(","):[],avoid:fav}); setMeal(mk,(fz?nb.map(it=>({...it,_omniForce:fz})):nb).map(it=>dir<0?{...it,_omniCut:1}:it));
+      if (dir<0&&target){ const he=lang==="he", day=meals[dayKey]||{}, k0=MEAL_KEYS.reduce((a,m2)=>a+omniK(day[m2]),0), k1=k0-omniK(cur)+omniK(nb), r=n=>Math.round(n).toLocaleString("en-US");
+        /* משוב מיידי (לבקשת המשתמש: "השלמתי — אין שינוי"): כמה ירד, ואם יש מה להשלים */
+        setTopupToast(he?`המנה הוקטנה ב־${r(k0-k1)} קק״ל. היום: ${r(k1)} מתוך ${r(target)} — ${k1<target?"״השלם יום״ ישלים מהצומח.":"עדיין ביעד, אין צורך להשלים."}`:`Portion reduced by ${r(k0-k1)} kcal. Today: ${r(k1)} of ${r(target)} — ${k1<target?"'Complete Day' will add plant foods.":"still on target, nothing to complete."}`); setTimeout(()=>setTopupToast(null),5000); } },
     set:list=>setMeal(mk,list.map(it=>({...it,_id:uid()}))) }; }
   // החלפת ארוחה בודדת בין צמחית למן החי (לבקשת המשתמש): מעדכן את בחירת הארוחות הצמחיות (flexGrid — נשמרת גם לתכנון הבא)
   // ומחליף רק את תוכן הארוחה: למן החי — מנה לפי יעד הארוחה; לצמחית — הארוחה מתרוקנת ו"השלם יום" בונה אותה לפי היעד
@@ -24688,13 +24698,16 @@ function AppInner(){
     const dx=x-s0.x, dy=y-s0.y; if (Math.abs(dx)<50||Math.abs(dx)<1.3*Math.abs(dy)||Date.now()-s0.t>1500) return; /* ספים נוחים לאגודל */
     const rtl=lang==="he"; goDay((dx>0)===rtl?1:-1); /* עברית: ימינה = היום הבא (הבא נמצא משמאל בבורר) */ };
   // "חסר" = ארוחה צמחית ריקה, או יום מתוכנן מתחת ל-95% מהיעד (למשל אחרי "➖ פחות" במנה מן החי — לבקשת המשתמש)
-  const dayLowK=d=>{ const day=(meals||{})[`d${d}`]||{}; if (!profile.flex||!MEAL_KEYS.some(mk=>omniIdOf(day[mk]))) return false; /* רק ביום עם מנה מן החי */ const k=MEAL_KEYS.reduce((a,mk)=>a+omniK(day[mk]),0); return !!target&&k>0&&k<0.95*target; };
+  const dayLowK=d=>{ const day=(meals||{})[`d${d}`]||{}; if (!profile.flex||!MEAL_KEYS.some(mk=>omniIdOf(day[mk]))) return false; /* רק ביום עם מנה מן החי */ const k=MEAL_KEYS.reduce((a,mk)=>a+omniK(day[mk]),0); const cut=MEAL_KEYS.some(mk=>(day[mk]||[]).some(it=>it._omniCut)); /* הוקטנה ב"➖ פחות" — כל חוסר של יותר מ-40 קק"ל */ return !!target&&k>0&&(k<0.95*target||(cut&&k<target)); };
   const dayHasGap=MEAL_KEYS.some(mk=>!flexOwnMeal(dayIdx,mk)&&!(((meals||{})[dayKey]||{})[mk]||[]).length)||dayLowK(dayIdx); /* ארוחה משלי (אוכל/ת הכל) — לא "חסרה" */
   const weekHasGap=[0,1,2,3,4,5,6].some(d=>MEAL_KEYS.some(mk=>!flexOwnMeal(d,mk)&&!(((meals||{})[`d${d}`]||{})[mk]||[]).length)||dayLowK(d));
   // יום שכולו "משלי" — ההשלמה מוסיפה תוספות צמחיות למנה מן החי (אין ארוחה צמחית להשלים בה); אחרת — "השלם יום" הרגיל
   const ownOnlyDay=d=>!!profile.flex&&MEAL_KEYS.every(mk=>flexOwnMeal(d,mk));
   const emptyPlantMeal=d=>MEAL_KEYS.some(mk=>!flexOwnMeal(d,mk)&&!(((meals||{})[`d${d}`]||{})[mk]||[]).length);
-  const topUpOwnDays=ds=>setMeals(prev=>{ const next={...prev}; ds.forEach(d=>{ const k=`d${d}`; if (next[k]) next[k]=omniTopUpDay(next[k],d,flexOwnMeal,target,userExclFks); }); save("wfpb_meals",next); return next; });
+  const topUpOwnDays=ds=>{ const added=[]; const next={...meals}; ds.forEach(d=>{ const k=`d${d}`; if (next[k]) next[k]=omniTopUpDay(next[k],d,flexOwnMeal,target,userExclFks,added); });
+    setMeals(next); save("wfpb_meals",next); const he=lang==="he";
+    setTopupToast(added.length?("✓ "+(he?"נוספו מהצומח: ":"Plant foods added: ")+[...new Set(added.map(x=>(he?x.ad.he:x.ad.en)+" ("+T[lang][x.mk]+")"))].join(", ")):(he?"היום כבר ביעד — אין מה להשלים.":"The day is already on target — nothing to complete."));
+    setTimeout(()=>setTopupToast(null),4500); };
   // אין ארוחה צמחית ריקה אבל היום מתחת ליעד (אחרי "➖ פחות") — תוספות צמחיות למנה מן החי; ארוחה צמחית ריקה — "השלם יום" הרגיל
   const completeDayNow=()=>{ if (!emptyPlantMeal(dayIdx)&&dayLowK(dayIdx)) { topUpOwnDays([dayIdx]); return; } askBudgetThen("day",()=>{setDayPlanMode("personal");setDayPlanOpen(true);}); };
   const completeWeekNow=()=>{ const low=[0,1,2,3,4,5,6].filter(d=>!emptyPlantMeal(d)&&dayLowK(d)); if (low.length) topUpOwnDays(low);
@@ -25340,6 +25353,7 @@ function AppInner(){
           :<>🍖 <b>My own day</b> — per your choice ('🍖 I eat everything'), each meal today is a suggested animal-based dish (counted in the nutrition summary). Want another dish? '🔄 Another suggestion' on the card. Want a plant-based menu today anyway? '🔄 New day menu' at the top (or 🍖⇄ for one meal).</>}</div>}
         {tab==="meals"&&!desktopMealsLayout&&(
           <div onTouchStart={onMealsTouchStart} onTouchMove={onMealsTouchMove} onTouchEnd={onMealsTouchEnd} onTouchCancel={onMealsTouchEnd} data-swipe-days="1" style={{touchAction:"pan-y"}} /* הדפדפן גולל רק אנכית — תנועה אופקית נשארת להחלקה בין ימים */>
+            {topupToast&&<div data-topup-toast role="status" style={{position:"fixed",insetInline:12,bottom:84,zIndex:300,background:"#1E3A2B",color:"#fff",borderRadius:14,padding:"10px 12px",fontSize:13,lineHeight:1.5,boxShadow:"0 6px 18px rgba(0,0,0,.25)",direction:lang==="he"?"rtl":"ltr"}}>{topupToast}</div>}
             {swipeToast&&<div style={{position:"fixed",top:"42%",left:"50%",transform:"translateX(-50%)",zIndex:300,background:"rgba(30,58,43,0.9)",color:"#fff",fontSize:17,fontWeight:800,padding:"10px 18px",borderRadius:14,pointerEvents:"none"}}>{swipeToast}</div>}
             {MEAL_DISPLAY.map(mk=>(<div key={mk} id={mk==="breakfast"?"onboard-mealcard-mobile":undefined}>
               <MealCard key={mk} mealKey={mk} ings={dashSource==="actual"?getActualMealEffective(logDate,mk):getMeal(mk)} time={mealTimes[mk]||""} note={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteOf(meals,dayIdx,lang,mk):null} noteFk={(mk==="lunch"||mk==="dinner")&&dashSource!=="actual"?cookNoteFkOf(meals,dayIdx,mk):null} leftFks={dashSource!=="actual"?prevDayRecipeSet(meals,dayIdx):null} own={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)} flexSwitch={profile.flex&&dashSource!=="actual"&&!planBlock?()=>flexSwitchMeal(mk):null} omni={dashSource!=="actual"&&flexOwnMeal(dayIdx,mk)?omniCardApi(mk):null}
@@ -25377,7 +25391,7 @@ function AppInner(){
             {moreOpen&&<div ref={morePanelRef} style={{background:"#FBFAF7",border:"1px solid #E2DED4",borderRadius:12,padding:"2px 8px 8px",marginTop:8}}>
             {/* "השלם יום / שבוע" — גם כאן, כשהם לא מוצגים למעלה (אין ארוחה ריקה), כדי שלא "ייעלמו" (לבקשת המשתמש) */}
             {!planBlock&&(!dayHasGap||!weekHasGap)&&<div style={{display:"flex",gap:8,marginTop:8}}>
-              {!dayHasGap&&<button onClick={()=>setCompleteNote(lang==="he"?"כל הארוחות היום כבר מלאות — אין מה להשלים. כדי להשלים: מרוקנים ארוחה (״נקה יום״ או ב״✏️ בנה וערוך״) ואז ״השלם יום״.":"All of today's meals are already filled — nothing to complete. Empty a meal first ('Clear Day' or '✏️ Build & edit'), then 'Complete Day'.")}
+              {!dayHasGap&&<button onClick={()=>setCompleteNote(lang==="he"?"היום ביעד הקלורי וכל הארוחות מלאות — אין מה להשלים. כדי להשלים: מרוקנים ארוחה (״נקה יום״ או ב״✏️ בנה וערוך״) ואז ״השלם יום״.":"All of today's meals are already filled — nothing to complete. Empty a meal first ('Clear Day' or '✏️ Build & edit'), then 'Complete Day'.")}
                 style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #d9c2a3",background:"#F7EFE3",color:"#8C6D53",fontSize:12,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"השלם יום":"Complete Day"}</button>}
               {!weekHasGap&&<button onClick={()=>setCompleteNote(lang==="he"?"כל הארוחות בשבוע כבר מלאות — אין מה להשלים. כדי להשלים: מרוקנים ארוחות (״נקה שבוע״ / ״נקה יום״ או ב״✏️ בנה וערוך״) ואז ״השלם שבוע״.":"Every meal this week is already filled — nothing to complete. Empty some meals first, then 'Complete Week'.")}
                 style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #b9d3b4",background:"#EEF6EC",color:"#2e7d32",fontSize:12,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"השלם שבוע":"Complete Week"}</button>}
