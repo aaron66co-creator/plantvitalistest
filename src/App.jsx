@@ -24354,7 +24354,9 @@ function AppInner(){
     // סקירת דיאטן: שינוי כמות במנה (קטן/גדול ב-20%) — אותה מנה, נבנית מחדש ליעד החדש
     resize:dir=>{ const cur=getMeal(mk), d0=omniById(omniIdOf(cur)); if (!d0) return; const fz=(cur.find(it=>it._omniForce)||{})._omniForce;
       const fav=MEAL_KEYS.filter(m2=>m2!==mk).flatMap(m2=>((meals[dayKey]||{})[m2]||[]).map(x=>x.fk)).filter(fk=>OMNI_FRUIT.has(fk));
-      const nb=omniBuildMeal(d0,mk,target,userExclFks,Math.max(80,Math.round(omniK(cur)*(dir>0?1.2:0.8))),{...(bo||{}),force:fz?fz.split(","):[],avoid:fav}); setMeal(mk,(fz?nb.map(it=>({...it,_omniForce:fz})):nb).map(it=>dir<0?{...it,_omniCut:1}:it));
+      const k0m=omniK(cur); let nb=null; /* "➖ פחות" חייב להקטין ו"➕ יותר" להגדיל (באג: בבנייה מחדש עם תוספות המנה יצאה לפעמים גדולה יותר) */
+      for (const f of (dir>0?[1.2,1.35,1.5]:[0.8,0.7,0.6,0.5])){ const c=omniBuildMeal(d0,mk,target,userExclFks,Math.max(80,Math.round(k0m*f)),{...(bo||{}),force:fz?fz.split(","):[],avoid:fav}); nb=c; const kc=omniK(c); if (dir>0?kc>k0m*1.05:kc<k0m*0.95) break; }
+      if (dir<0&&omniK(nb)>=k0m*0.95) nb=cur.map(it=>({...it,g:Math.max(1,Math.round(it.g*0.8)),_id:uid()})); /* גיבוי: אותה מנה ב-80% */ setMeal(mk,(fz?nb.map(it=>({...it,_omniForce:fz})):nb).map(it=>dir<0?{...it,_omniCut:1}:it));
       if (dir<0&&target){ const he=lang==="he", day=meals[dayKey]||{}, k0=MEAL_KEYS.reduce((a,m2)=>a+omniK(day[m2]),0), k1=k0-omniK(cur)+omniK(nb), r=n=>Math.round(n).toLocaleString("en-US");
         /* משוב מיידי (לבקשת המשתמש: "השלמתי — אין שינוי"): כמה ירד, ואם יש מה להשלים */
         setTopupToast(he?`המנה הוקטנה ב־${r(k0-k1)} קק״ל. היום: ${r(k1)} מתוך ${r(target)} — ${k1<target?"״השלם יום״ ישלים מהצומח.":"עדיין ביעד, אין צורך להשלים."}`:`Portion reduced by ${r(k0-k1)} kcal. Today: ${r(k1)} of ${r(target)} — ${k1<target?"'Complete Day' will add plant foods.":"still on target, nothing to complete."}`); setTimeout(()=>setTopupToast(null),5000); } },
