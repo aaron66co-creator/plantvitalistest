@@ -24054,9 +24054,9 @@ function AppInner(){
     const tok=++weekGenTok.current; const cancelled=()=>weekGenTok.current!==tok;
     setWeekPlanLoading(true); setWeekPlanProgress(null);
     generateWeekForModeAsync(weekPlanMode,p=>{ if(!cancelled()) setWeekPlanProgress(p); },cancelled)
-      .then(w=>{ if(cancelled()) return; const w1=w?Object.fromEntries(Object.entries(w).map(([k,d])=>[k,flexOwnDay(+String(k).slice(1))?Object.fromEntries(MEAL_KEYS.map(mk=>{ const a0=(meals[k]||{})[mk]||[]; return [mk,omniIdOf(a0)&&weekPlanMode!=="completeWeek"?[]:a0]; })) /* יום משלי: הצעת מנה קודמת מתחלפת (לפי הסימון הים-תיכוני הנוכחי); ארוחה שהמשתמש מילא — נשארת */:(()=>{ const c=consolidateMealSalads(d), di=+String(k).slice(1); return Object.fromEntries(Object.entries(c||{}).map(([mk,a])=>[mk,MEAL_KEYS.includes(mk)&&flexOwnMeal(di,mk)?(weekPlanMode==="completeWeek"&&omniIdOf(meals[k]?.[mk])?meals[k][mk]:[]):a])); })()])):w;
+      .then(w=>{ if(cancelled()) return; const w1=w?Object.fromEntries(Object.entries(w).map(([k,d])=>[k,flexOwnDay(+String(k).slice(1))?Object.fromEntries(MEAL_KEYS.map(mk=>{ const a0=(meals[k]||{})[mk]||[]; return [mk,weekPlanMode==="completeWeek"?a0:[]]; })) /* יום משלי: בתפריט חדש לשבוע — מנה מן החי חדשה (באג: יום שהיה צמחי ועבר ל"משלי" נשאר צמחי, כי התוכן הקודם נחשב "מה שהמשתמש מילא"); ב"השלם שבוע" — מה שיש נשאר */:(()=>{ const c=consolidateMealSalads(d), di=+String(k).slice(1); return Object.fromEntries(Object.entries(c||{}).map(([mk,a])=>[mk,MEAL_KEYS.includes(mk)&&flexOwnMeal(di,mk)?(weekPlanMode==="completeWeek"&&omniIdOf(meals[k]?.[mk])?meals[k][mk]:[]):a])); })()])):w;
         const w2=w1&&profile.flex?omniPlanFill(w1,flexOwnMeal,target,userExclFks,false,!!profile.omniMed):w1; /* ארוחות משלי — הצעת מנה מן החי לפי היעד (נספרת בתזונה) */ setWeekPlanData(w2); /* יום משלי — בתצוגה המקדימה כמו שהוא */ setWeekPlanLoading(false);
-        if (autoWeek){ if (w2){ handleApplyWeekPlan(weekPlanMode==="completeWeek"?changedDaysOnly(w2):w2); } setWeekPlanOpen(false); } })
+        if (autoWeek){ if (w2){ handleApplyWeekPlan(weekPlanMode==="completeWeek"?changedDaysOnly(w2):w2,weekPlanMode==="completeWeek"); } setWeekPlanOpen(false); } })
       .catch(e=>{ console.error(e); if(!cancelled()) setWeekPlanLoading(false); });
   };
   const cancelWeekGen=()=>{ weekGenTok.current++; setWeekPlanLoading(false); setWeekPlanOpen(false); };
@@ -24471,13 +24471,13 @@ function AppInner(){
     });
   }
 
-  function handleApplyWeekPlan(week){
+  function handleApplyWeekPlan(week,keepOwn){ /* keepOwn — רק ב"השלם שבוע": ארוחה משלי שהמשתמש מילא נשארת. בתפריט חדש לשבוע — מתחלפת */
     setMeals(prev=>{
       const next={...prev};
       Object.keys(week||{}).forEach(dk=>{ /* יום/ארוחה משלי (אוכל/ת הכל): מה שהמשתמש מילא בעצמו — לא נדרס; הצעת מנה של האפליקציה — מתחלפת */
         const day={}; const di=+String(dk).slice(1);
         MEAL_KEYS.forEach(mk=>{ const p0=(prev[dk]||{})[mk]||[];
-          day[mk]=flexOwnMeal(di,mk)?(p0.length&&!omniIdOf(p0)?p0:((week[dk]||{})[mk]||[]).filter(it=>it._omni||it._omniSide).map(it=>({...it,_id:uid()}))):((week[dk]||{})[mk]||[]).map(it=>({fk:it.fk,g:it.g,_id:uid()})); }); /* ארוחה משלי — רק הצעת המנה מן החי */
+          day[mk]=flexOwnMeal(di,mk)?(keepOwn&&p0.length&&!omniIdOf(p0)?p0:((week[dk]||{})[mk]||[]).filter(it=>it._omni||it._omniSide).map(it=>({...it,_id:uid()}))):((week[dk]||{})[mk]||[]).map(it=>({fk:it.fk,g:it.g,_id:uid()})); }); /* ארוחה משלי — רק הצעת המנה מן החי */
         next[dk]=day;
       });
       const filled=profile.flex?{...next,...omniPlanFill(next,flexOwnMeal,target,userExclFks,false,!!profile.omniMed)}:next; /* ארוחה משלי ריקה — מקבלת מנה */
@@ -25554,7 +25554,7 @@ function AppInner(){
           note={weekPlanMode==="completeWeek"?completeWeekNote(weekPlan):null}
           onClose={()=>setWeekPlanOpen(false)}
           onRegenerate={startWeekGen}
-          onApply={()=>{ if(weekPlan) handleApplyWeekPlan(weekPlanMode==="completeWeek"?changedDaysOnly(weekPlan):weekPlan); setWeekPlanOpen(false); }}
+          onApply={()=>{ if(weekPlan) handleApplyWeekPlan(weekPlanMode==="completeWeek"?changedDaysOnly(weekPlan):weekPlan,weekPlanMode==="completeWeek"); setWeekPlanOpen(false); }}
           onClearWeek={()=>{ clearEntireWeek(); setWeekPlanOpen(false); }}/>
       )}
       {foodSrcOpen&&<FoodSourcesModal lang={lang} onClose={()=>setFoodSrcOpen(false)}/>}
