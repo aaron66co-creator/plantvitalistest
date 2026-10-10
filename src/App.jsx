@@ -19723,6 +19723,8 @@ const HE_UNIT_PL={"ביצה":"ביצים","גביע":"גביעים","פרח בי
 function CookForNote({lang,servings}){ if (COOK_FOR<=1) return null; const he=lang==="he";
   return <div data-cookfor-note style={{fontSize:12,color:"#1E5631",background:"#EEF6EC",border:"1px solid #CFE3CB",borderRadius:8,padding:"5px 9px",margin:"0 0 8px",lineHeight:1.5}}>{he?`👨‍👩‍👧 לבישול ל־${COOK_FOR} סועדים — הכמויות כפול ${COOK_FOR}${servings?` (המתכון המקורי: ${servings} מנות)`:""}. הערכים התזונתיים — למנה אחת.`:`👨‍👩‍👧 Cooking for ${COOK_FOR} — amounts × ${COOK_FOR}${servings?` (original recipe: ${servings} servings)`:""}. Nutrition values are per serving.`}</div>; }
 function householdQty(fk,g,lang){ const fd=FDB[fk]; if(!fd) return null; const su=getServingUnit(fk,fd,lang); if(!su||su.weightOnly||!su.g||/מיץ|juice/.test(su.he||"")) return null;
+  // יחידה "חצי X" (חצי אבוקדו): בכמות שאינה חצי אחד — ביחידות שלמות של X ("¾ אבוקדו" ולא "1½ חצי אבוקדו")
+  { const hh=/^חצי (.+)$/.exec(su.he||""), he0=lang==="he"; const q0=g/su.g*(su.count||1); if (hh&&Math.abs(q0-1)>0.01){ const q2=Math.round(q0/2*4)/4; if(q2>=0.25){ const w2=Math.floor(q2), f2=q2-w2; return `${(w2?String(w2):"")+(f2===0.25?"¼":f2===0.5?"½":f2===0.75?"¾":"")} ${he0?hh[1]:String(su.en||"").replace(/^half\s+/i,"")}`; } } }
   const q=Math.round(g/su.g*(su.count||1)*4)/4; if (q<0.25) return null; const w=Math.floor(q), fr=q-w; const frS=fr===0.25?"¼":fr===0.5?"½":fr===0.75?"¾":"";
   const num=(w?String(w):"")+frS; const he=lang==="he"; const word=he?(q>1?(su.hePl||HE_UNIT_PL[su.he]||su.he):su.he):(q>1?(su.enPl||su.en):su.en);
   return `${num} ${word}`; }
