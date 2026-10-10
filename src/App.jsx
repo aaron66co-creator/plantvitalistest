@@ -21389,7 +21389,7 @@ function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,set
         // מצב מצומצם (Desktop, במלבן הכותרת העליון): רק אייקון דמות + תווית "פרופיל" — לחיצה פותחת חלונית
         // צפה עם כל פרטי הפרופיל (בדיוק כמו במצב הרגיל), בלי להציג kcal/BMI כברירת מחדל כדי לחסוך מקום
         <button onClick={()=>onOpenSheet?onOpenSheet():setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:6,background:"transparent",border:"none",cursor:"pointer",padding:0}}>
-          <span style={{fontSize:12,color:"#8C6D53",fontWeight:700}}>{lang==="he"?"הנתונים שלי":"My Data"} 👤</span>
+          <span style={{fontSize:12,color:"#8C6D53",fontWeight:700}}>👤 {bmi?<span style={{color:bmiColor,fontWeight:800}}>BMI {bmi}</span>:(lang==="he"?"הנתונים שלי":"My Data")}{target?<span style={{color:"#8C6D53",fontWeight:800}}>{" · "}{GOALS[goal].emoji} {target} kcal</span>:null}</span>
           <span style={{color:"#1E3A2B",fontSize:10,transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>▼</span>
         </button>
       ) : (
@@ -21720,7 +21720,7 @@ function SimpleDaySummary({totals,target,profile,lang,full,week,cost,dailyBudget
   const fw=week&&week.flex&&week.flex.dayW>0&&week.flex.dayW<1?week.flex.dayW:1; /* אוכל/ת הכל — יום חלקי: מול חלק היום שתוכנן */
   const kc=calcKcalActual(totals); const tgt=(target||2000)*fw; const pct=kc/tgt*100; const w=(+profile.weight||0)*fw;
   const lines=[];
-  if (!(kc>0)) lines.push(simpleLine("🍽️",he?"עוד לא נבנה תפריט ליום הזה — אפשר להתחיל מ״✨ הצע לי״.":"No menu for this day yet — try '✨ Suggest me'."));
+  if (!(kc>0)) lines.push(simpleLine("🍽️",he?"עוד לא נבנה תפריט ליום הזה — אפשר להתחיל בכרטיס ״איך תרצו להתחיל?״ — תכנון אוטומטי או בנייה ידנית.":"No menu for this day yet — start from the 'How would you like to start?' card: automatic planning or build it yourself."));
   else {
     // בטיחות — תמיד
     if ((totals.sodium||0)>(hp.sodiumMax||2300)*1.01) lines.push(simpleLine("⛔",sodiumAdvice(items,lang,he?"היומית":"daily",totals.sodium||0,hp.sodiumMax||2300),"#b3261e")); // נתרן מעל התקרה — ראשון (לבקשת המשתמש)
