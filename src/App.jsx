@@ -22517,7 +22517,7 @@ function AutoPlanMenu({lang,onSwap,onSuggestRecipesNSFDayPlan,onSuggestDayPlan,o
 // לשונית "אבות המזון" חדשה (לבקשת המשתמש, בין אופטימיזציה למיקרו): מרכזת צריכה יומית ושבועית בגרמים לכל
 // אב-מזון, יחד עם התפלגות אחוזית מתוך הקלוריות (באותה נוסחת macros() המשמשת בכל שאר האפליקציה), והסבר על
 // נוסחת ה-2 קק"ל לגרם סיבים
-function MacroReportPanel({dayTotals,weekTotals,target,wKg,lang,onInfo}){
+function MacroReportPanel({dayTotals,weekTotals,target,wKg,lang,onInfo,hp,weekDays}){
   const tx=T[lang];
   const dayM=macrosShown(dayTotals||{});
   const weekM=macrosShown(weekTotals||{});
@@ -22557,7 +22557,11 @@ function MacroReportPanel({dayTotals,weekTotals,target,wKg,lang,onInfo}){
   // הגרמים, השבוע, טווח החלבון והסימוכין — מקופלים תחת "עוד פרטים"
   const [more,setMore]=useState(false);
   const he=lang==="he";
-  const protOkKg = gPerKgDay!=null && gPerKgDay>=0.8;
+  // היעד האישי (לבקשת המשתמש: "האם החלבון מספיק לפי הדרישות?") — protPerKg מהפרופיל (פעילות, גיל, ירידה, אימוני כוח;
+  // ב-BMI 30+ — לפי משקל ייחוס). תקין מ-90% מהיעד, כמו בשאר הסיכומים. קודם הסימון היה מול 0.8 (RDA כללי)
+  const refKg = hp?.protRefKg||wKg; const tgtPerKg = hp?.protRefKg?(hp.protPerKgRef||1.2):(hp?.protPerKg||1.2);
+  const nWk = weekDays>0?weekDays:7; const perKgDay = refKg>0?(dayTotals?.protein||0)/refKg:null, perKgWk = refKg>0?((weekTotals?.protein||0)/nWk)/refKg:null;
+  const protOkKg = perKgDay!=null && perKgDay>=tgtPerKg*0.9;
   const line=(ok,txt)=>(<div style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:14,fontWeight:700,color:"#1E3A2B",marginBottom:6,lineHeight:1.45}}><span style={{color:ok?"#2e7d32":"#c62828",flexShrink:0}}>{ok?"✓":"⚠"}</span><span>{txt}</span></div>);
   return (
     <div style={{background:"#FFFFFF",borderRadius:16,padding:"20px 16px",border:"1px solid #E2DED4"}}>
@@ -22571,7 +22575,7 @@ function MacroReportPanel({dayTotals,weekTotals,target,wKg,lang,onInfo}){
       </div>
       <div style={{fontSize:13.5,color:"#4A5A50",marginBottom:10,lineHeight:1.5}}>{he?"כמה אנרגיה (קלוריות) וחלבון יש בתפריט, ומאיפה מגיעות הקלוריות.":"How much energy (calories) and protein the menu has, and where the calories come from."}</div>
       {line(kcalDayOk, he?`קלוריות היום: ${Math.round(dayTotals?.kcal||0)} מתוך ${Math.round(target||0)}`:`Calories today: ${Math.round(dayTotals?.kcal||0)} of ${Math.round(target||0)}`)}
-      {gPerKgDay!=null&&line(protOkKg, he?`חלבון היום: ${Math.round(dayTotals?.protein||0)} גר' (${gPerKgDay.toFixed(1)} גר' לק"ג משקל)`:`Protein today: ${Math.round(dayTotals?.protein||0)} g (${gPerKgDay.toFixed(1)} g per kg)`)}
+      {perKgDay!=null&&line(protOkKg, he?`חלבון היום: ${Math.round(dayTotals?.protein||0)} גר' (${perKgDay.toFixed(2)} גר' לק"ג${hp?.protRefKg?" משקל ייחוס":""})${(weekTotals?.protein||0)>0?` · ממוצע השבוע: ${perKgWk.toFixed(2)}`:""} · היעד שלך: ${tgtPerKg.toFixed(1)}`:`Protein today: ${Math.round(dayTotals?.protein||0)} g (${perKgDay.toFixed(2)} g/kg${hp?.protRefKg?" reference weight":""})${(weekTotals?.protein||0)>0?` · week average: ${perKgWk.toFixed(2)}`:""} · your target: ${tgtPerKg.toFixed(1)}`)}
       <div style={{fontSize:12.5,fontWeight:700,color:"#6B7C72",margin:"10px 0 6px"}}>{he?"מאיפה מגיעות הקלוריות היום":"Where today's calories come from"}</div>
       <SplitBar m={dayM}/>
       <div style={{display:"flex",gap:12,justifyContent:"center",fontSize:12,color:"#4A5A50",marginTop:6}}>
@@ -25454,7 +25458,7 @@ function AppInner(){
   // במקום שכל 5 הכרטיסים מוצגים תמיד יחד, לחיצה על כפתור פותחת קטגוריה אחת בכל פעם בחלון נפרד
   // מסכי-משנה בלשונית "אבות המזון" (לבקשת המשתמש): מאקרו+חלבון / יחס אומגות+המרת ALA / חומצות אמינו חיוניות / שומן רווי וכולסטרול
   const MACRO_SUBS=[
-    {k:"macro",l:lang==="he"?"🍽 מאקרו":"🍽 Macros",node:(<MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} lang={lang} onInfo={setInfoOpen}/>)},
+    {k:"macro",l:lang==="he"?"🍽 מאקרו":"🍽 Macros",node:(<MacroReportPanel dayTotals={displayTotals} weekTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} target={target} wKg={wKg} hp={hp} weekDays={dashSource==="actual"?7:plannedDaysN} lang={lang} onInfo={setInfoOpen}/>)},
     {k:"omega",l:lang==="he"?"⚖️ אומגה 3 ו-6":"⚖️ Omega-3 & 6",node:(<><TermHint k="omega" lang={lang}/>{omegaRatioTableNode}<div style={{marginTop:16}}>{omegaConversionNode}</div></>)},
     {k:"amino",l:lang==="he"?"🧬 חומצות אמינו חיוניות":"🧬 Essential Amino Acids",node:(<><TermHint k="amino" lang={lang}/>{aminoSectionNode}</>)},
     {k:"satfat",l:lang==="he"?"🥓 שומן רווי וכולסטרול":"🥓 Sat. Fat & Cholesterol",node:satFatSectionNode},
