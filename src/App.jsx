@@ -9329,14 +9329,15 @@ const MIXED_FALLBACK_ITEMS=[
 // חלב וביצים במצב הפשוט (לבקשת המשתמש: מי שמצהיר שהוא אוכל חלב וביצים — הצעות משולבות בשני הסגנונות). כמו במצב
 // המלא: היום הצמחי נבנה כרגיל, ואחר כך עד 2 פריטי סויה ביום (משקה, יוגורט, אדממה, טופו) מוחלפים במוצר חלב או ביצה
 // בקלוריות שוות. מספר המזונות בארוחה לא משתנה. פריטים שהמשתמש בחר (בהשלמה) לא מוחלפים
-function simpleAnimalSubsDay(day, excl, keep){ if (!day) return day; let n=0; const used=new Set();
+function simpleAnimalSubsDay(day, excl, keep, meno){ if (!day) return day; let n=0; const used=new Set();
+  const soyLeft=()=>["breakfast","snack","lunch","dinner"].flatMap(mk=>day[mk]||[]).filter(x=>x&&recipeHasSoy(x.fk)).length; // גיל המעבר — סויה מלאה נשארת
   for (const mk of ["breakfast","snack","lunch","dinner"]) { const a=day[mk]||[]; for (let i=0;i<a.length&&n<2;i++){ const it=a[i]; if (!it||it._user||(keep&&keep(mk,it))) continue;
-    const opts=PLANT_TO_ANIMAL_SUBS[it.fk]; if (!opts) continue; const sub=opts.find(fk=>FDB[fk]&&!(excl&&excl.has(fk))&&!used.has(fk))||opts.find(fk=>FDB[fk]&&!(excl&&excl.has(fk))); if (!sub) continue;
+    const opts=PLANT_TO_ANIMAL_SUBS[it.fk]; if (!opts) continue; if (meno&&recipeHasSoy(it.fk)&&soyLeft()<=1) continue; const sub=opts.find(fk=>FDB[fk]&&!(excl&&excl.has(fk))&&!used.has(fk))||opts.find(fk=>FDB[fk]&&!(excl&&excl.has(fk))); if (!sub) continue;
     const k0=ingNut(it.fk,it.g).kcal||0, kp=FDB[sub].per100.kcal||0; if (k0<=0||kp<=0) continue; let g=k0/kp*100; const st=wholeUnitStepG(sub); if (st) g=Math.max(st,Math.round(g/st)*st);
     a[i]={fk:sub,g:Math.round(g*10)/10}; used.add(sub); n++; } }
   return day; }
-function simpleAnimalSubsWeek(week, excl, existingWeek){ if (!week) return week; for (const [dk,day] of Object.entries(week)) { const ex=existingWeek&&existingWeek[dk];
-  simpleAnimalSubsDay(day, excl, ex?(mk,it)=>(ex[mk]||[]).some(x=>x.fk===it.fk&&Math.abs((x.g||0)-(it.g||0))<0.01):null); } return week; }
+function simpleAnimalSubsWeek(week, excl, existingWeek, meno){ if (!week) return week; for (const [dk,day] of Object.entries(week)) { const ex=existingWeek&&existingWeek[dk];
+  simpleAnimalSubsDay(day, excl, ex?(mk,it)=>(ex[mk]||[]).some(x=>x.fk===it.fk&&Math.abs((x.g||0)-(it.g||0))<0.01):null, meno); } return week; }
 function generateMixedDayPlan(...a){ a[3]=planDRI(a[3]); return withAgeMealCaps(a[3], ()=>generateMixedDayPlan__impl(...a)); }
 function generateMixedDayPlan__impl(target,wKg,hp,dri,recipeIds=[],recipeUsage={},excludedFks=new Set(),intensity="moderate"){
   // "intensity" — כמה החלפות לבצע לכל היותר: moderate (ברירת מחדל) = עד 2, generous = עד 4. minSubs=2 קבוע
@@ -15913,19 +15914,19 @@ function topUpProteinDay(d, target, dri, hp, wKg, excl){ if (!d||!hp||!(wKg>0)||
 // גיל המעבר (בקרת דיאטן): סויה מלאה בכל יום — טופו, טמפה, אדממה, פולי סויה, משקה או יוגורט סויה (לא חלבון סויה מבודד
 // ולא כמוסות). יום בלי סויה מקבל משקה סויה מועשר בבוקר, או אדממה / טופו / יוגורט סויה, ודגן/פרי מוקטנים באותן קלוריות
 const SOY_DAY_ADD=[["breakfast","soymilkFortified",250],["lunch","edamame",65],["dinner","tofu",60],["snack","soyYogurtPlain",170]];
-function ensureWholeSoyDay(d, target, excl){ if (!d) return d; const MEALS=["breakfast","snack","lunch","dinner"]; const ex=excl instanceof Set?excl:new Set(excl||[]);
+function ensureWholeSoyDay(d, target, excl, allowMk){ if (!d) return d; const okM=allowMk||(()=>true); const MEALS=["breakfast","snack","lunch","dinner"]; const ex=excl instanceof Set?excl:new Set(excl||[]);
   const all=()=>MEALS.flatMap(m=>[...((d.__fx||{})[m]||[]),...(d[m]||[])]); if (all().some(x=>x&&recipeHasSoy(x.fk))) return d;
   const dK=()=>sumNuts(all().map(x=>ingNut(x.fk,x.g,x.soaked))).kcal||0; const k0=dK(); let best=null;
-  for (const [m,fk,g] of SOY_DAY_ADD){ if (!FDB[fk]||ex.has(fk)||!Array.isArray(d[m])) continue;
+  for (const [m,fk,g] of SOY_DAY_ADD){ if (!FDB[fk]||ex.has(fk)||!Array.isArray(d[m])||!okM(m)) continue;
     const snap=MEALS.map(mm=>[mm,(d[mm]||[]).map(x=>x.g)]); d[m]=[...d[m],{fk,g,_addedSoy:true}]; let left=ingNut(fk,g).kcal||0;
-    const lows=MEALS.flatMap(mm=>(d[mm]||[]).filter(it=>it&&!it._user&&!it._keep&&!it._addedSoy&&["דגן","פרי","שומן","אגוז"].includes(FDB[it.fk]?.cat))).sort((a,b)=>(ingNut(b.fk,b.g).kcal||0)-(ingNut(a.fk,a.g).kcal||0));
+    const lows=MEALS.filter(okM).flatMap(mm=>(d[mm]||[]).filter(it=>it&&!it._user&&!it._keep&&!it._addedSoy&&["דגן","פרי","שומן","אגוז"].includes(FDB[it.fk]?.cat))).sort((a,b)=>(ingNut(b.fk,b.g).kcal||0)-(ingNut(a.fk,a.g).kcal||0));
     const cuts=[]; for (const it of lows){ if (left<=5) break; const kc=ingNut(it.fk,it.g,it.soaked).kcal||0; if (kc<25) continue; const cut=Math.min(it.g*0.4, it.g*left/kc); cuts.push([it,it.g]); it.g=Math.round((it.g-cut)*10)/10; left-=kc*cut/(cuts[cuts.length-1][1]); }
     const dev=Math.abs(dK()-target); cuts.forEach(([it,g0])=>{ it.g=g0; }); d[m]=d[m].slice(0,-1); snap.forEach(([mm,gs])=>{ (d[mm]||[]).forEach((x,i)=>{ if (gs[i]!=null) x.g=gs[i]; }); });
     if (!best||dev<best.dev) best={m,fk,g,dev}; }
   if (!best) return d;
   MEALS.forEach(mm=>{ if (Array.isArray(d[mm])) d[mm]=d[mm].map(x=>({...x})); });
   d[best.m]=[...d[best.m],{fk:best.fk,g:best.g,_addedSoy:true}]; let left=ingNut(best.fk,best.g).kcal||0;
-  MEALS.flatMap(mm=>(d[mm]||[]).filter(it=>it&&!it._user&&!it._keep&&!it._addedSoy&&["דגן","פרי","שומן","אגוז"].includes(FDB[it.fk]?.cat))).sort((a,b)=>(ingNut(b.fk,b.g).kcal||0)-(ingNut(a.fk,a.g).kcal||0))
+  MEALS.filter(okM).flatMap(mm=>(d[mm]||[]).filter(it=>it&&!it._user&&!it._keep&&!it._addedSoy&&["דגן","פרי","שומן","אגוז"].includes(FDB[it.fk]?.cat))).sort((a,b)=>(ingNut(b.fk,b.g).kcal||0)-(ingNut(a.fk,a.g).kcal||0))
     .forEach(it=>{ if (left<=5) return; const kc=ingNut(it.fk,it.g,it.soaked).kcal||0; if (kc<25) return; const cut=Math.min(it.g*0.4, it.g*left/kc); left-=kc*cut/it.g; it.g=Math.round((it.g-cut)*10)/10; });
   return d; }
 function topUpProteinWeek(week, target, dri, hp, wKg, excl){ if (!week) return week; Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>{ if (hp&&hp.menopause) week[k]=ensureWholeSoyDay(week[k],target,excl); topUpProteinDay(week[k],target,dri,hp,wKg,excl); }); return week; }
@@ -18810,7 +18811,7 @@ const PIN_PROTECTED_INFO_KEYS = new Set(["userGuide","disclaimer"]);
 // תיקון (לבקשת המשתמש: "במסך הפתיחה") — מסך-כניסה שמסביר את עומק-האפליקציה לפני שנכנסים ישר לממשק המלא.
 // מוצג אוטומטית בפעם-הראשונה (על-בסיס דגל-localStorage), וניתן לפתוח-מחדש בכל עת דרך כפתור "✨ מסך פתיחה"
 // 🍖 אוכל/ת הכל (לבקשת המשתמש): לפני "תפריט לשבוע" — טבלת ימים × ארוחות: אילו ארוחות צמחיות (גם מפוזרות), והסבר מה זה אומר
-function FlexPlanDialog({lang,grid,onConfirm,onCancel,med0}){ const he=lang==="he"; const [med,setMed]=useState(!!med0); const [g,setG]=useState(()=>Object.fromEntries([0,1,2,3,4,5,6].map(d=>[`d${d}`,[...((grid||{})[`d${d}`]||[])]])));
+function FlexPlanDialog({lang,grid,onConfirm,onCancel,med0,meno}){ const he=lang==="he"; const flexNote=true; const [med,setMed]=useState(!!med0); const [g,setG]=useState(()=>Object.fromEntries([0,1,2,3,4,5,6].map(d=>[`d${d}`,[...((grid||{})[`d${d}`]||[])]])));
   const DN=he?["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"]:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]; const MK=FLEX_DEFAULT_MEALS; const ML={breakfast:he?"בוקר":"Bkfst",snack:he?"ביניים":"Snack",lunch:he?"צהריים":"Lunch",dinner:he?"ערב":"Dinner"};
   const has=(d,mk)=>(g[`d${d}`]||[]).includes(mk); const tog=(d,mk)=>setG(o=>{ const a=o[`d${d}`]||[]; return {...o,[`d${d}`]:a.includes(mk)?a.filter(x=>x!==mk):MK.filter(x=>x===mk||a.includes(x))}; });
   const preset=f=>setG(Object.fromEntries([0,1,2,3,4,5,6].map(d=>[`d${d}`,MK.filter(mk=>f(d,mk))])));
@@ -18820,6 +18821,7 @@ function FlexPlanDialog({lang,grid,onConfirm,onCancel,med0}){ const he=lang==="h
   return (<div style={{position:"fixed",inset:0,zIndex:420,background:"#000a",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} role="dialog" aria-modal="true">
     <div style={{background:"#FBF8F3",borderRadius:18,width:"100%",maxWidth:420,maxHeight:"90vh",overflowY:"auto",padding:"18px 16px",border:"1px solid #E2DED4",direction:he?"rtl":"ltr",textAlign:he?"right":"left"}}>
       <div style={{fontSize:17,fontWeight:800,color:"#1E3A2B",marginBottom:4}}>🍖 {he?"אילו ארוחות יהיו צמחיות השבוע?":"Which meals are plant-based this week?"}</div>
+      {meno&&<div data-meno-plan style={{fontSize:12.5,color:"#7a3b5c",background:"#FBEFF4",border:"1px solid #E9C6D6",borderRadius:9,padding:"6px 9px",marginBottom:8,lineHeight:1.45}}>{he?`🌸 התכנון מותאם לגיל המעבר — סידן 1,200 מ"ג, חלבון לפחות ${meno} גר' לק"ג, וסויה מלאה בכל יום${flexNote?" בארוחה צמחית":""}.`:`🌸 Planning is adjusted for menopause — calcium 1,200 mg, protein at least ${meno} g/kg, and whole soy every day${flexNote?" in a plant-based meal":""}.`}</div>}
       <div style={{fontSize:13,color:"#4A5A50",marginBottom:8,lineHeight:1.5}}>{he?"לוחצים על כל ארוחה שרוצים צמחית (🌿). אפשר גם ארוחות מפוזרות — למשל בוקר ביום ב׳ וערב ביום ד׳.":"Tap each meal you want plant-based (🌿). Scattered meals work too — e.g. Mon breakfast and Wed dinner."}</div>
       <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>
         <button style={{...pbtn,border:"1.5px solid #2e7d32",background:"#EEF6EC",color:"#1E5631"}} onClick={()=>preset((d,mk)=>FLEX_DEFAULT_GRID_MEALS.includes(mk))}>⭐ {he?"בוקר וערב בכל יום (מומלץ)":"Breakfast & dinner daily (recommended)"}</button>
@@ -21968,7 +21970,7 @@ function SimpleDaySummary({totals,target,profile,lang,full,week,cost,dailyBudget
     <span>💰 {he?"עלות משוערת להיום":"Estimated cost today"}</span><span style={{color:dailyBudget&&cost>dailyBudget?"#a6440f":"#8a6608"}}>₪{fmtN(cost,1)}{dailyBudget?<span style={{fontWeight:500,color:"#6B7C72"}}>{he?` מתוך ₪${fmtN(dailyBudget,0)}`:` of ₪${fmtN(dailyBudget,0)}`}</span>:null}</span></div>:null;
   return <>{costLine}<SimpleShell lang={lang} title={he?"📊 איך היום שלי":"📊 How's my day"} full={full}>{lines.map((l,i)=><Fragment key={i}>{l}</Fragment>)}</SimpleShell></>;
 }
-function SimpleMicroPanel({weekTotals,days,profile,lang,full,sourceLabel,weekItems,flex,target}){
+function SimpleMicroPanel({weekTotals,days,profile,lang,full,sourceLabel,weekItems,flex,target,soyDays}){
   const he=lang==="he"; const dri=planDRI(getDRI(profile.age||35,profile.sex||"male",profile.pregnant,profile.menopause)); const hp=resolveHealthProfile(profile);
   const lines=[];
   if (!days) lines.push(simpleLine("🍽️",he?"עוד אין תפריט לשבוע הזה.":"No menu for this week yet."));
@@ -21994,6 +21996,9 @@ function SimpleMicroPanel({weekTotals,days,profile,lang,full,sourceLabel,weekIte
         // ההמלצה האישית ליד הצריכה (לבקשת המשתמש), ובחוסר — איך להשלים
         if (fib>=ai) lines.push(simpleLine("💚",he?`סיבים: כ-${Math.round(fib)} גר' ביום — ההמלצה עבורך ${ai} גר' לפחות. הרבה מעל הממוצע בישראל (כ־19 גר' ביום לפי סקר מב״ת; רק כ־17% מהמבוגרים מגיעים להמלצה).`:`Fiber: about ${Math.round(fib)} g a day — your recommendation is at least ${ai} g. Far above the Israeli average (about 19 g a day per the MABAT survey; only about 17% of adults meet the recommendation).`,"#2e7d32"));
         else if (fib>0) lines.push(simpleLine("🌾",he?`סיבים: כ-${Math.round(fib)} גר' ביום — ההמלצה עבורך ${ai} גר' לפחות (חסרים כ-${Math.round(ai-fib)} גר'). להשלמה: קטנית בארוחה (חצי כוס עדשים או חומוס מבושלים — כ-7 גר'), דגן מלא במקום לבן, ירק או פרי בכל ארוחה, וכף זרעי פשתן או צ׳יה (כ-3 גר').`:`Fiber: about ${Math.round(fib)} g a day — your recommendation is at least ${ai} g (about ${Math.round(ai-fib)} g short). To cover it: a legume at a meal (half a cup of cooked lentils or chickpeas — about 7 g), whole grains instead of white, a vegetable or fruit at every meal, and a spoon of flax or chia seeds (about 3 g).`,"#a6440f")); } } // סקירת דיאטן
+    // גיל המעבר (לבקשת המשתמש: "איך יודעים שהתכנון לפי גיל המעבר?") — שורת בקרה: סויה מלאה בכל יום, וסידן מול 1,200
+    if (isMenopause(profile)&&soyDays&&soyDays.n>0){ const caP=!flex&&days?Math.round((weekTotals.calcium||0)/days/12):null; const okS=soyDays.soy>=soyDays.n, okC=caP==null||caP>=95;
+      lines.push(<div key="meno" data-meno-check>{simpleLine(okS&&okC?"✓":"🌸",he?`🌸 גיל המעבר: סויה מלאה ב־${soyDays.soy}/${soyDays.n} ימים${caP!=null?` · סידן ${caP}% מ־1,200 מ"ג`:""}${okS?"":" — בימים בלי סויה אפשר להוסיף כוס משקה סויה, טופו או אדממה"}.`:`🌸 Menopause: whole soy on ${soyDays.soy}/${soyDays.n} days${caP!=null?` · calcium ${caP}% of 1,200 mg`:""}${okS?"":" — on days without soy add a cup of soy drink, tofu or edamame"}.`)}</div>); }
     if (flex||profile.flex) lines.push(simpleLine("💊",he?"B12 וויטמין D — לפי יומן התוספים.":"B12 and vitamin D — see the supplement log.")); /* אוכל/ת הכל — לפי הפרופיל, גם כשאין נתוני ארוחות (באג: הוצג "מומלץ בתזונה צמחונית") */
     else { lines.push(b12Line(profile,lang)); lines.push(simpleLine("☀️",<>{he?"ויטמין D — מומלץ לרוב המבוגרים.":"Vitamin D — recommended for most adults."}{suppBtn(lang)}</>)); }
     lines.push(flex?flexBasisLine(flex,lang):<div key="n" style={{fontSize:14,color:"#34443b",marginTop:4}}>{he?`מבוסס על ${days===1?"יום אחד":days+" ימים"} עם תפריט השבוע (${sourceLabel}).`:`Based on ${days} days with a menu this week (${sourceLabel}).`}</div>);
@@ -24483,7 +24488,7 @@ function AppInner(){
   // שהמשתמש העלה (recipeIds מועבר הלאה ל-generateDayPlan בכל אחד מ-7 הימים). לצידו נוסף מחולל שבועי שני,
   // recipesNSF, שמריץ את generateRecipesNSFDayPlan (מתכונים+אגוזים/זרעים/פרי בלבד) פעם אחת לכל יום בשבוע
   const generateWeekForMode=(mode)=>{
-    if (simpleMode) { const exW=mode==="completeWeek"?existingWeekNow():null; const w=generateSimpleWeekPlan(target,recipes,dri,wKg,hp,excludedFks,{...simpleOpts(),...(exW?{existingWeek:exW}:{})}); return animalOn?simpleAnimalSubsWeek(w,excludedFks,exW):w; }
+    if (simpleMode) { const exW=mode==="completeWeek"?existingWeekNow():null; const w=generateSimpleWeekPlan(target,recipes,dri,wKg,hp,excludedFks,{...simpleOpts(),...(exW?{existingWeek:exW}:{})}); return animalOn?simpleAnimalSubsWeek(w,excludedFks,exW,!!hp.menopause):w; }
     if (mode==="completeWeek") return completeWeekFull(generateWeekForMode("full"),existingWeekNow(),target,planRecipes,recipeIds,dri,wKg,hp,excludedFks);
     if (mode!=="recipesNSF") return withBudgetCtx(budgetCtxNow(), ()=>generateWeekPlan(target,wKg,hp,dri,recipeIds,excludedFks));
     // תיקון (לבקשת המשתמש: "בעיה 2 — אין זיכרון בין שבועות") — טוענים את זיכרון-השימוש שנשמר משבועות קודמים,
@@ -24499,7 +24504,7 @@ function AppInner(){
   };
   // אותו דבר ברקע (לבקשת המשתמש): מחזיר Promise ומדווח התקדמות — המסך לא קופא בזמן החישוב
   const generateWeekForModeAsync=(mode,onProgress,isCancelled)=>{
-    if (simpleMode) { const exW=mode==="completeWeek"?existingWeekNow():null; return new Promise(res=>setTimeout(()=>{ if (isCancelled&&isCancelled()) return res(null); const w=generateSimpleWeekPlan(target,recipes,dri,wKg,hp,excludedFks,{...simpleOpts(),...(exW?{existingWeek:exW}:{})}); res(animalOn?simpleAnimalSubsWeek(w,excludedFks,exW):w); },0)); }
+    if (simpleMode) { const exW=mode==="completeWeek"?existingWeekNow():null; return new Promise(res=>setTimeout(()=>{ if (isCancelled&&isCancelled()) return res(null); const w=generateSimpleWeekPlan(target,recipes,dri,wKg,hp,excludedFks,{...simpleOpts(),...(exW?{existingWeek:exW}:{})}); res(animalOn?simpleAnimalSubsWeek(w,excludedFks,exW,!!hp.menopause):w); },0)); }
     if (mode==="completeWeek") { const ex=existingWeekNow(); return generateWeekForModeAsync("full",onProgress,isCancelled).then(w=>(!w||(isCancelled&&isCancelled()))?w:completeWeekFull(w,ex,target,planRecipes,recipeIds,dri,wKg,hp,excludedFks)); }
     if (mode!=="recipesNSF") return generateWeekPlanAsync(onProgress,isCancelled,budgetCtxNow(),target,wKg,hp,dri,recipeIds,excludedFks);
     const rawHistory = load(RECIPE_USAGE_HISTORY_STORAGE, {});
@@ -24515,13 +24520,15 @@ function AppInner(){
   const morePanelRef=useRef(null); // גלילה אל תוכן "עוד פעולות" כשנפתח (לבקשת המשתמש: "לא נפתח כלום")
   useEffect(()=>{ if (!moreOpen) { setCompleteNote(null); return; } const t=setTimeout(()=>{ try{ const el=morePanelRef.current; if (el) { const r=el.getBoundingClientRect(), H=window.innerHeight; if (r.bottom>H-80) window.scrollBy({top:Math.max(0,Math.min(r.bottom-(H-80),r.top-160)),behavior:"smooth"}); } }catch{ /* ignore */ } },60); return ()=>clearTimeout(t); },[moreOpen]);
   // בלי הודעת "התפריט מוכן" (לבקשת המשתמש) — במקומה הסבר על ניקוי ותפריט חדש בתפריט "תכנון אוטומטי" וב"עוד פעולות"
+  // גיל המעבר (לבקשת המשתמש): באוכל/ת הכל הארוחות "משלי" מתמלאות אחרי המחולל — סויה מלאה מובטחת בארוחה צמחית ביום
+  const menoSoyWeek=w=>{ if (!w||!hp.menopause||!profile.flex) return w; Object.keys(w).filter(k=>/^d\d$/.test(k)&&w[k]).forEach(k=>{ const di=+k.slice(1); if (MEAL_KEYS.every(mk=>flexOwnMeal(di,mk))) return; w[k]=ensureWholeSoyDay(w[k],target,userExclFks,mk=>!flexOwnMeal(di,mk)); }); return w; };
   const weekGenTok=useRef(0);
   const startWeekGen=()=>{
     const tok=++weekGenTok.current; const cancelled=()=>weekGenTok.current!==tok;
     setWeekPlanLoading(true); setWeekPlanProgress(null);
     generateWeekForModeAsync(weekPlanMode,p=>{ if(!cancelled()) setWeekPlanProgress(p); },cancelled)
       .then(w=>{ if(cancelled()) return; const w1=w?Object.fromEntries(Object.entries(w).map(([k,d])=>[k,flexOwnDay(+String(k).slice(1))?Object.fromEntries(MEAL_KEYS.map(mk=>{ const a0=(meals[k]||{})[mk]||[]; return [mk,weekPlanMode==="completeWeek"?a0:[]]; })) /* יום משלי: בתפריט חדש לשבוע — מנה מן החי חדשה (באג: יום שהיה צמחי ועבר ל"משלי" נשאר צמחי, כי התוכן הקודם נחשב "מה שהמשתמש מילא"); ב"השלם שבוע" — מה שיש נשאר */:(()=>{ const c=consolidateMealSalads(d), di=+String(k).slice(1); return Object.fromEntries(Object.entries(c||{}).map(([mk,a])=>[mk,MEAL_KEYS.includes(mk)&&flexOwnMeal(di,mk)?(weekPlanMode==="completeWeek"&&omniIdOf(meals[k]?.[mk])?meals[k][mk]:[]):a])); })()])):w;
-        const w2=w1&&profile.flex?omniPlanFill(w1,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false):w1; /* ארוחות משלי — הצעת מנה מן החי לפי היעד (נספרת בתזונה) */ setWeekPlanData(w2); /* יום משלי — בתצוגה המקדימה כמו שהוא */ setWeekPlanLoading(false);
+        const w2=menoSoyWeek(w1&&profile.flex?omniPlanFill(w1,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false):w1); /* ארוחות משלי — הצעת מנה מן החי לפי היעד (נספרת בתזונה) */ setWeekPlanData(w2); /* יום משלי — בתצוגה המקדימה כמו שהוא */ setWeekPlanLoading(false);
         if (autoWeek){ if (w2){ handleApplyWeekPlan(weekPlanMode==="completeWeek"?changedDaysOnly(w2):w2,weekPlanMode==="completeWeek"); } setWeekPlanOpen(false); } })
       .catch(e=>{ console.error(e); if(!cancelled()) setWeekPlanLoading(false); });
   };
@@ -24962,7 +24969,7 @@ function AppInner(){
           day[mk]=flexOwnMeal(di,mk)?(keepOwn&&p0.length&&!omniIdOf(p0)?p0:((week[dk]||{})[mk]||[]).filter(it=>it._omni||it._omniSide).map(it=>({...it,_id:uid()}))):((week[dk]||{})[mk]||[]).map(it=>({fk:it.fk,g:it.g,_id:uid()})); }); /* ארוחה משלי — רק הצעת המנה מן החי */
         next[dk]=day;
       });
-      const filled=profile.flex?{...next,...omniPlanFill(next,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false)}:next; /* ארוחה משלי ריקה — מקבלת מנה */
+      const filled=menoSoyWeek(profile.flex?{...next,...omniPlanFill(next,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false)}:next); /* ארוחה משלי ריקה — מקבלת מנה */
       save("wfpb_meals",filled);
       return filled;
     });
@@ -25346,7 +25353,8 @@ function AppInner(){
     );
   };
   const simpleMicroNode=(full)=>{ const src=dashSource==="actual"; const days=src?(profile.flex?(displayWeek.n||0):7):plannedDaysN; /* אוכל/ת הכל — ימים "בפועל" בחלקם */
-    return <SimpleMicroPanel weekItems={src?weekDates.flatMap(dk=>MEAL_KEYS.flatMap(mk=>getActualMealEffective(dk,mk))):[0,1,2,3,4,5,6].flatMap(d=>MEAL_KEYS.flatMap(mk=>(meals[`d${d}`]||{})[mk]||[]))} weekTotals={src?weeklyActualTotals:weeklyPlannedTotals} flex={displayWeek.flex} days={days} profile={profile} lang={lang} target={target} full={full} sourceLabel={src?(lang==="he"?"בפועל, עם המתוכנן לימים שלא תועדו":"actual, with the plan for unlogged days"):(lang==="he"?"מתוכנן":"planned")}/>; };
+    const soyDays=(()=>{ const dd=src?weekDates.map(dk=>MEAL_KEYS.flatMap(mk=>getActualMealEffective(dk,mk))):[0,1,2,3,4,5,6].map(d=>MEAL_KEYS.flatMap(mk=>(meals[`d${d}`]||{})[mk]||[])); const w=dd.filter(a=>a.length); return {n:w.length, soy:w.filter(a=>a.some(x=>x&&recipeHasSoy(x.fk))).length}; })();
+    return <SimpleMicroPanel soyDays={soyDays} weekItems={src?weekDates.flatMap(dk=>MEAL_KEYS.flatMap(mk=>getActualMealEffective(dk,mk))):[0,1,2,3,4,5,6].flatMap(d=>MEAL_KEYS.flatMap(mk=>(meals[`d${d}`]||{})[mk]||[]))} weekTotals={src?weeklyActualTotals:weeklyPlannedTotals} flex={displayWeek.flex} days={days} profile={profile} lang={lang} target={target} full={full} sourceLabel={src?(lang==="he"?"בפועל, עם המתוכנן לימים שלא תועדו":"actual, with the plan for unlogged days"):(lang==="he"?"מתוכנן":"planned")}/>; };
   const dayCostNow=!showBudget?null:dayCost(Object.fromEntries(MEAL_KEYS.map(mk=>[mk,dashSource==="actual"?getActualMealDefaulted(logDate,mk):getMeal(mk)])),priceOverrides);
   const summaryNode=<Summary totals={displayTotals} target={target} goal={profile.goal} wKg={wKg} profile={profile}
               lang={lang} onInfo={setInfoOpen}
@@ -26047,6 +26055,7 @@ function AppInner(){
               </svg>
             </div>
             <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B"}}>{lang==="he"?"בונה תפריט לשבוע שלם...":"Building a full week's menu..."}</div>
+            {hp.menopause&&<div data-meno-plan style={{fontSize:12.5,color:"#7a3b5c",marginTop:6,lineHeight:1.45}}>{lang==="he"?"🌸 מותאם לגיל המעבר: סידן 1,200 מ\"ג, חלבון וסויה מלאה בכל יום":"🌸 Adjusted for menopause: calcium 1,200 mg, protein and whole soy every day"}</div>}
             {(()=>{ const pi=weekGenProgressInfo(weekPlanProgress,lang,false); return (<>
               <div style={{fontSize:14,color:"#1E3A2B",fontWeight:600,marginTop:8}}>{pi.text}</div>
               <div style={{width:240,height:10,background:"#E2DED4",borderRadius:6,overflow:"hidden",margin:"10px auto 0"}}>
@@ -26058,7 +26067,7 @@ function AppInner(){
           </div>
         </div>
       )}
-      {flexAskOpen&&<FlexPlanDialog lang={lang} grid={flexGridOf(profile)}
+      {flexAskOpen&&<FlexPlanDialog lang={lang} grid={flexGridOf(profile)} meno={hp.menopause?Math.round((hp.protPerKgRef||hp.protPerKg)*100)/100:0}
         med0={profile.omniMed!==false}
         onConfirm={(grid,med)=>{ setProfile(p=>({...p,flexGrid:grid,omniMed:!!med})); setFlexAskOpen(false); setFlexGo(x=>x+1); }}
         onCancel={()=>{ setFlexAskOpen(false); setWeekPlanOpen(false); }}/>}
@@ -26111,6 +26120,7 @@ function AppInner(){
               </svg>
             </div>
             <div style={{fontSize:16,fontWeight:800,color:"#1E3A2B"}}>{lang==="he"?"בונה תפריט לשבוע שלם...":"Building a full week's menu..."}</div>
+            {hp.menopause&&<div data-meno-plan style={{fontSize:12.5,color:"#7a3b5c",marginTop:6,lineHeight:1.45}}>{lang==="he"?"🌸 מותאם לגיל המעבר: סידן 1,200 מ\"ג, חלבון וסויה מלאה בכל יום":"🌸 Adjusted for menopause: calcium 1,200 mg, protein and whole soy every day"}</div>}
             {(()=>{ const pi=weekGenProgressInfo(mixedWeekProgress,lang,true); return (<>
               <div style={{fontSize:14,color:"#1E3A2B",fontWeight:600,marginTop:8}}>{pi.text}</div>
               <div style={{width:240,height:10,background:"#E2DED4",borderRadius:6,overflow:"hidden",margin:"10px auto 0"}}>
