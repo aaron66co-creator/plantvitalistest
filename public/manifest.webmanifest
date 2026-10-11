@@ -1,7 +1,7 @@
 {
-  "name": "Plantvitalis Vegetarian",
-  "short_name": "Plantvitalis",
-  "description": "תכנון ארוחות ומעקב WFPB Vegetarian",
+  "name": "PlantVitalis",
+  "short_name": "PlantVitalis",
+  "description": "תכנון ארוחות ומעקב — תזונה צמחית",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
