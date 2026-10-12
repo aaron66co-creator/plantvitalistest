@@ -18546,13 +18546,18 @@ function LabsSection({lang}){
 // סידן בגיל מבוגר (ביקורת דיאטנית): נשים מגיל 51 וגברים מגיל 71 — יעד 1,200 מ"ג. בתפריט צמחי בתקציב קלורי נמוך
 // הוא יוצא לעיתים 90%–97% גם אחרי ההשלמה השבועית, ולכן מוצגת הנחיה מעשית כשהשבוע מתחת ל-98%
 function CalciumNotice({lang,profile,pct}){
+  // קצר ומותאם לסוג התזונה (לבקשת המשתמש: באוכל/ת הכל הוצע "לשלב מוצרים מן החי"; ההסבר היה ארוך). תוסף — לפי הנחיה קלינית, בלי מינון
   const he=lang==="he"; const dri=getDRI(profile.age||35,profile.sex||"male",profile.pregnant,profile.menopause);
   if (!(dri.calcium?.dri>=1200) || pct==null || pct>=98) return null;
-  const vegan=(profile.sensitivities||[]).includes("vegan");
-  return (<div style={{fontSize:12.5,color:"#1E3A2B",background:"#FFF6E5",border:"1px solid #ecc98a",borderRadius:10,padding:"7px 10px",marginBottom:8,lineHeight:1.5}}>
-    {he?`🦴 סידן: בגילך היעד הוא 1,200 מ"ג ביום, והשבוע מגיע ל-${pct}%. בתפריט צמחי בתקציב קלורי נמוך קשה להגיע ליעד הזה. אפשרויות: `:`🦴 Calcium: at your age the target is 1,200 mg a day, and this week reaches ${pct}%. On a plant-based menu with a low calorie budget this target is hard to reach. Options: `}
-    {vegan?(he?"להקפיד על משקה סויה ויוגורט סויה מועשרים בסידן, טופו מוקרש בסידן וטחינה; ":"prefer calcium-fortified soy drink and soy yogurt, calcium-set tofu and tahini; "):(he?"להפעיל בתכנון את ״שלב מוצרים מן החי״ (חלב ויוגורט), או להקפיד על משקה סויה מועשר בסידן; ":"use 'Combine Animal Products' in planning (milk and yogurt), or prefer a calcium-fortified soy drink; ")}
-    {he?"או לשקול תוסף סידן בהתייעצות (עדיף עד 500 מ\"ג במנה, לא עם הארוחה העשירה בברזל). ודאו גם שויטמין D נלקח.":"or consider a calcium supplement with professional advice (preferably up to 500 mg per dose, not with the iron-rich meal). Also make sure vitamin D is taken."}
+  const meno=typeof isMenopause==="function"&&isMenopause(profile); const vegan=(profile.sensitivities||[]).includes("vegan");
+  const add=profile.flex?(he?"משקה סויה מועשר, טחינה, טופו מוקרש בסידן או עלים ירוקים — ומוצרי חלב עד 3 מנות ביום":"fortified soy drink, tahini, calcium-set tofu or leafy greens — and dairy up to 3 portions a day")
+    :vegan?(he?"משקה או יוגורט סויה מועשרים, טופו מוקרש בסידן וטחינה":"fortified soy drink or yogurt, calcium-set tofu and tahini")
+    :profile.eatsDairyEggs?(he?"יוגורט או גבינה לבנה, או משקה סויה מועשר":"yogurt or white cheese, or fortified soy drink")
+    :(he?"משקה סויה מועשר, טופו מוקרש בסידן וטחינה":"fortified soy drink, calcium-set tofu and tahini");
+  return (<div data-ca-notice style={{fontSize:12.5,color:"#1E3A2B",background:"#FFF6E5",border:"1px solid #ecc98a",borderRadius:10,padding:"7px 10px",marginBottom:8,lineHeight:1.5}}>
+    {he?`🦴 סידן: ${pct}% מהיעד השבוע (1,200 מ"ג ביום — ${meno?"בגיל המעבר":"מגיל 51"}). להוסיף: ${add}.`:`🦴 Calcium: ${pct}% of the target this week (1,200 mg a day — ${meno?"in menopause":"from 51"}). Add: ${add}.`}
+    <details style={{marginTop:2}}><summary style={{cursor:"pointer",fontSize:12,color:"#8C6D53",fontWeight:700}}>{he?"עוד":"More"}</summary>
+      <div style={{fontSize:12,color:"#4A5A50"}}>{he?"בתקציב קלורי נמוך קשה להגיע ליעד מהמזון בלבד. תוסף סידן — לפי הנחיה קלינית. ודאו גם ויטמין D.":"On a low calorie budget the target is hard to reach from food alone. A calcium supplement — per clinical guidance. Make sure vitamin D is covered too."}</div></details>
   </div>);
 }
 function SelfReportModal({profile,lang,onClose,onWeight,simple}){
@@ -20141,6 +20146,12 @@ const OMNI_ADDONS=[
   {id:"nuts",he:"שקדים (חופן)",en:"Almonds (handful)",emoji:"🌰",items:[["almonds",20]]},
   {id:"yogurt",he:"יוגורט 0% (גביע)",en:"0% yogurt (cup)",emoji:"🥛",items:[["yogurtGreek",170]]},
 ];
+// יוד במנות מן החי (בקרת דיאטן, לבקשת המשתמש: "יוד 13% — מופרז"): ברוב המנות חסר ערך יוד במאגר והוא נספר כאפס.
+// ביצה — לפי NIH ODS (כ־26 מק"ג בביצה גדולה ≈ 52 ל־100 גר'); מנות ומוצרי חלב בלי ערך — מסומנים "חסר", והיוד מוצג "מוערך בחסר"
+(()=>{ try { if (FDB.eggWhole&&FDB.eggWhole.per100&&!(FDB.eggWhole.per100.iodine>0)) FDB.eggWhole.per100.iodine=52;
+  const ks=new Set([...OMNI_MEALS.flatMap(x=>x.items.map(i=>i[0])),...OMNI_ADDONS.flatMap(a=>a.items.map(i=>i[0]))]);
+  ks.forEach(k=>{ const fd=FDB[k]; if (!fd||!fd.per100||fd.per100.iodine>0) return; if (!(k.startsWith("om")||/חלב|גבינ|יוגורט|ביצ|שמנת|קוטג|שוקו/.test(fd.he||""))) return;
+    if (!(fd.miss||[]).includes("iodine")) fd.miss=[...(fd.miss||[]),"iodine"]; }); } catch(e){} })();
 // השלמה מהצומח אחרי "➖ פחות" (לבקשת המשתמש): יום שכולו "משלי" — לארוחה מן החי נוספות תוספות צמחיות (מסומנות "+")
 // עד ~95%–102% מיעד הקלוריות; המנה עצמה לא משתנה. מחזיר את היום המעודכן (או את אותו יום כשאין מה להשלים)
 const OMNI_TOPUP_ORDER=["salad","bread","fruit","hummus","nuts","avocado","veg","tahini"]; // רק מהצומח (בלי יוגורט)
@@ -21867,8 +21878,8 @@ function omniMerge(recs){ const z=()=>({n:0,...Object.fromEntries(OMNI_SUM_KEYS.
   (recs||[]).forEach(r=>{ if (!r) return; any=true; ["n",...OMNI_SUM_KEYS].forEach(k=>{ out.plant[k]+=r.p?.[k]||0; out.omni[k]+=r.o?.[k]||0; }); ["redG","fishN","redN","poultryN","procG","procN","dairyP"].forEach(k=>{ out[k]+=r[k]||0; }); });
   return any&&out.omni.n?out:null; }
 // כרטיס הסיכום — בלשונית התזונה (מתוכנן/בפועל) ובמעקב השבועי. days — מספר ימי השבוע שהסיכום מכסה (לממוצע יומי)
-function OmniSummaryPanel({data,days,target,profile,lang,title,note,trend}){
-  const he=lang==="he"; const [det,setDet]=useState(false); if (!data||!data.omni.n) return null; /* פירוט מקופל (לבקשת המשתמש: לפשט — רוב המשתמשים מסתפקים בתקציר) */
+function OmniSummaryPanel({data,days,target,profile,lang,title,note,trend,wkTotals}){
+  const he=lang==="he"; const [det,setDet]=useState(false); const [open,setOpen]=useState(false); /* מקופל כברירת מחדל (לבקשת המשתמש) */ if (!data||!data.omni.n) return null; /* פירוט מקופל (לבקשת המשתמש: לפשט — רוב המשתמשים מסתפקים בתקציר) */
   const P=data.plant, O=data.omni, tot=k=>(P[k]||0)+(O[k]||0), pct=(a,b)=>b>0?Math.round(a/b*100):0;
   const d=Math.max(1,days||7), f0=v=>fmtN(v,0), f1=v=>fmtN(v,Math.abs(v)<10?1:0);
   const satPct=tot("kcal")>0?tot("satFat")*9/tot("kcal")*100:0, fibDay=tot("fiber")/d, fibT=fiberTargetsOf(target,profile?.age), naDay=tot("sodium")/d;
@@ -21882,6 +21893,8 @@ function OmniSummaryPanel({data,days,target,profile,lang,title,note,trend}){
   return(
     <div data-omni-summary style={{background:"#FFFFFF",borderRadius:12,padding:"10px 12px",border:"1px solid #e3cfb2",marginBottom:10}}>
       <div style={{fontSize:14,fontWeight:800,color:"#1E3A2B",marginBottom:2}}>{title||(he?"🌿 צמחי מול 🍖 מן החי — השבוע":"🌿 Plant vs 🍖 animal-based — this week")}</div>
+      {!open?<button data-omni-open onClick={()=>setOpen(true)} aria-expanded={false} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"7px 9px",marginTop:4,borderRadius:9,border:"1px solid #cfe3cb",background:"#EEF6EC",color:"#1E3A2B",fontSize:13,fontWeight:700,cursor:"pointer",textAlign:"start"}}><span style={{fontSize:18,fontWeight:900,color:"#1E5631"}}>{pct(P.kcal,tot("kcal"))}%</span><span style={{flex:1}}>{he?"🌿 חלק צמחי — מהקלוריות":"🌿 Plant share — of calories"}</span><span>▼</span></button>:<>
+      <button onClick={()=>setOpen(false)} aria-expanded={true} style={{border:"none",background:"none",color:"#15507a",fontSize:12,fontWeight:700,cursor:"pointer",padding:"0 0 4px"}}>{he?"▲ קפל":"▲ Collapse"}</button>
       <div style={{fontSize:11.5,color:"#4A5A50",marginBottom:6,lineHeight:1.45}}>{he?`${P.n===1?"ארוחה צמחית אחת":`${P.n} ארוחות צמחיות`} ו־${O.n===1?"ארוחה אחת מן החי":`${O.n} ארוחות מן החי`}${note?` ${note}`:""}. ערכי המנות מן החי — הערכה לפי מנות נפוצות (מאגר משרד הבריאות; יוד — ממאגר היוד האמריקאי USDA. ערכים חסרים נספרים כאפס).`:`${P.n} plant-based meals and ${O.n} animal-based meals${note?` ${note}`:""}. Animal-based dish values are estimates from common portions (Ministry of Health database; iodine — from the US USDA iodine database. Missing values count as zero).`}</div>
       {/* חלק צמחי — הנתון המרכזי (המלצת דיאטנית): אחוז הקלוריות מארוחות צמחיות, ומגמה שבועית כשיש היסטוריה */}
       <div data-plant-share style={{display:"flex",alignItems:"center",gap:10,background:"#EEF6EC",border:"1px solid #cfe3cb",borderRadius:10,padding:"8px 10px",marginBottom:8}}>
@@ -21905,7 +21918,10 @@ function OmniSummaryPanel({data,days,target,profile,lang,title,note,trend}){
           <div>🎯 {he?"כדאי לשפר:":"Worth improving:"}</div>
           {shown.map((x,i)=><div key={i} data-omni-issue style={{fontWeight:600,marginTop:3}}>⚠ {x}</div>)}
           {more>0&&<div data-omni-more style={{fontWeight:600,color:"#6B4A2E",marginTop:3}}>{he?`ועוד ${more} — ב״▼ פירוט״ למטה.`:`And ${more} more — under '▼ Details' below.`}</div>}
-          </>:<>✓ {he?"הכול בטווח ההמלצות — כל הכבוד.":"Everything is within the recommendations — well done."}</>}</div>; })()}
+          </>:<>✓ {he?"המנות מן החי בטווח ההמלצות (נתרן, שומן רווי, בשר אדום, דגים, עוף, חלב).":"The animal-based dishes are within the recommendations (sodium, saturated fat, red meat, fish, chicken, dairy)."}</>}
+          {(()=>{ if (!wkTotals) return null; const dri=getDRI(profile?.age||35,profile?.sex||"male",profile?.pregnant,profile?.menopause); const und=k=>typeof OMNI_UNDER!=="undefined"&&OMNI_UNDER.has(k);
+            const lowM=MICRO_KEYS.filter(k=>!["vitB12","vitD","sodium"].includes(k)&&dri[k]&&!und(k)&&DRI_LABELS[k]&&(wkTotals[k]||0)/d<dri[k].warn);
+            return lowM.length?<div data-omni-micro style={{fontWeight:600,color:"#8a3408",marginTop:4}}>💊 {he?`בוויטמינים ובמינרלים: ${lowM.length} לחיזוק — ${lowM.map(k=>DRI_LABELS[k].he).join(", ")} (בפירוט למטה).`:`Vitamins and minerals: ${lowM.length} to boost — ${lowM.map(k=>DRI_LABELS[k].en).join(", ")} (details below).`}</div>:null; })()}</div>; })()}
       <button data-omni-det onClick={()=>setDet(v=>!v)} aria-expanded={det} style={{width:"100%",padding:"7px 0",borderRadius:9,border:"1px solid #D9D3C5",background:"#FBFAF7",color:"#15507a",fontSize:13,fontWeight:700,cursor:"pointer"}}>{det?(he?"▲ הסתר פירוט":"▲ Hide details"):(he?"▼ פירוט: טבלה, המלצות והשוואה לממוצע בישראל":"▼ Details: table, recommendations, Israeli average")}</button>
       {det&&<>
       <table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr><th style={{...th,textAlign:"start"}}></th><th style={th}>🌿 {he?"צמחי":"Plant"}</th><th style={th}>🍖 {he?"מן החי":"Animal"}</th><th style={th}>{he?"חלק מן החי":"Animal share"}</th></tr></thead>
@@ -21944,6 +21960,7 @@ function OmniSummaryPanel({data,days,target,profile,lang,title,note,trend}){
       <div style={{marginTop:6}}><OmniUnderNote lang={lang}/></div>
       <div style={{fontSize:12.5,color:"#2e7d32",marginTop:6,lineHeight:1.5}}>💚 {he?`הארוחות הצמחיות סיפקו ${pct(P.fiber,tot("fiber"))}% מהסיבים ב־${pct(P.kcal,tot("kcal"))}% מהקלוריות.`:`The plant-based meals provided ${pct(P.fiber,tot("fiber"))}% of the fiber in ${pct(P.kcal,tot("kcal"))}% of the calories.`}</div>
       <div style={{fontSize:10.5,color:"#6B7C72",marginTop:5,lineHeight:1.4}}>{he?"בשר אדום: לפי רכיבי המנות (קבב, סטייק, המבורגר, קציצות ≈70% בשר, חמין ≈30%) — הערכה. ממוצעים שבועיים מחושבים לפי ימי השבוע שבסיכום.":"Red meat: from the dish components (kebab, steak, burger, meatballs ≈70% meat, hamin ≈30%) — an estimate. Weekly figures are scaled to the days in the summary."}</div>
+      </>}
       </>}
     </div>);
 }
@@ -23040,7 +23057,8 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals,wee
     if (k==="iodine"&&iodS) return{k,val,pct,ok:true,deficient:false,isSkip,unit:d.unit,dri:d.dri,warn:d.warn,warnPct:Math.round((d.warn/d.dri)*100),ul:d.ul,overUL,otherVal:otherValRaw,otherPct,supp:true,dayVal,dayPct,weekly:weekMode};
     return{k,val,pct,ok,deficient,isSkip,unit:d.unit,dri:d.dri,warn:d.warn,warnPct:Math.round((d.warn/d.dri)*100),ul:d.ul,overUL,otherVal:otherValRaw,otherPct,dayVal,dayPct,weekly:weekMode};
   }).filter(Boolean);
-  const deficient=rows.filter(r=>r.deficient&&!r.isSkip);
+  const underRows=rows.filter(r=>r.deficient&&!r.isSkip&&typeof OMNI_UNDER!=="undefined"&&OMNI_UNDER.has(r.k)); // אוכל/ת הכל — נתון חסר במאגר, לא חוסר
+  const deficient=rows.filter(r=>r.deficient&&!r.isSkip&&!underRows.includes(r));
   const overULRows=rows.filter(r=>r.overUL&&r.k!=="manganese"); const mnHigh=rows.find(r=>r.overUL&&r.k==="manganese"); // מנגן — מידע, לא אזהרה אדומה
   const scored=rows.filter(r=>!r.isSkip);
   const okCount=scored.filter(r=>r.ok).length;
@@ -23111,6 +23129,10 @@ function MicroPanel({totals,otherTotals,otherLabel,profile,lang,onInfo,meals,wee
           </div>
         </div>
       )}
+      {underRows.length>0&&<div data-under-chips style={{background:"#F3F1EC",borderRadius:9,padding:"7px 10px",marginBottom:10,border:"1px solid #D9D3C5"}}>
+        <div style={{fontSize:13,color:"#4A5A50",fontWeight:700,marginBottom:3}}>{lang==="he"?"מוערך בחסר — ייתכן שאין חוסר":"Underestimated — possibly no shortfall"}</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:4}}>{underRows.map(r=><span key={r.k} style={{background:"#E8E4DA",border:"1px solid #D9D3C5",borderRadius:20,color:"#4A5A50",fontSize:12,padding:"2px 8px"}}>{DRI_LABELS[r.k][lang]} ≥{r.pct}%</span>)}</div>
+        <div style={{fontSize:11.5,color:"#4A5A50",lineHeight:1.45}}>{lang==="he"?(underRows.some(r=>r.k==="iodine")?"בחלק מהמנות מן החי (ביצים, דגים, מוצרי חלב) חסר ערך יוד במאגר — הצריכה בפועל גבוהה יותר. בישראל המלח ברובו לא מיודד: בבית — כדאי מלח מיודד.":"בחלק מהמנות מן החי חסר ערך במאגר — הצריכה בפועל גבוהה יותר."):(underRows.some(r=>r.k==="iodine")?"Some animal-based dishes (eggs, fish, dairy) lack an iodine value in the database — actual intake is higher. In Israel most salt is not iodized: at home, use iodized salt.":"Some animal-based dishes lack a value in the database — actual intake is higher.")}</div></div>}
       {deficient.length>0&&(
         <div style={{background:"#FFF6E5",borderRadius:9,padding:"7px 10px",marginBottom:10,border:"1px solid #ecc98a"}}>
           <div style={{fontSize:13,color:"#a6440f",fontWeight:700,marginBottom:3}}>{weekMode?(lang==="he"?"כדאי לחזק השבוע":"Worth boosting this week"):earlyDays?(lang==="he"?"כדאי לשים לב (יום אחד בלבד)":"Worth watching (one day only)"):tx.deficiencies}</div>
@@ -24557,6 +24579,22 @@ function AppInner(){
   useEffect(()=>{ if (!moreOpen) { setCompleteNote(null); return; } const t=setTimeout(()=>{ try{ const el=morePanelRef.current; if (el) { const r=el.getBoundingClientRect(), H=window.innerHeight; if (r.bottom>H-80) window.scrollBy({top:Math.max(0,Math.min(r.bottom-(H-80),r.top-160)),behavior:"smooth"}); } }catch{ /* ignore */ } },60); return ()=>clearTimeout(t); },[moreOpen]);
   // בלי הודעת "התפריט מוכן" (לבקשת המשתמש) — במקומה הסבר על ניקוי ותפריט חדש בתפריט "תכנון אוטומטי" וב"עוד פעולות"
   // גיל המעבר (לבקשת המשתמש): באוכל/ת הכל הארוחות "משלי" מתמלאות אחרי המחולל — סויה מלאה מובטחת בארוחה צמחית ביום
+  // גיל המעבר + אוכל/ת הכל (בקרת דיאטן): כשהסידן השבועי מתחת ל-1,200 ביום — גביע יוגורט לארוחה 🍖 שאינה בשרית (כשרות),
+  // ביום עם הכי מעט סידן, עד אחד ביום, ורק אם היום נשאר עד 103% מיעד הקלוריות
+  const menoCalciumWeek=w=>{ if (!w||!hp.menopause||!profile.flex) return w; const ks=Object.keys(w).filter(k=>/^d\d$/.test(k)&&w[k]); if (!ks.length) return w;
+    const AD=id=>{ const a=OMNI_ADDONS.find(x=>x.id===id); return a&&!a.items.some(([fk])=>!FDB[fk]||userExclFks.has(fk))?a:null; }; const yog=AD("yogurt"), tah=AD("tahini"); if (!yog&&!tah) return w;
+    const sumK=(d,key)=>MEAL_KEYS.reduce((a,mk)=>a+(d[mk]||[]).reduce((s2,x)=>s2+(ingNut(x.fk,x.g,x.soaked)[key]||0),0),0); const dP=d=>MEAL_KEYS.reduce((s2,mk)=>s2+dairyPortions(d[mk]),0);
+    const goal=(dri.calcium?.dri||1200), dMax=(OMNI_MED_DAIRY[1]||3); const isMeat=a=>(a||[]).some(x=>{ const gr=OMNI_GROUP[x.fk]; return gr&&["red","processed","poultry"].includes(gr[0]); });
+    const done=new Set();
+    for (let it=0; it<7; it++){ if (ks.reduce((a,k)=>a+sumK(w[k],"calcium"),0)>=goal*ks.length) break;
+      const k=ks.filter(x=>!done.has(x)).sort((a,b)=>sumK(w[a],"calcium")-sumK(w[b],"calcium"))[0]; if (!k) break; done.add(k); const di=+k.slice(1);
+      const wkDairy=ks.reduce((a,x)=>a+dP(w[x]),0)/ks.length;
+      // יוגורט — רק כשגם היום וגם הממוצע השבועי נשארים עד 3 מנות חלב (ים-תיכוני) ובארוחה לא בשרית; אחרת — טחינה (פרווה)
+      for (const ad of [yog,tah]){ if (!ad) continue; const addK=ad.items.reduce((s2,[fk,g])=>s2+(ingNut(fk,g).kcal||0),0); if (sumK(w[k],"kcal")+addK>target*1.03) continue;
+        const isY=ad===yog, addD=dairyPortions(ad.items.map(([fk,g])=>({fk,g}))); if (isY&&(dP(w[k])+addD>dMax+0.05||wkDairy+addD/ks.length>dMax-0.1)) continue;
+        const mk=["breakfast","snack","dinner","lunch"].find(m=>flexOwnMeal(di,m)&&(w[k][m]||[]).length&&omniIdOf(w[k][m])&&!(isY&&isMeat(w[k][m]))&&omniAddonOk(omniById(omniIdOf(w[k][m])),ad)&&!(w[k][m]).some(x=>x._omniSide&&ad.items.some(([fk])=>fk===x.fk)));
+        if (!mk) continue; w[k]={...w[k],[mk]:[...w[k][mk],...ad.items.map(([fk,g])=>({fk,g,_id:uid(),_omniSide:1}))]}; break; } }
+    return w; };
   const menoSoyWeek=w=>{ if (!w||!hp.menopause||!profile.flex) return w; Object.keys(w).filter(k=>/^d\d$/.test(k)&&w[k]).forEach(k=>{ const di=+k.slice(1); if (MEAL_KEYS.every(mk=>flexOwnMeal(di,mk))) return; w[k]=ensureWholeSoyDay(w[k],target,userExclFks,mk=>!flexOwnMeal(di,mk)); }); return w; };
   const weekGenTok=useRef(0);
   const startWeekGen=()=>{
@@ -24564,7 +24602,7 @@ function AppInner(){
     setWeekPlanLoading(true); setWeekPlanProgress(null);
     generateWeekForModeAsync(weekPlanMode,p=>{ if(!cancelled()) setWeekPlanProgress(p); },cancelled)
       .then(w=>{ if(cancelled()) return; const w1=w?Object.fromEntries(Object.entries(w).map(([k,d])=>[k,flexOwnDay(+String(k).slice(1))?Object.fromEntries(MEAL_KEYS.map(mk=>{ const a0=(meals[k]||{})[mk]||[]; return [mk,weekPlanMode==="completeWeek"?a0:[]]; })) /* יום משלי: בתפריט חדש לשבוע — מנה מן החי חדשה (באג: יום שהיה צמחי ועבר ל"משלי" נשאר צמחי, כי התוכן הקודם נחשב "מה שהמשתמש מילא"); ב"השלם שבוע" — מה שיש נשאר */:(()=>{ const c=consolidateMealSalads(d), di=+String(k).slice(1); return Object.fromEntries(Object.entries(c||{}).map(([mk,a])=>[mk,MEAL_KEYS.includes(mk)&&flexOwnMeal(di,mk)?(weekPlanMode==="completeWeek"&&omniIdOf(meals[k]?.[mk])?meals[k][mk]:[]):a])); })()])):w;
-        const w2=menoSoyWeek(w1&&profile.flex?omniPlanFill(w1,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false):w1); /* ארוחות משלי — הצעת מנה מן החי לפי היעד (נספרת בתזונה) */ setWeekPlanData(w2); /* יום משלי — בתצוגה המקדימה כמו שהוא */ setWeekPlanLoading(false);
+        const w2=menoCalciumWeek(menoSoyWeek(w1&&profile.flex?omniPlanFill(w1,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false):w1)); /* ארוחות משלי — הצעת מנה מן החי לפי היעד (נספרת בתזונה) */ setWeekPlanData(w2); /* יום משלי — בתצוגה המקדימה כמו שהוא */ setWeekPlanLoading(false);
         if (autoWeek){ if (w2){ handleApplyWeekPlan(weekPlanMode==="completeWeek"?changedDaysOnly(w2):w2,weekPlanMode==="completeWeek"); } setWeekPlanOpen(false); } })
       .catch(e=>{ console.error(e); if(!cancelled()) setWeekPlanLoading(false); });
   };
@@ -25005,7 +25043,7 @@ function AppInner(){
           day[mk]=flexOwnMeal(di,mk)?(keepOwn&&p0.length&&!omniIdOf(p0)?p0:((week[dk]||{})[mk]||[]).filter(it=>it._omni||it._omniSide).map(it=>({...it,_id:uid()}))):((week[dk]||{})[mk]||[]).map(it=>({fk:it.fk,g:it.g,_id:uid()})); }); /* ארוחה משלי — רק הצעת המנה מן החי */
         next[dk]=day;
       });
-      const filled=menoSoyWeek(profile.flex?{...next,...omniPlanFill(next,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false)}:next); /* ארוחה משלי ריקה — מקבלת מנה */
+      const filled=menoCalciumWeek(menoSoyWeek(profile.flex?{...next,...omniPlanFill(next,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false)}:next)); /* ארוחה משלי ריקה — מקבלת מנה */
       save("wfpb_meals",filled);
       return filled;
     });
@@ -25916,7 +25954,7 @@ function AppInner(){
             </div>
           </div>
         )}
-        {(tab==="macros"||tab==="micro")&&displayWeek.omni&&<OmniSummaryPanel data={displayWeek.omni} days={displayWeek.n||7} target={target} profile={profile} lang={lang} note={dashSource==="actual"?(lang==="he"?"שנאכלו השבוע (ימים שלא תועדו — לפי התפריט)":"eaten this week (unlogged days — from the menu)"):(lang==="he"?"בתפריט השבוע":"in this week's menu")}/>}
+        {(tab==="macros"||tab==="micro")&&displayWeek.omni&&<OmniSummaryPanel wkTotals={dashSource==="actual"?weeklyActualTotals:weeklyPlannedTotals} data={displayWeek.omni} days={displayWeek.n||7} target={target} profile={profile} lang={lang} note={dashSource==="actual"?(lang==="he"?"שנאכלו השבוע (ימים שלא תועדו — לפי התפריט)":"eaten this week (unlogged days — from the menu)"):(lang==="he"?"בתפריט השבוע":"in this week's menu")}/>}
         {tab==="macros"&&!isDesktop&&(detailView?(
           <>
             {macroSubChipsNode}
