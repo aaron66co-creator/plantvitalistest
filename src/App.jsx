@@ -15899,7 +15899,7 @@ const PROT_TOPUP_ADD=["edamame","lupinBeansCooked","tofu"];
 // הסיבים ואת תקרת הנתרן (קודם נאכפו באמצע הבנייה, והשלבים שאחריהם החזירו: בפועל 60–97 גר' סיבים ועד 3,200 מ"ג נתרן ביום)
 function topUpProteinDay(d, target, dri, hp, wKg, excl){ const r=topUpProteinDay__core(d,target,dri,hp,wKg,excl); return r?finalCapsDay(r,target,dri,hp,wKg,excl):r; }
 function finalCapsDay(d, target, dri, hp, wKg, excl){ if (!d||!dri||!target) return d; const LEU=((dri&&dri._age)||35)>=65?2.5:2;
-  try{ capBowlDay(d,excl); capSodium(d,dri,target,LEU); trimFiberDay(d,target,dri,excl,hp,wKg); capSodium(d,dri,target,LEU); }catch(e){} return d; }
+  try{ capBowlDay(d,excl); capSodium(d,dri,target,LEU); trimFiberDay(d,target,dri,excl,hp,wKg); balanceMealSharesDay(d,target,dri,excl,hp,wKg); capSodium(d,dri,target,LEU); }catch(e){} return d; }
 function topUpProteinDay__core(d, target, dri, hp, wKg, excl){ if (!d||!hp||!(wKg>0)||!(hp.protPerKg>0)) return d;
   const MEALS=["breakfast","snack","lunch","dinner"]; const ex=excl instanceof Set?excl:new Set(excl||[]);
   const floor=wKg*hp.protPerKg, ceil=wKg*(hp.protPerKgMax||1.6)*0.97; if (floor>=ceil) return d;
@@ -16030,6 +16030,44 @@ function capBowlDay(d, excl){ if (!d) return d; const ex=excl instanceof Set?exc
       const have=cur?cur.g:0; let g=Math.min(maxG-have,lost/kpg); if (stepG) g=Math.min(Math.floor((maxG-have)/stepG),Math.round(lost/kpg/stepG))*stepG; g=Math.round(g); if (g<(stepG||40)) return;
       if (cur) cur.g=Math.round((cur.g+g)*10)/10; else d[m].push({fk,g}); lost-=g*kpg; };
     add("soyYogurtPlain",200,0); add("wholeWheatBread",64,32); }); });
+  return d; }
+// חלוקת הקלוריות בין הארוחות (לבקשת המשתמש: "האם עדיין כ-31% לכל ארוחה עיקרית") — בדיקה אחרונה: ארוחה עיקרית מעל 35%
+// או מתחת ל-27% מהיום — פריט בארוחה הגדולה קטן (מתכון ברבע מנה, פריט אחר ברבע) והקלוריות עוברות לפריט בארוחה הקטנה (מתכון
+// ברבע מנה — דייסה/קערה עד מנה אחת, אחר עד 1½; דגן/קטנית/אגוזים/פרי/סויה עד +50%). בלי לפגוע בחלבון, בלאוצין בארוחה,
+// בוויטמינים ובתקרות הסיבים והנתרן. בסגנון "מגוון" נמדדו ימים עם צהריים 45% ובוקר 21%
+function balanceMealSharesDay(d, target, dri, excl, hp, wKg){ if (!d||!dri||!target) return d; const MAIN=["breakfast","lunch","dinner"], MEALS=["breakfast","snack","lunch","dinner"];
+  const LO=27, HI=35; const ex=excl instanceof Set?excl:new Set(excl||[]); const SKIP=new Set(["saltIodized","wakame","nori"]);
+  const KEYS=MICRO_KEYS.filter(k=>k!=="sodium"&&k!=="vitB12"&&k!=="vitD"&&k!=="iodine"&&dri[k]&&dri[k].dri); const tgtOf=x=>(dri[x].weekDri||dri[x].dri)/(x==="iron"?1.8:1);
+  const mDef=T=>KEYS.reduce((a,x)=>a+Math.max(0,1-(T[x]||0)/tgtOf(x)),0);
+  const mealIt=m=>[...((d.__fx||{})[m]||[]),...(d[m]||[])]; const nOf=m=>sumNuts(mealIt(m).map(x=>ingNut(x.fk,x.g,x.soaked)));
+  const dT=()=>sumNuts(MEALS.flatMap(mealIt).map(x=>ingNut(x.fk,x.g,x.soaked)));
+  const LEU=((dri&&dri._age)||35)>=65?2.5:2; const naCap=(dri&&dri._naCap)||2300, fibCap=fiberCapOf(dri,target), protFloor=(hp&&wKg>0&&hp.protPerKg>0)?wKg*hp.protPerKg:0;
+  const off=()=>{ const tk=dT().kcal||1; return MAIN.reduce((a,m)=>{ const sh=(nOf(m).kcal||0)/tk*100; return a+Math.max(0,sh-HI)+Math.max(0,LO-sh); },0); };
+  const uG=fk=>{ const u=getServingUnit(fk,FDB[fk],"he"); return u&&u.g?u.g/(u.count||1):100; };
+  const GROW_CAT=new Set(["דגן","קטנית","אגוזים","זרעים","חלבון","מעובד","פרי"]);
+  for (let it=0; it<14; it++){ const o0=off(); if (o0<0.5) return d; const T0=dT(), tk=T0.kcal||1, md0=mDef(T0), l0=MAIN.map(m=>nOf(m).leucine||0);
+    const sh=MAIN.map(m=>(nOf(m).kcal||0)/tk*100); const big=MAIN[sh.indexOf(Math.max(...sh))], small=MAIN[sh.indexOf(Math.min(...sh))]; if (big===small) return d;
+    const shrinks=(d[big]||[]).filter(x=>!x._user&&!x._keep&&!SKIP.has(x.fk)&&(ingNut(x.fk,x.g,x.soaked).kcal||0)>=40).map(x=>{ const t=TEMP_FDB[x.fk]; const g0=x._sg0||x.g;
+      const ng=t&&t._isRecipe&&t._servingG?Math.round((x.g-t._servingG*0.25)*10)/10:Math.round(x.g*0.75*10)/10; return ng>=Math.max(g0*0.5,(t&&t._isRecipe&&t._servingG)?t._servingG*0.5-0.01:0)?{x,ng}:null; }).filter(Boolean);
+    const grows=(d[small]||[]).filter(x=>!x._user&&!x._keep&&!SKIP.has(x.fk)&&!ex.has(x.fk)).map(x=>{ const t=TEMP_FDB[x.fk]; const g0=x._sg0||x.g;
+      if (t&&t._isRecipe&&t._servingG){ const mx=isBowlRecipe(x.fk)?t._servingG:t._servingG*1.5; return {x,step:t._servingG*0.25,max:mx}; }
+      const fd=FDB[x.fk]; if (!fd||!GROW_CAT.has(fd.cat)) return null; let mx=g0*1.5; if (fd.cat==="פרי") mx=Math.min(mx,uG(x.fk)*1.4); if (typeof RULE_MILK!=="undefined"&&RULE_MILK.has(x.fk)) mx=Math.min(mx,255); return {x,step:0,max:mx}; }).filter(Boolean);
+    // גם פריט חדש בארוחה הקטנה: טופו (עד 100 גר') או פרוסת לחם מלא (עד 2), כשאין כבר כזה בארוחה
+    [["tofu",0,100],["wholeWheatBread",32,64]].forEach(([fk,step,max])=>{ if (FDB[fk]&&!ex.has(fk)&&!(d[small]||[]).some(x=>x.fk===fk)) grows.push({x:{fk,g:0},step,max,virt:true}); });
+    let best=null; /* מהירות: מחשבים רק את השינוי של כל צעד, בלי לסכם מחדש את כל היום */
+    const KK=["kcal","sodium","fiber","protein","leucine",...KEYS]; const dN=(fk,g1,g0,so)=>{ const a=ingNut(fk,g1,so)||{}, b=g0>0?(ingNut(fk,g0,so)||{}):{}; const r={}; KK.forEach(k=>{ r[k]=(a[k]||0)-(b[k]||0); }); return r; };
+    const mK=Object.fromEntries(MAIN.map(m=>[m,nOf(m)])); const offOf=(dS,dG)=>{ const tot=tk+dS.kcal+dG.kcal; return MAIN.reduce((a,m)=>{ const k=(mK[m].kcal||0)+(m===big?dS.kcal:0)+(m===small?dG.kcal:0); const sh=k/tot*100; return a+Math.max(0,sh-HI)+Math.max(0,LO-sh); },0); };
+    for (const s1 of shrinks){ const kLost=(ingNut(s1.x.fk,s1.x.g,s1.x.soaked).kcal||0)-(ingNut(s1.x.fk,s1.ng,s1.x.soaked).kcal||0); const dS=dN(s1.x.fk,s1.ng,s1.x.g,s1.x.soaked);
+      for (const g1 of grows){ const kpg=(ingNut(g1.x.fk,100,g1.x.soaked).kcal||0)/100; if (!(kpg>0)) continue;
+        let ng=g1.step?g1.x.g+Math.max(1,Math.round(kLost/kpg/g1.step))*g1.step:g1.x.g+kLost/kpg; ng=Math.round(ng*10)/10; if (ng>g1.max+0.5) continue;
+        if (g1.virt&&ng<(g1.step||25)) continue;
+        const dG=dN(g1.x.fk,ng,g1.x.g,g1.x.soaked); const T1={}; KK.forEach(k=>{ T1[k]=(T0[k]||0)+dS[k]+dG[k]; }); const o1=offOf(dS,dG);
+        const l1=MAIN.map((m,i)=>l0[i]+(m===big?dS.leucine:0)+(m===small?dG.leucine:0));
+        const ok=o1<o0-0.3&&Math.abs((T1.kcal||0)-target)<=Math.max(Math.abs(tk-target),target*0.04)&&mDef(T1)<=md0+0.01&&(T1.sodium||0)<=Math.max(naCap,T0.sodium||0)+1
+          &&(T1.fiber||0)<=Math.max(fibCap,T0.fiber||0)+0.5&&(T1.protein||0)>=Math.min(T0.protein||0,protFloor)-0.5&&!l1.some((v,i)=>v<Math.min(l0[i],LEU)-0.05);
+        if (ok&&(!best||o1<best.o1)) best={s1,g1,ng,o1}; } }
+    if (!best) return d; if (best.g1.virt){ best.g1.x={fk:best.g1.x.fk,g:0}; d[small].push(best.g1.x); best.g1.x._sg0=best.g1.max/1.5; }
+    best.s1.x._sg0=best.s1.x._sg0||best.s1.x.g; best.g1.x._sg0=best.g1.x._sg0||best.g1.x.g; best.s1.x.g=best.s1.ng; best.g1.x.g=best.ng; }
   return d; }
 const LOWFIB_FRUITS=["grapes","watermelon","melon","mango","lychee","pineapple","banana","plum","cherries"];
 function trimFiberWeek(week, target, dri, excl){ if (!week||!dri) return week;
