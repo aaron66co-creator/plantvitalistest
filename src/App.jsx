@@ -525,7 +525,8 @@ const TERM_HINTS={
   ear:{he:"EAR — סף מינימלי: מתחתיו יש סיכון לחוסר. תקרת בטיחות — מעליה לא מומלץ באופן קבוע.",en:"EAR — minimum threshold: below it there is a risk of deficiency. Safety ceiling — not recommended to exceed regularly."}};
 function TermHint({k,lang}){ const t=TERM_HINTS[k]; if(!t) return null; return <div data-term-hint={k} style={{fontSize:12,color:"#5A6B61",lineHeight:1.5,margin:"-2px 0 8px"}}>{t[lang==="he"?"he":"en"]}</div>; }
 function qtyWithUnit(su,v,lang){
-  if (su&&su.vol) return volumeLabel(su.vol,v,lang); // מתכון עם נפח — הנפח הכולל של הכמות
+  if (su&&su.vol){ const L=volumeLabel(su.vol,v,lang); if (!su.vol.bowl) return L; /* דייסה/קערה — גם מספר המנות, כדי שיתאים לקק"ל למנה בכרטיס המתכון */
+    const r=Math.round(v*4)/4, he=lang==="he"; const sv=r===1?(he?"מנה אחת":"1 serving"):r===0.5?(he?"חצי מנה":"half a serving"):r===0.75?(he?"¾ מנה":"¾ serving"):r===0.25?(he?"רבע מנה":"¼ serving"):(he?`${fmtQty(r)} מנות`:`${fmtQty(r)} servings`); return `${L} (${sv})`; } // מתכון עם נפח — הנפח הכולל של הכמות
   // מנת מתכון במצב פשוט (ארוחה בצלחת אחת לפי היעד הקלורי): במקום שבר — "מנה קטנה / גדולה / חצי מנה" (לבקשת המשתמש: בלי שברי מנות)
   if (su&&su.he==="מנה"){ const r=Math.round(v*100)/100; const he=lang==="he";
     if (r===0.5) return he?"חצי מנה":"half serving"; if (r===0.75) return he?"מנה קטנה":"small serving"; if (r===1.25) return he?"מנה גדולה":"large serving"; }
@@ -4988,7 +4989,7 @@ function recipeServingUnit(fd){
   const dc=fd?._isRecipe?bookDisplayCategoryOf({name:n,foodGroup:fd._foodGroup||"",type:fd._recipeType||"",ings:fd._ings||[]}):null;
   const kind=dc==="מרקים"?"soup":(dc==="סלטי ירקות"||dc==="סלטי פירות"||dc==="סלטי קטניות"||dc==="ארוחות סלט")?"salad":(dc==="תבשילי קטניות"||dc==="תבשילי דגנים"||dc==="תוספות ירק")?"stew":dc==="דייסות"?"porridge":dc==="קערות"?"bowl":dc==="משקאות"?"drink":null;
   if (kind) { const perCup=kind==="salad"?((dc==="סלטי קטניות"||dc==="ארוחות סלט")?180:150):kind==="stew"?220:240;
-    const vol={kind,cups:g/perCup,ml:g};
+    const vol={kind,cups:g/perCup,ml:g,bowl:/^(דייסה|קערה)$/.test(fd._recipeType||'')||/^(דייסת|קערת)/.test(n)};
     const lab=volumeLabel(vol,1,"he"), labE=volumeLabel(vol,1,"en"); // ב"בנה וערוך": מנה, ובסוגריים הנפח שלה
     return {...U(`מנה (${lab})`,`מנות (${lab} כל אחת)`,`serving (${labE})`,`servings (${labE} each)`),vol}; }
   return U("מנה","מנות","serving","servings");
@@ -9734,7 +9735,7 @@ function generateSimpleDayPlan(target, recipes=[], dri=null, wKg=0, hp=null, exc
   const fitB=a0=>{ const a=addNS(a0); if (!a||!a.length) return a; const goal=target*0.31; const kA=()=>a.reduce((t,x)=>t+(ingC(x.fk,x.g,x.soaked).kcal||0),0);
     const main=a.find(x=>TEMP_FDB[x.fk]?._isRecipe&&!SPR.includes(x.fk)&&!TORT.includes(x.fk))||a.find(x=>P.bread.includes(x.fk)||TORT.includes(x.fk)); if (!main) return a;
     const isR=!!TEMP_FDB[main.fk]?._isRecipe&&!TORT.includes(main.fk), sv=isR?svG(main.fk):0, unit=isR?sv*0.25:TORT.includes(main.fk)?svG(main.fk):(main.fk==="wholePita"?30:32);
-    const lo=isR?sv*0.5:unit, hi=isR?sv*1.5:unit*(main.fk==="wholePita"?4:4); /* עד שני כריכים (4 פרוסות / 2 פיתות) — לבקשת המשתמש */ const g0=main.g; let bestG=g0, bestD=Math.abs(kA()-goal);
+    const lo=isR?sv*0.5:unit, hi=isR?(isBowlRecipe(main.fk)?sv:sv*1.5):unit*(main.fk==="wholePita"?4:4); /* עד שני כריכים (4 פרוסות / 2 פיתות) — לבקשת המשתמש */ const g0=main.g; let bestG=g0, bestD=Math.abs(kA()-goal);
     for (let k=-4;k<=4;k++){ const g=Math.round((g0+k*unit)*10)/10; if (g<lo-0.01||g>hi+0.01||k===0) continue; main.g=g; const d=Math.abs(kA()-goal); if (d<bestD){ bestD=d; bestG=g; } }
     main.g=bestG; return a; };
   let SHR=[0.27,0.35];
@@ -15898,7 +15899,7 @@ const PROT_TOPUP_ADD=["edamame","lupinBeansCooked","tofu"];
 // הסיבים ואת תקרת הנתרן (קודם נאכפו באמצע הבנייה, והשלבים שאחריהם החזירו: בפועל 60–97 גר' סיבים ועד 3,200 מ"ג נתרן ביום)
 function topUpProteinDay(d, target, dri, hp, wKg, excl){ const r=topUpProteinDay__core(d,target,dri,hp,wKg,excl); return r?finalCapsDay(r,target,dri,hp,wKg,excl):r; }
 function finalCapsDay(d, target, dri, hp, wKg, excl){ if (!d||!dri||!target) return d; const LEU=((dri&&dri._age)||35)>=65?2.5:2;
-  try{ capSodium(d,dri,target,LEU); trimFiberDay(d,target,dri,excl,hp,wKg); capSodium(d,dri,target,LEU); }catch(e){} return d; }
+  try{ capBowlDay(d,excl); capSodium(d,dri,target,LEU); trimFiberDay(d,target,dri,excl,hp,wKg); capSodium(d,dri,target,LEU); }catch(e){} return d; }
 function topUpProteinDay__core(d, target, dri, hp, wKg, excl){ if (!d||!hp||!(wKg>0)||!(hp.protPerKg>0)) return d;
   const MEALS=["breakfast","snack","lunch","dinner"]; const ex=excl instanceof Set?excl:new Set(excl||[]);
   const floor=wKg*hp.protPerKg, ceil=wKg*(hp.protPerKgMax||1.6)*0.97; if (floor>=ceil) return d;
@@ -16019,6 +16020,17 @@ function fruitCapDay(d, target, dri, excl, allowMk, maxU=2){ if (!d) return d; c
     for (const p of pool){ if (left<=5) break; const kpg=kOf(p.it)/(p.it.g||1); if (!(kpg>0)) continue; const add=Math.min(p.g0*0.5,left/kpg); if (add<1) continue; p.it.g=Math.round((p.it.g+add)*10)/10; left-=add*kpg; } }
   return d; }
 function topUpProteinWeek(week, target, dri, hp, wKg, excl){ if (!week) return week; if (hp&&hp.macroStyle){ Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>{ week[k]=macroStyleDay(week[k],target,dri,excl,+k.slice(1)); }); macroMisoWeek(week,target,dri,excl); } Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>{ if (hp&&hp.menopause){ week[k]=fruitCapDay(week[k],target,dri,excl); week[k]=ensureWholeSoyDay(week[k],target,excl); } topUpProteinDay(week[k],target,dri,hp,wKg,excl); }); return week; }
+// דייסה/קערה — עד מנה אחת (לבקשת המשתמש: "3 מנות של אותה דייסה בארוחה אחת" — קודם עד 1½ מנה, כ-3 כוסות)
+const isBowlRecipe=fk=>{ const t=TEMP_FDB[fk]; return !!(t&&t._isRecipe&&(/^(דייסה|קערה)$/.test(t._recipeType||"")||/^(דייסת|קערת)/.test(t.he||""))); };
+function capBowlDay(d, excl){ if (!d) return d; const ex=excl instanceof Set?excl:new Set(excl||[]); const kc=(fk,g)=>ingNut(fk,g).kcal||0;
+  ["breakfast","snack"].forEach(m=>{ (d[m]||[]).forEach(it=>{ if (!it||it._user||it._keep||!isBowlRecipe(it.fk)) return; /* בוקר וביניים — קערות צהריים (בורגול, קינואה) הן ארוחה בצלחת אחת */ const sv=TEMP_FDB[it.fk]._servingG; if (!(sv>0)||it.g<=sv+0.5) return;
+    let lost=kc(it.fk,it.g)-kc(it.fk,sv); it.g=Math.round(sv*10)/10;
+    // הקלוריות שירדו — ליוגורט סויה (עד 200 גר'), והשאר לפרוסות לחם מלא (עד 2)
+    const add=(fk,maxG,stepG)=>{ if (lost<20||!FDB[fk]||ex.has(fk)) return; const kpg=kc(fk,100)/100; if (!(kpg>0)) return; let cur=(d[m]||[]).find(x=>x.fk===fk&&!x._user&&!x._keep);
+      const have=cur?cur.g:0; let g=Math.min(maxG-have,lost/kpg); if (stepG) g=Math.min(Math.floor((maxG-have)/stepG),Math.round(lost/kpg/stepG))*stepG; g=Math.round(g); if (g<(stepG||40)) return;
+      if (cur) cur.g=Math.round((cur.g+g)*10)/10; else d[m].push({fk,g}); lost-=g*kpg; };
+    add("soyYogurtPlain",200,0); add("wholeWheatBread",64,32); }); });
+  return d; }
 const LOWFIB_FRUITS=["grapes","watermelon","melon","mango","lychee","pineapple","banana","plum","cherries"];
 function trimFiberWeek(week, target, dri, excl){ if (!week||!dri) return week;
   Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>trimFiberDay(week[k],target,dri,excl)); return week; }
