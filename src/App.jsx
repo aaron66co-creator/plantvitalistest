@@ -15894,7 +15894,7 @@ const PROT_TOPUP_ADD=["edamame","lupinBeansCooked","tofu"];
 // הסיבים ואת תקרת הנתרן (קודם נאכפו באמצע הבנייה, והשלבים שאחריהם החזירו: בפועל 60–97 גר' סיבים ועד 3,200 מ"ג נתרן ביום)
 function topUpProteinDay(d, target, dri, hp, wKg, excl){ const r=topUpProteinDay__core(d,target,dri,hp,wKg,excl); return r?finalCapsDay(r,target,dri,hp,wKg,excl):r; }
 function finalCapsDay(d, target, dri, hp, wKg, excl){ if (!d||!dri||!target) return d; const LEU=((dri&&dri._age)||35)>=65?2.5:2;
-  try{ snackRuleDay(d,target,excl,hp); fruitCapDay(d,target,dri,excl,null,fruitMaxU(hp)); spreadNutsDay(d); boostVitEDay(d,target,dri,excl); capBowlDay(d,excl); capSodium(d,dri,target,LEU); trimFiberDay(d,target,dri,excl,hp,wKg); balanceMealSharesDay(d,target,dri,excl,hp,wKg); capSodium(d,dri,target,LEU); }catch(e){} return d; }
+  try{ snackRuleDay(d,target,excl,hp); fruitCapDay(d,target,dri,excl,null,fruitMaxU(hp)); spreadNutsDay(d); boostVitEDay(d,target,dri,excl); boostCholineDay(d,target,dri,excl); capBowlDay(d,excl); capSodium(d,dri,target,LEU); trimFiberDay(d,target,dri,excl,hp,wKg); balanceMealSharesDay(d,target,dri,excl,hp,wKg); capSodium(d,dri,target,LEU); }catch(e){} return d; }
 function topUpProteinDay__core(d, target, dri, hp, wKg, excl){ if (!d||!hp||!(wKg>0)||!(hp.protPerKg>0)) return d;
   const MEALS=["breakfast","snack","lunch","dinner"]; const ex=excl instanceof Set?excl:new Set(excl||[]);
   const floor=wKg*hp.protPerKg, ceil=wKg*(hp.protPerKgMax||1.6)*0.97; if (floor>=ceil) return d;
@@ -16114,6 +16114,24 @@ function boostVitEDay(d, target, dri, excl){ if (!d||!dri||!dri.vitE) return d; 
         const ng=Math.round(k0/kpg*10)/10; const old=d[m][idx]; d[m][idx]={fk:to,g:ng}; const T1=dT(); d[m][idx]=old;
         const gain=(T1.vitE||0)-(T0.vitE||0); if (gain>0.5&&mDef(T1)<=md0+0.01&&(T1.sodium||0)<=(T0.sodium||0)+1&&(!best||gain>best.gain)) best={m,idx,to,ng,gain}; } }));
     if (!best) return d; d[best.m][best.idx]={fk:best.to,g:best.ng}; }
+  return d; }
+// כולין (בקרת דיאטן: גבר 70 — 79%–89% מהיעד): ביום מתחת ליעד — ירק עשיר בכולין כתוספת לצהריים/ערב (כרובית, ברוקולי,
+// פטריות, שעועית ירוקה — 150 גר', כמעט בלי קלוריות) או כף נבט חיטה בבוקר; בטווח הקלוריות ובתקרות הסיבים והנתרן
+const CHOL_ADD=[["lunch","cauliflower",150],["dinner","cauliflower",150],["lunch","broccoli",150],["dinner","broccoli",150],["lunch","mushroom",150],["dinner","mushroom",150],["lunch","greenBeans",150],["dinner","greenBeans",150],["breakfast","wheatGerm",10]];
+function boostCholineDay(d, target, dri, excl){ if (!d||!dri||!dri.choline) return d; const ex=excl instanceof Set?excl:new Set(excl||[]); const MEALS=["breakfast","snack","lunch","dinner"];
+  const dT=()=>sumNuts(MEALS.flatMap(m=>[...((d.__fx||{})[m]||[]),...(d[m]||[])]).map(x=>ingNut(x.fk,x.g,x.soaked))); const cT=dri.choline.weekDri||dri.choline.dri;
+  const naCap=(dri&&dri._naCap)||2300, fibCap=fiberCapOf(dri,target);
+  for (let g=0; g<3; g++){ const T0=dT(); if ((T0.choline||0)>=cT) return d; let best=null;
+    for (const [m,fk,gr] of CHOL_ADD){ if (!FDB[fk]||ex.has(fk)||!Array.isArray(d[m])||!d[m].length||d[m].some(x=>x&&x.fk===fk)) continue;
+      const n=ingNut(fk,gr)||{}; const k1=(T0.kcal||0)+(n.kcal||0); let comp=null;
+      // מעל טווח הקלוריות — דגן או שמן ביום קטנים באותן קלוריות (עד רבע מהם)
+      if (Math.abs(k1-target)>Math.max(Math.abs((T0.kcal||0)-target),target*0.04)){ const need=n.kcal||0; /* אותן קלוריות בדיוק */
+        const lim=x=>TEMP_FDB[x.fk]?._isRecipe?0.2:FDB[x.fk]?.cat==="פרי"?0.5:0.25; /* מתכון עד 20%, פרי עד חצי, דגן/שמן עד רבע */
+        const c=["breakfast","lunch","dinner"].flatMap(mm=>(d[mm]||[]).filter(x=>x&&!x._user&&!x._keep&&!isBowlRecipe(x.fk)&&(TEMP_FDB[x.fk]?._isRecipe||["דגן","שומן","פרי"].includes(FDB[x.fk]?.cat))&&!/bread|pita/i.test(x.fk))).map(x=>({x,kpg:(ingNut(x.fk,100,x.soaked).kcal||0)/100})).filter(o=>o.kpg>0&&need/o.kpg<=o.x.g*lim(o.x)).sort((a,b)=>(ingNut(b.x.fk,b.x.g).kcal||0)-(ingNut(a.x.fk,a.x.g).kcal||0))[0];
+        if (!c) continue; comp={x:c.x,g:Math.round((c.x.g-need/c.kpg)*10)/10}; }
+      if ((T0.fiber||0)+(n.fiber||0)>Math.max(fibCap,T0.fiber||0)+(g===0?3:0.5)|| /* תוספת ירק אחת — עד 3 גר' סיבים מעבר לתקרה (כולין חשוב יותר) */(T0.sodium||0)+(n.sodium||0)>Math.max(naCap,T0.sodium||0)+1) continue;
+      const gain=n.choline-(comp?((ingNut(comp.x.fk,comp.x.g,comp.x.soaked).choline||0)-(ingNut(comp.x.fk,comp.g,comp.x.soaked).choline||0)):0); if (gain>5&&(!best||gain>best.gain)) best={m,fk,gr,gain,comp}; }
+    if (!best) return d; if (best.comp) best.comp.x.g=best.comp.g; d[best.m].push({fk:best.fk,g:best.gr,_cholAdd:true}); }
   return d; }
 const LOWFIB_FRUITS=["grapes","watermelon","melon","mango","lychee","pineapple","banana","plum","cherries"];
 function trimFiberWeek(week, target, dri, excl){ if (!week||!dri) return week;
