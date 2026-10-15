@@ -615,9 +615,20 @@ const CALCIUM_ABSORPTION_RATES = {
   spinach: 0.05, // אוקסלט קיצוני — ספיגה נמוכה מאוד למרות תוכן-סידן גבוה
   // קירוב-משפחתי (לא נמדד ישירות; מוערך דומה לברוקולי/קייל בגלל תוכן-אוקסלט/פיטאט נמוך דומה במשפחת המצליבים)
   cauliflower: 0.55, cabbageWhite: 0.55, cabbageRed: 0.55, brusselsSp: 0.55,
+  bokChoy: 0.54, // Weaver et al., 1997 — כ־54%
 };
 const CALCIUM_ABSORPTION_STUDIED = new Set(["broccoli","kale","whiteBeans","almonds","soymilkFortified","soymilkOrgPlain","tofu","spinach"]);
 const CALCIUM_ABSORPTION_DEFAULT = 0.30;
+// מקורות סידן להשלמה (לבקשת המשתמש): לפי סידן נספג לכל קלוריה — קודם ירוקים דלי אוקסלט (בוק צ׳וי, קייל, ברוקולי, כרוב),
+// אחר כך משקה ויוגורט סויה מועשרים. בלי תרד ומנגולד (אוקסלט — ספיגה נמוכה מאוד). מנה = יחידת ההגשה של המזון
+const CA_DENSE_CAND=[["bokChoy","green"],["kale","green"],["broccoli","green"],["cabbageWhite","green"],["cauliflower","green"],
+  ["soymilkFortified","drink"],["soyYogurtOrgPlain","yog"]];
+function caDenseSources(ok){ const out=[];
+  for (const [fk,kind] of CA_DENSE_CAND){ const fd=FDB[fk]; if (!fd||(ok&&!ok(fk))) continue;
+    const su=getServingUnit(fk,fd,"he"); const g=kind==="drink"?250:kind==="yog"?150:(su&&!su.weightOnly&&su.g?su.g/(su.count||1):100);
+    const n=ingNut(fk,g); if (!(n.calcium>0)||!(n.kcal>0)) continue;
+    out.push({fk,kind,g,ca:n.calcium,kcal:n.kcal,score:n.calcium*(CALCIUM_ABSORPTION_RATES[fk]??CALCIUM_ABSORPTION_DEFAULT)/n.kcal}); }
+  return out.sort((a,b)=>b.score-a.score); }
 function estimateAbsorbedCalcium(items){
   let absorbed=0, hasEstimatedItem=false;
   (items||[]).forEach(({fk,g,soaked})=>{
@@ -5192,9 +5203,10 @@ function* withAgeMealCapsGen(dri, gen){
 function enforceWeeklyMicros(daysArr, target, dri, excl){ return runGenSync(enforceWeeklyMicrosGen(daysArr, target, dri, excl)); }
 // גרסאות "ברקע" של מחוללי השבוע: מחזירות Promise ומדווחות התקדמות ({phase:"build"|"polish"|"weekly", i})
 // budgetCtx (או null): תכנון לפי תקציב — ראה makeBudgetCtx
-function generateWeekPlanAsync(onProgress, isCancelled, budgetCtx, ...a){ a[3]=planDRI(a[3]); return runGenAsync(withAgeMealCapsGen(a[3], withBudgetGen(budgetCtx, generateWeekPlan__gen(...a))), onProgress, isCancelled); }
+function generateWeekPlanAsync(onProgress, isCancelled, budgetCtx, ...a){ a[3]=planDRI(a[3]); return runGenAsync(withAgeMealCapsGen(a[3], withBudgetGen(budgetCtx, generateWeekPlan__gen(...a))), onProgress, isCancelled)
+  .then(r=>{ try { iodineSaltWeek(r&&r.week?r.week:r,a[3],a[2],a[5]); } catch(e){} return r; }); }
 function generateRecipesNSFWeekPlanAsync(onProgress, isCancelled, budgetCtx, ...a){ a[2]=planDRI(a[2]); return runGenAsync(withAgeMealCapsGen(a[2], withBudgetGen(budgetCtx, generateRecipesNSFWeekPlan__gen(...a))), onProgress, isCancelled)
-  .then(r=>{ if (r&&r.week) { Object.entries(r.week).forEach(([k,d])=>balanceMealMix(d,a[0],a[2],fk=>!(a[5]||new Set()).has(fk),+k.slice(1)||0)); reduceCookingWeek(r.week,a[0],a[2],fk=>!(a[5]||new Set()).has(fk)).forEach(k=>balanceMealMix(r.week[k],a[0],a[2],fk=>!(a[5]||new Set()).has(fk),+k.slice(1)||0)); trimWakameWeek(r.week,a[2]); trimFiberWeek(r.week,a[0],a[2],a[5]); topUpProteinWeek(r.week,a[0],a[2],a[4],a[3],a[5]); } return r; }); } // תמהיל ~31% לכל ארוחה עיקרית (לבקשת המשתמש)
+  .then(r=>{ if (r&&r.week) { Object.entries(r.week).forEach(([k,d])=>balanceMealMix(d,a[0],a[2],fk=>!(a[5]||new Set()).has(fk),+k.slice(1)||0)); reduceCookingWeek(r.week,a[0],a[2],fk=>!(a[5]||new Set()).has(fk)).forEach(k=>balanceMealMix(r.week[k],a[0],a[2],fk=>!(a[5]||new Set()).has(fk),+k.slice(1)||0)); trimWakameWeek(r.week,a[2]); trimFiberWeek(r.week,a[0],a[2],a[5]); topUpProteinWeek(r.week,a[0],a[2],a[4],a[3],a[5]); iodineSaltWeek(r.week,a[2],a[4],a[5]); } return r; }); } // תמהיל ~31% לכל ארוחה עיקרית (לבקשת המשתמש)
 function generateMixedWeekPlanAsync(onProgress, isCancelled, budgetCtx, ...a){ a[3]=planDRI(a[3]); return runGenAsync(withAgeMealCapsGen(a[3], withBudgetGen(budgetCtx, generateMixedWeekPlan__gen(...a))), onProgress, isCancelled); }
 // טקסט ואחוז התקדמות לחלון ההמתנה
 function weekGenProgressInfo(p, lang, mixed){
@@ -10228,8 +10240,11 @@ function topUpIodineDay(d, dri, ok){ const T=dri?.iodine?.dri; if (!T) return d;
   const dayN=()=>sumNuts(MEALS.flatMap(m=>[...(fx[m]||[]),...(d[m]||[])]).map(x=>ingNut(x.fk,x.g,x.soaked)));
   const isSal=fk=>TEMP_FDB[fk]?._isRecipe&&isSaladFk(fk); const host=m=>!fx[m]&&(d[m]||[]).some(x=>TEMP_FDB[x.fk]?._isRecipe&&(isSaladFk(x.fk)||["תבשילי קטניות","תבשילי דגנים","מרקים"].includes(recipeCatOfFk(x.fk))));
   const saltG=m=>(d[m]||[]).filter(x=>x.fk==="saltIodized").reduce((a,x)=>a+x.g,0);
-  if (okF("saltIodized")&&FDB.saltIodized) for (let r=0;r<6;r++){ const N=dayN(); if ((N.iodine||0)>=T) break; if ((N.sodium||0)+(ingNut("saltIodized",0.75).sodium||0)>naCap) break;
-    const m=MAIN.filter(m=>host(m)&&saltG(m)+0.75<=1.51&&!(d[m]||[]).some(x=>x.fk==="wakame")).sort((a,b)=>saltG(a)-saltG(b))[0]; if (!m) break;
+  // יוד (לבקשת המשתמש): יותר מלח מיודד — עד תקרת הנתרן של המשתמש. קודם ארוחה עם סלט/תבשיל/מרק, ואם אין — כל ארוחה עיקרית
+  // (לא בביניים); עד ⅜ כפית (2.25 גר') בארוחה
+  if (okF("saltIodized")&&FDB.saltIodized) for (let r=0;r<12;r++){ const N=dayN(); if ((N.iodine||0)>=T) break; if ((N.sodium||0)+(ingNut("saltIodized",0.75).sodium||0)>naCap) break;
+    const cand=MAIN.filter(m=>!fx[m]&&(d[m]||[]).length&&saltG(m)+0.75<=2.26&&!(d[m]||[]).some(x=>x.fk==="wakame"));
+    const m=[...cand.filter(host),...cand.filter(m=>!host(m))].sort((a,b)=>(host(b)-host(a))||(saltG(a)-saltG(b)))[0]; if (!m) break;
     const ex=d[m].find(x=>x.fk==="saltIodized"&&!x._user); if (ex) ex.g=Math.round((ex.g+0.75)*100)/100; else d[m].push({fk:"saltIodized",g:0.75}); }
   if (okF("wakame")&&FDB.wakame){ let w=MEALS.reduce((a,m)=>a+(d[m]||[]).filter(x=>x.fk==="wakame").reduce((s,x)=>s+x.g,0),0);
     for (let r=0;r<2&&w<1;r++){ const N=dayN(); if ((N.iodine||0)>=T) break; if ((N.sodium||0)+(ingNut("wakame",0.5).sodium||0)>naCap) break;
@@ -10500,7 +10515,7 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
           .filter(x=>x.g+(TEMP_FDB[x.fk]._servingG||200)*0.25<=(TEMP_FDB[x.fk]._servingG||200)*1.5).sort((x,y)=>x.g/(TEMP_FDB[x.fk]._servingG||200)-y.g/(TEMP_FDB[y.fk]._servingG||200))[0];
         if (!m) break; const sv=TEMP_FDB[m.fk]._servingG||200; m.g=Math.round((m.g+sv*0.25)*10)/10; if (dN(d).kcal>target*1.05) { m.g=Math.round((m.g-sv*0.25)*10)/10; break; } } } }
   for (const key of Object.keys(week)) balanceMealMix(week[key],target,dri,P.ok,+key.slice(1)||0); reduceCookingWeek(week,target,dri,P.ok).forEach(key=>balanceMealMix(week[key],target,dri,P.ok,+key.slice(1)||0)); trimWakameWeek(week,dri); trimFiberWeek(week,target,dri,excludedFks); topUpProteinWeek(week,target,dri,hp,wKg,excludedFks);
-  if (dri&&naHard>(dri._naCap||0)) { const dH={...dri,_naCap:naHard}; for (const key of Object.keys(week)) topUpIodineDay(week[key],dH,P.ok); } // יוד עדיין מתחת ל־100% — עוד ⅛ כפית, עד התקרה המלאה
+  if (dri) { const dH={...dri,_naCap:naHard}; for (const key of Object.keys(week)) topUpIodineDay(week[key],dH,P.ok); } // יוד עדיין מתחת ל־100% — עוד ⅛ כפית, עד התקרה המלאה
   // ויטמין E וסידן שבועיים (לבקשת המשתמש: "לתקן את השבועות החלשים"): כשהממוצע השבועי מתחת ליעד — אגוזי הבוקר מוחלפים
   // בשקדים (ויטמין E וסידן) או בגרעיני חמנייה (ויטמין E). לא נוגעים בגרעיני דלעת ובבוטנים (לאוצין); נשמר רק אם היום לא עובר
   // 105% קלוריות (או לא עולה), וויטמין E וסידן לא יורדים
@@ -15450,7 +15465,12 @@ function fullModeCalciumWeek(week, target, dri, excl){
       if (home&&!a.includes(x)&&leuM(d[home])<2) { x.g=g0; continue; }
       if (dN(d).kcal+addK<=CAP) return true; }
     return false; };
+  const greens=caDenseSources(ok).filter(c=>c.kind==="green");
+  const hasVegA=a=>(a||[]).some(x=>x&&(["ירק","עלים"].includes(FDB[x.fk]?.cat)||(TEMP_FDB[x.fk]?._isRecipe&&isSaladFk(x.fk))));
   const acts=[
+    // סידן נספג לכל קלוריה (לבקשת המשתמש): קודם ירוק דל־אוקסלט לצהריים/ערב שיש בהם ירק — מעט קלוריות, ספיגה גבוהה.
+    // רק כשיש מקום בקלוריות בלי להקטין מנות (ביעד נמוך ההקטנות החוזרות השאירו דגן זעיר)
+    d=>greens.some(c=>["dinner","lunch"].some(m=>{ const a=d[m]||[]; if (!a.length||!hasVegA(a)||a.some(x=>x&&x.fk===c.fk)||dN(d).kcal+c.kcal>target*1.02) return false; a.push({fk:c.fk,g:c.g}); return true; })),
     d=>ok("soyYogurtOrgPlain")&&MEALS.some(m=>{ const x=(d[m]||[]).find(x=>x&&x.fk==="soyYogurtPlain"&&!x._user); if (!x) return false; x.fk="soyYogurtOrgPlain"; return true; }),
     d=>ok("soymilkFortified")&&["dinner","lunch","breakfast"].some(m=>{ const a=d[m]||[]; if (!a.length||soyIn(a)||hasDrink(a)||!room(d,a,115)) return false; a.push({fk:"soymilkFortified",g:250}); return true; }),
     d=>ok("oatMilk")&&["breakfast","dinner","lunch"].some(m=>{ const a=d[m]||[]; if (!a.length||hasDrink(a)||!room(d,a,110)) return false; a.push({fk:"oatMilk",g:250}); return true; }),
@@ -15467,7 +15487,11 @@ function fullModeCalciumWeek(week, target, dri, excl){
     if (!done) break; }
   return week;
 }
-function generateWeekPlan(...a){ a[3]=planDRI(a[3]); return withAgeMealCaps(a[3], ()=>generateWeekPlan__impl(...a)); }
+function generateWeekPlan(...a){ a[3]=planDRI(a[3]); const r=withAgeMealCaps(a[3], ()=>generateWeekPlan__impl(...a)); try { iodineSaltWeek(r&&r.week?r.week:r,a[3],a[2],a[5]); } catch(e){} return r; }
+// יוד (לבקשת המשתמש): בסוף התכנון בסגנון המלא — עוד מלח מיודד עד תקרת הנתרן של המשתמש (2,300; מגיל 65 או ביתר לחץ דם — 2,000)
+function iodineSaltWeek(week,dri,hp,excl){ if (!week||!dri) return week; const ex=excl instanceof Set?excl:new Set(excl||[]);
+  const dH={...dri,_naCap:hp?.sodiumMax||dri._naCap||((dri?._age||0)>=65?2000:2300)};
+  Object.keys(week).forEach(k=>{ if (/^d\d$/.test(k)&&week[k]) topUpIodineDay(week[k],dH,fk=>!ex.has(fk)&&!!FDB[fk]); }); return week; }
 function generateWeekPlan__impl(...a){ return runGenSync(generateWeekPlan__gen(...a)); }
 function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set()){
   const week={}; const daysArr=[];
@@ -16271,10 +16295,14 @@ function boostCalciumDay(d, target, dri, excl){ if (!d||!dri||!dri.calcium) retu
   for (const [a,b] of CA_SWAP){ if (!FDB[b]||ex.has(b)) continue; MEALS.forEach(m=>(d[m]||[]).forEach((x,i)=>{ if (x&&x.fk===a&&!x._user&&!x._keep&&(dT().calcium||0)<cT){ const kpg=(ingNut(b,100).kcal||0)/100; d[m][i]={...x,fk:b,g:kpg>0?Math.round((ingNut(a,x.g).kcal||0)/kpg):x.g}; } })); }
   // תוספת: כוס משקה סויה מועשר לארוחה בלי משקה, או גביע יוגורט סויה מועשר לארוחה בלי יוגורט — עד 2 ביום
   const YOG=new Set(["soyYogurtPlain","soyYogurtOrgPlain","yogurtPlain3","yogurtGreek","leben"]); const naCap=(dri&&dri._naCap)||2300;
-  const OPTS=[["soymilkFortified",200,DRINK_FKS,["breakfast","lunch","dinner"]],["soyYogurtOrgPlain",150,YOG,["breakfast","dinner","lunch"]]];
+  // לפי סידן נספג לכל קלוריה (caDenseSources): ירוק — לצהריים/ערב עם ירק או סלט; משקה/יוגורט — אחד לארוחה. עד 2 תוספות ביום
+  const hasVeg=a=>(a||[]).some(x=>x&&(["ירק","עלים"].includes(FDB[x.fk]?.cat)||(TEMP_FDB[x.fk]?._isRecipe&&isSaladFk(x.fk))));
+  const OPTS=caDenseSources(fk=>!ex.has(fk)).map(c=>c.kind==="green"?[c.fk,c.g,new Set([c.fk]),["dinner","lunch"],true]
+    :c.kind==="drink"?[c.fk,200,DRINK_FKS,["breakfast","lunch","dinner"]]:[c.fk,150,YOG,["breakfast","dinner","lunch"]]);
   for (let k=0; k<2; k++){ const T0=dT(); if ((T0.calcium||0)>=cT) return d; let done=false;
-    for (const [fk,gr,same,meals] of OPTS){ if (!FDB[fk]||ex.has(fk)) continue; const to=meals.find(m=>Array.isArray(d[m])&&d[m].length&&!d[m].some(x=>x&&same.has(x.fk))); if (!to) continue;
+    for (const [fk,gr,same,meals,green] of OPTS){ if (!FDB[fk]||ex.has(fk)) continue; const to=meals.find(m=>Array.isArray(d[m])&&d[m].length&&!d[m].some(x=>x&&same.has(x.fk))&&(!green||hasVeg(d[m]))); if (!to) continue;
       const n=ingNut(fk,gr)||{}; let comp=null; if ((T0.sodium||0)+(n.sodium||0)>Math.max(naCap,T0.sodium||0)+1) continue;
+      if (green&&(T0.kcal||0)+(n.kcal||0)>target*1.02) continue; // ירוק — רק כשיש מקום בקלוריות (בלי להקטין מנות)
       if (Math.abs((T0.kcal||0)+(n.kcal||0)-target)>Math.max(Math.abs((T0.kcal||0)-target),target*0.04)){ comp=kcalCompensate(d,n.kcal||0); if (!comp) continue; }
       if (comp) comp.x.g=comp.g; d[to].push({fk,g:gr,_caAdd:true}); done=true; break; }
     if (!done) return d; }
@@ -16372,7 +16400,7 @@ function trimWakameWeek(week, dri){ if (!week) return week; const T=dri?.iodine?
       w.x.g=Math.round((w.x.g-st)*100)/100; I[w.k]-=loss; }
     if (w.x.g<=0.01) week[w.k][w.m]=week[w.k][w.m].filter(y=>y!==w.x); }
   return week; }
-function generateRecipesNSFWeekPlan(...a){ a[2]=planDRI(a[2]); const r=withAgeMealCaps(a[2], ()=>generateRecipesNSFWeekPlan__impl(...a)); if (r&&r.week) { Object.entries(r.week).forEach(([k,d])=>balanceMealMix(d,a[0],a[2],fk=>!(a[5]||new Set()).has(fk),+k.slice(1)||0)); reduceCookingWeek(r.week,a[0],a[2],fk=>!(a[5]||new Set()).has(fk)).forEach(k=>balanceMealMix(r.week[k],a[0],a[2],fk=>!(a[5]||new Set()).has(fk),+k.slice(1)||0)); trimWakameWeek(r.week,a[2]); trimFiberWeek(r.week,a[0],a[2],a[5]); topUpProteinWeek(r.week,a[0],a[2],a[4],a[3],a[5]); } return r; }
+function generateRecipesNSFWeekPlan(...a){ a[2]=planDRI(a[2]); const r=withAgeMealCaps(a[2], ()=>generateRecipesNSFWeekPlan__impl(...a)); if (r&&r.week) { Object.entries(r.week).forEach(([k,d])=>balanceMealMix(d,a[0],a[2],fk=>!(a[5]||new Set()).has(fk),+k.slice(1)||0)); reduceCookingWeek(r.week,a[0],a[2],fk=>!(a[5]||new Set()).has(fk)).forEach(k=>balanceMealMix(r.week[k],a[0],a[2],fk=>!(a[5]||new Set()).has(fk),+k.slice(1)||0)); trimWakameWeek(r.week,a[2]); trimFiberWeek(r.week,a[0],a[2],a[5]); topUpProteinWeek(r.week,a[0],a[2],a[4],a[3],a[5]); iodineSaltWeek(r.week,a[2],a[4],a[5]); } return r; }
 function generateRecipesNSFWeekPlan__impl(...a){ return runGenSync(generateRecipesNSFWeekPlan__gen(...a)); }
 function* generateRecipesNSFWeekPlan__gen(target,recipes=[],dri=null,wKg=0,hp=null,excludedFks=new Set(),recentUsageSeed={}){
   const week={}; const daysArr=[];
