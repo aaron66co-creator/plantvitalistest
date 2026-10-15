@@ -10242,6 +10242,26 @@ function fiberCapOf(dri,target){ return (dri?._age||0)>=65?50:Math.min(75,Math.m
 // נתרן — בדיקה אחרונה (אחרי שהמתכונים המלוחים קיבלו ⅛ כפית מלח מיודד למנה, לבקשת המשתמש): שלבי ההשלמה עלולים לעבור
 // את התקרה. קודם מקטינים מלח נפרד (בשמיניות כפית), אחר כך מסירים וואקמה, ולבסוף מקטינים ברבע מנה את המתכון המלוח
 // ביותר (לא מתחת לחצי מנה), כל עוד היום נשאר מעל 95% מהקלוריות והלאוצין בארוחה לא יורד מתחת לסף
+// אגוזים וזרעים — עד מנה רגילה לפריט (לבקשת המשתמש — נמצא בבדיקה האוטומטית: ביעד גבוה השלמות הקלוריות הגדילו שקדים
+// ל-150 גר' בבוקר): 30 גר' (חופן), וביעד מעל 2,600 קק״ל — 40 גר'. השלמות קלוריות לא עוברות את התקרה הזו
+const nutCapG=target=>(target||0)>2600?40:30;
+const isNutSeed=fk=>["אגוזים","זרעים"].includes(FDB[fk]?.cat);
+// בדיקה אחרונה: פריט אגוזים/זרעים מעל התקרה קטן אליה, והקלוריות עוברות למנה העיקרית (ברבעי מנה, עד מנה וחצי) או לדגן מבושל
+function capNutsDay(d, target){ if (!d) return d; const MAIN=["breakfast","lunch","dinner"], cap=nutCapG(target); let left=0;
+  ["breakfast","snack","lunch","dinner"].forEach(m=>(d[m]||[]).forEach(x=>{ if (!x||x._user||x._keep||!isNutSeed(x.fk)||x.g<=cap) return; left+=(ingNut(x.fk,x.g-cap).kcal||0); x.g=cap; }));
+  for (let r=0; r<24&&left>15; r++){ const c=MAIN.filter(m=>!(d.__fx||{})[m]).flatMap(m=>(d[m]||[]).filter(x=>x&&!x._user&&!x._keep&&((TEMP_FDB[x.fk]?._isRecipe&&!isBowlRecipe(x.fk)&&TEMP_FDB[x.fk]._servingG&&x.g+TEMP_FDB[x.fk]._servingG/4<=TEMP_FDB[x.fk]._servingG*1.5+0.01)||(FDB[x.fk]?.cat==="דגן"&&!/bread|pita/i.test(x.fk)&&x.g+25<=300))))
+      .sort((a,b)=>(ingNut(a.fk,a.g).kcal||0)-(ingNut(b.fk,b.g).kcal||0))[0]; if (!c) break;
+    const step=TEMP_FDB[c.fk]?._isRecipe?TEMP_FDB[c.fk]._servingG/4:25; c.g=Math.round((c.g+step)*10)/10; left-=ingNut(c.fk,step).kcal||0; }
+  // רצפת קלוריות (97%) — בעיקר ביעד גבוה, אחרי שהאגוזים כבר לא "ממלאים": המנה העיקרית בארוחה העיקרית הרחוקה ביותר
+  // מחלקה ביום גדלה ברבעי מנה (עד מנה וחצי, וביעד מעל 2,600 — עד 2 מנות), או דגן מבושל ב-25 גר' (עד 300)
+  const kOf=a=>(a||[]).reduce((t,x)=>t+(ingNut(x.fk,x.g,x.soaked).kcal||0),0), dayK=()=>["breakfast","snack","lunch","dinner"].reduce((t,m)=>t+kOf(d[m])+kOf((d.__fx||{})[m]),0);
+  const maxSv=(target||0)>2600?2:1.5;
+  for (let r=0; r<40&&dayK()<(target||0)*0.97; r++){ const ms=MAIN.filter(m=>!(d.__fx||{})[m]).sort((a,b)=>kOf(d[a])-kOf(d[b]));
+    let done=false; for (const m of ms){ const c=(d[m]||[]).filter(x=>x&&!x._user&&!x._keep&&((TEMP_FDB[x.fk]?._isRecipe&&!isBowlRecipe(x.fk)&&!isDrinkRecipeFk(x.fk)&&TEMP_FDB[x.fk]._servingG&&x.g+TEMP_FDB[x.fk]._servingG/4<=TEMP_FDB[x.fk]._servingG*maxSv+0.01)||(FDB[x.fk]?.cat==="דגן"&&!/bread|pita/i.test(x.fk)&&x.g+25<=300)))
+        .sort((a,b)=>(ingNut(b.fk,b.g).kcal||0)-(ingNut(a.fk,a.g).kcal||0))[0]; if (!c) continue;
+      const step=TEMP_FDB[c.fk]?._isRecipe?TEMP_FDB[c.fk]._servingG/4:25; if (dayK()+(ingNut(c.fk,step).kcal||0)>(target||0)*1.03) continue; c.g=Math.round((c.g+step)*10)/10; done=true; break; }
+    if (!done) break; }
+  return d; }
 function capSodium(d, dri, target, LEU){ const cap=(dri&&dri._naCap)||((dri?._age||0)>=65?2000:2300); const MEALS=["breakfast","snack","lunch","dinner"], MAIN=["breakfast","lunch","dinner"];
   const all=()=>MEALS.flatMap(m=>[...((d.__fx||{})[m]||[]),...(d[m]||[])]); const tot=()=>sumNuts(all().map(x=>ingNut(x.fk,x.g,x.soaked)));
   const leu=m=>sumNuts([...((d.__fx||{})[m]||[]),...(d[m]||[])].map(x=>ingNut(x.fk,x.g,x.soaked))).leucine||0;
@@ -10256,7 +10276,7 @@ function capSodium(d, dri, target, LEU){ const cap=(dri&&dri._naCap)||((dri?._ag
       // מתחת ל-95% קלוריות — משלימים מפריט דל נתרן שכבר ביום (דגן מבושל, פרי, אגוזים), עד +50% ממנו
       if ((T2.kcal||0)<target*0.95){ const need=target*0.95-(T2.kcal||0)+5;
         const lows=free.filter(o=>o.x!==c.x&&FDB[o.x.fk]&&["דגן","פרי","אגוזים"].includes(FDB[o.x.fk].cat)&&!/bread|pita/i.test(o.x.fk)&&o.x.fk!=="brazilNuts").map(o=>({x:o.x,kpg:(ingNut(o.x.fk,100).kcal||0)/100})).filter(o=>o.kpg>0);
-        for (const o of lows){ const addG=need/o.kpg; if (addG>o.x.g*0.5) continue; if (FDB[o.x.fk]?.cat==="פרי"&&o.x.g+addG>(getServingUnit(o.x.fk,FDB[o.x.fk],"he")?.g||150)*1.4) continue; if (RULE_MILK.has(o.x.fk)&&o.x.g+addG>255) continue; /* פרי עד יחידה אחת, משקה עד כוס */ comp={x:o.x,g0:o.x.g}; o.x.g=Math.round((o.x.g+addG)*10)/10; T2=tot(); break; } }
+        for (const o of lows){ const addG=need/o.kpg; if (addG>o.x.g*0.5) continue; if (isNutSeed(o.x.fk)&&o.x.g+addG>nutCapG(target)) continue; if (FDB[o.x.fk]?.cat==="פרי"&&o.x.g+addG>(getServingUnit(o.x.fk,FDB[o.x.fk],"he")?.g||150)*1.4) continue; if (RULE_MILK.has(o.x.fk)&&o.x.g+addG>255) continue; /* פרי עד יחידה אחת, משקה עד כוס */ comp={x:o.x,g0:o.x.g}; o.x.g=Math.round((o.x.g+addG)*10)/10; T2=tot(); break; } }
       const l1=MAIN.map(leu);
       if ((T2.kcal||0)<target*0.95||(T2.sodium||0)>=(T.sodium||0)||l1.some((v,i)=>v<Math.min(l0[i],LEU||2)-0.05)){ c.x.g=g0; if (comp) comp.x.g=comp.g0; continue; } done=true; break; }
     if (!done) return d; }
@@ -15953,7 +15973,7 @@ function wholeSnackFruitDay(d, excl, hp){ if (!d||!Array.isArray(d.snack)||(d.__
     for (const o of c){ if (left<=2) break; const add=Math.min(o.x.g*0.3,left/o.kpg); o.x.g=Math.round((o.x.g+add)*10)/10; left-=add*o.kpg; } }
   return d; }
 function finalCapsDay(d, target, dri, hp, wKg, excl){ if (!d||!dri||!target) return d; const LEU=((dri&&dri._age)||35)>=65?2.5:2;
-  try{ snackRuleDay(d,target,excl,hp); fruitCapDay(d,target,dri,excl,null,fruitMaxU(hp)); spreadNutsDay(d); dedupeBaseDay(d); boostVitEDay(d,target,dri,excl); boostCholineDay(d,target,dri,excl); boostCalciumDay(d,target,dri,excl); dedupeBaseDay(d); capBowlDay(d,excl); capSodium(d,dri,target,LEU); trimFiberDay(d,target,dri,excl,hp,wKg); balanceMealSharesDay(d,target,dri,excl,hp,wKg); capSodium(d,dri,target,LEU); trimLossDay(d,target,dri,hp,wKg,excl); dedupeBaseDay(d); wholeSnackFruitDay(d,excl,hp); }catch(e){} return d; }
+  try{ capNutsDay(d,target); snackRuleDay(d,target,excl,hp); fruitCapDay(d,target,dri,excl,null,fruitMaxU(hp)); spreadNutsDay(d); dedupeBaseDay(d); boostVitEDay(d,target,dri,excl); boostCholineDay(d,target,dri,excl); boostCalciumDay(d,target,dri,excl); dedupeBaseDay(d); capBowlDay(d,excl); capSodium(d,dri,target,LEU); trimFiberDay(d,target,dri,excl,hp,wKg); balanceMealSharesDay(d,target,dri,excl,hp,wKg); capSodium(d,dri,target,LEU); trimLossDay(d,target,dri,hp,wKg,excl); dedupeBaseDay(d); wholeSnackFruitDay(d,excl,hp); capNutsDay(d,target); }catch(e){} return d; }
 function topUpProteinDay__core(d, target, dri, hp, wKg, excl){ if (!d||!hp||!(wKg>0)||!(hp.protPerKg>0)) return d;
   const MEALS=["breakfast","snack","lunch","dinner"]; const ex=excl instanceof Set?excl:new Set(excl||[]);
   const floor=wKg*hp.protPerKg, ceil=wKg*(hp.protPerKgMax||1.6)*0.97; if (floor>=ceil) return d;
@@ -16291,7 +16311,7 @@ function trimFiberDay(d, target, dri, excl, hp, wKg){ if (!d||!dri) return d; co
       // גם טופו לאותה ארוחה (עד 100 גר'), כשאין בה — שומר על החלבון ועל הקלוריות
       const virt=(["breakfast","lunch","dinner"].includes(h.m)&&FDB.tofu&&!ex.has("tofu")&&!(d[h.m]||[]).some(x=>x.fk==="tofu"))?[{m:h.m,x:{fk:"tofu",g:0},virt:true}]:[];
       for (const o of [...lo,...virt]){ if (o.x===h.x) continue; const kpg=(n100(o.x.fk).kcal||0)/100; const og0=o.x._fg0||o.x.g; const addG=kLost/kpg;
-        if (o.virt?addG>100||addG<15:o.x.g+addG>og0*1.5) continue; if (o.virt) d[o.m].push(o.x); if (FDB[o.x.fk]?.cat==="פרי"&&o.x.g+addG>uG(o.x.fk)*1.4) continue; if (typeof RULE_MILK!=="undefined"&&RULE_MILK.has(o.x.fk)&&o.x.g+addG>255) continue;
+        if (o.virt?addG>100||addG<15:o.x.g+addG>og0*1.5) continue; if (isNutSeed(o.x.fk)&&o.x.g+addG>nutCapG(target)) continue; if (o.virt) d[o.m].push(o.x); if (FDB[o.x.fk]?.cat==="פרי"&&o.x.g+addG>uG(o.x.fk)*1.4) continue; if (typeof RULE_MILK!=="undefined"&&RULE_MILK.has(o.x.fk)&&o.x.g+addG>255) continue;
         const hg=h.x.g, og=o.x.g; h.x.g=ng; o.x.g=Math.round((og+addG)*10)/10; const T1=dT(); const l1=MAIN.map(leu); h.x.g=hg; o.x.g=og; if (o.virt) d[o.m]=d[o.m].filter(y=>y!==o.x);
         const gain=(T0.fiber||0)-(T1.fiber||0);
         if (gain>0.5&&okT(T0,T1)&&!l1.some((v,i)=>v<Math.min(l0[i],LEU)-0.05)&&(!best||gain>best.gain)) best={h,o,ng,og2:Math.round((og+addG)*10)/10,gain}; } }
