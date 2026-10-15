@@ -15638,6 +15638,10 @@ function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new S
   fullModeTidyWeek(week, target, excludedFks); // יוגורט אחד ביום, סלט במקום ירקות בודדים, נבט חיטה ליד מנה מתאימה
   fullModeCalciumWeek(week, target, dri, excludedFks); // סידן שבועי (לבקשת המשתמש)
   trimWakameWeek(week, dri); trimFiberWeek(week, target, dri, excludedFks); topUpProteinWeek(week, target, dri, hp, wKg, excludedFks); // בקרת דיאטן: יוד וסיבים גם בסגנון "מגוון"
+  // יום חריג (מעל 108%, בעיקר מהשלבים השבועיים של המתכונים) — קיצוץ בלבד עד 105% (לבקשת המשתמש: דרך ביניים בין קלוריות לחלבון/סידן)
+  Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>{ const d=week[k]; const kOf=()=>kcalSum(["breakfast","snack","lunch","dinner"].flatMap(m=>d[m]||[]));
+    if (kOf()>target*1.08) { const snap=JSON.stringify(d); try { enforceDailyCalorieBand(d,target,dri,excludedFks); week[k]=topUpProteinDay(d,target,dri,hp,wKg,excludedFks)||d; } catch(e){} const k1=kcalSum(["breakfast","snack","lunch","dinner"].flatMap(m=>week[k][m]||[]));
+      if (k1<target*0.97||k1>target*1.08) { week[k]=JSON.parse(snap); const d2=week[k]; finalTrimOnlyIfOverCeiling(d2,target*1.05); const k2=kcalSum(["breakfast","snack","lunch","dinner"].flatMap(m=>d2[m]||[])); if (k2<target*0.98) week[k]=JSON.parse(snap); } } }); // שער הקלוריות היומי שוב; אם לא הצליח — קיצוץ בלבד, ואם ירד מתחת ל־98% — מבוטל
   return week;
 }
 // גרסה שבועית של מחולל "הצע ארוחות ממתכונים" (generateRecipesNSFDayPlan) — לבקשת המשתמש. מריצה את אותו
@@ -16058,8 +16062,10 @@ function topUpProteinDay__core(d, target, dri, hp, wKg, excl){ if (!d||!hp||!(wK
     const tryMove=(apply)=>{ const undo=apply(); if (!undo) return; const T1=dT(); undo();
       const p1=T1.protein||0, k1=T1.kcal||0; if (p1<=p0+0.5||p1>ceil) return;
       if (Math.abs(k1-target)>Math.max(Math.abs(k0-target)+15,target*0.03)) return;
+      if (k1>target*1.05&&k1>k0) return; // תקרת 105% (לבקשת המשתמש — ביעד נמוך חלבון וסידן דחפו את היום ל־107%–109%)
       if ((T1.fiber||0)>Math.max(fibCap,T0.fiber||0)+1||(T1.sodium||0)>Math.max(naCap,T0.sodium||0)+25) return;
-      if (dri&&mDef(T1)>md0+0.03) return; const gain=p1-p0; if (!best||gain>best.gain) best={gain,apply}; };
+      if (dri&&mDef(T1)>md0+0.03) return; const gain=p1-p0; const sc=gain-0.02*Math.max(0,k1-k0); // עדיפות למקור רזה — יותר חלבון לכל קלוריה שנוספה
+      if (!best||sc>best.sc) best={gain,sc,apply}; };
     for (const m of ["lunch","dinner","breakfast"]){ const arr=d[m]; if (!arr||!arr.length) continue;
       // מה מקטינים לפיצוי: דגן / פרי / שומן / אגוזים / מתכון דל חלבון — מכל ארוחות היום, עד חצי מהכמות המקורית, עד שהקלוריות שנוספו מתקזזות
       const lows=MEALS.flatMap(mm=>(d[mm]||[]).filter(it=>free(it)&&den(it.fk)<0.05&&(ingNut(it.fk,it.g,it.soaked).kcal||0)>=25&&(["דגן","פרי","שומן","אגוז","זרע"].includes(FDB[it.fk]?.cat)||(TEMP_FDB[it.fk]?._isRecipe&&den(it.fk)<0.04)))).sort((a,b)=>den(a.fk)-den(b.fk));
