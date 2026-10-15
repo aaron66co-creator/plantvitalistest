@@ -25321,6 +25321,18 @@ function AppInner(){
   const [cookOpen,setCookOpen]=useState(false);
   // "לא להציע יותר" מתוך החלפת מנה — מוסיף לרשימת "לעולם לא להציע" (בלי להסיר אם כבר שם)
   const addNeverSuggest=fk=>setExcludedFksArr(prev=>{ if (prev.includes(fk)) return prev; const next=[...prev,fk]; save(EXCLUDED_FKS_STORAGE,next); return next; });
+  // 📌 שמירת השבוע (לבקשת המשתמש): התפריט מתאפס בכל כניסה חדשה — אפשר לשמור את השבוע ולטעון אותו בכניסה הבאה (עד 14 יום)
+  const [savedWeek,setSavedWeek]=useState(()=>{ const w=load("wfpb_saved_week",null); return w&&w.meals&&w.ts?w:null; });
+  const [savedWeekToast,setSavedWeekToast]=useState(null);
+  const saveWeekNow=()=>{ const w={ts:todayKey(),meals}; save("wfpb_saved_week",w); setSavedWeek(w); setSavedWeekToast(lang==="he"?"📌 השבוע נשמר — אפשר לטעון אותו בכניסה הבאה":"📌 Week saved — you can load it next time"); setTimeout(()=>setSavedWeekToast(null),3500); };
+  const loadSavedWeek=()=>{ if (!savedWeek) return; setMeals(()=>{ const m=savedWeek.meals||{}; save("wfpb_meals",m); return m; }); };
+  const dropSavedWeek=()=>{ try{ localStorage.removeItem("wfpb_saved_week"); }catch(e){} setSavedWeek(null); };
+  const savedWeekAge=savedWeek?Math.round((new Date(todayKey()+"T00:00:00")-new Date(savedWeek.ts+"T00:00:00"))/86400000):99;
+  // ⚖️ בדיקה שבועית בירידה במשקל: עבר שבוע מהשקילה האחרונה — תזכורת קטנה (✕ דוחה ל-3 ימים)
+  const [weighSnooze,setWeighSnooze]=useState(()=>load("wfpb_weigh_snooze","")||"");
+  const lastWeigh=Object.keys(weightLog||{}).filter(k=>+weightLog[k]>0).sort().pop()||null;
+  const daysSinceWeigh=lastWeigh?Math.round((new Date(todayKey()+"T00:00:00")-new Date(lastWeigh+"T00:00:00"))/86400000):null;
+  const weighDue=effectiveGoal(profile)==="lose"&&(daysSinceWeigh==null||daysSinceWeigh>=7)&&!(weighSnooze&&weighSnooze>=todayKey());
   function toggleSoaked(mk,idx){
     setMeals(prev=>{
       const cur=prev[dayKey]?.[mk]||[];
@@ -25565,7 +25577,8 @@ function AppInner(){
   useEffect(()=>{ if (tab==="meals"&&!isDesktop&&dashSource!=="planned") setDashSource("planned"); },[tab,isDesktop]);
   const desktopMicroLayout=isDesktop&&tab==="micro";
   const[ratiosOpen,setRatiosOpen]=useState(false); const[macroSecOpen,setMacroSecOpen]=useState(false); const[vitSecOpen,setVitSecOpen]=useState(false);
-  useEffect(()=>{ if (!isDesktop&&tab==="macros") setTab("micro"); },[isDesktop,tab]); // בטלפון — עמוד תזונה אחד const[basisOpen,setBasisOpen]=useState(false);
+  useEffect(()=>{ if (!isDesktop&&tab==="macros") setTab("micro"); },[isDesktop,tab]); // בטלפון — עמוד תזונה אחד
+  const[basisOpen,setBasisOpen]=useState(false); // "על מה מבוסס התפריט" ב"עוד פעולות" (ההצהרה הייתה בתוך ההערה — "עוד פעולות" קרס בטלפון)
   const[directPlan,setDirectPlan]=useState(false); const[armed,setArmed]=useState(null); const armTimer=useRef(null);
   useEffect(()=>{ if(!dayPlanOpen&&!weekPlanOpen&&!mixedPlanOpen&&!mixedWeekPlanOpen) setDirectPlan(false); },[dayPlanOpen,weekPlanOpen,mixedPlanOpen,mixedWeekPlanOpen]);
   // לחיצה כפולה לאישור החלפה (כמו "נקה שבוע"): לחיצה ראשונה "מחמשת" את הכפתור ל-4 שניות
@@ -26293,6 +26306,16 @@ function AppInner(){
         </>}
         {!desktopSidebarTab&&tab==="meals"&&weekEmptyCta}
         {tab==="meals"&&<MedicalNotice profile={profile} lang={lang}/>}
+        {tab==="meals"&&weekIsEmpty&&savedWeek&&savedWeekAge<=14&&<div data-saved-week style={{background:"#EEF6EC",border:"1px solid #cfe3cb",borderRadius:12,padding:"9px 12px",margin:"6px 0 10px",fontSize:13.5,color:"#1E3A2B",lineHeight:1.5}}>
+          {lang==="he"?`📌 יש לך שבוע שמור מ-${fmtLogDate(savedWeek.ts,lang)} — לטעון אותו?`:`📌 You have a week saved on ${fmtLogDate(savedWeek.ts,lang)} — load it?`}
+          <div style={{display:"flex",gap:8,marginTop:6}}>
+            <button data-load-week onClick={loadSavedWeek} style={{flex:2,padding:"8px 4px",borderRadius:10,border:"none",background:"#2e7d32",color:"#FFFFFF",fontSize:13,fontWeight:800,cursor:"pointer"}}>{lang==="he"?"📌 טען את השבוע":"📌 Load the week"}</button>
+            <button onClick={dropSavedWeek} style={{flex:1,padding:"8px 4px",borderRadius:10,border:"1px solid #D9D3C5",background:"#FFFFFF",color:"#4A5A50",fontSize:12.5,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"מחק":"Delete"}</button>
+          </div></div>}
+        {tab==="meals"&&dashSource!=="actual"&&!weekIsEmpty&&weighDue&&<div data-weigh-due style={{display:"flex",gap:8,alignItems:"center",background:"#FFF8EC",border:"1px solid #ecd9b5",borderRadius:12,padding:"7px 11px",margin:"6px 0 8px",fontSize:13,color:"#1E3A2B",lineHeight:1.45}}>
+          <span style={{flex:1}}>{lang==="he"?(lastWeigh?"⚖️ עבר שבוע מהשקילה האחרונה — רוצים להישקל? ככה רואים התקדמות, והיעד מתכייל.":"⚖️ שקילה פעם בשבוע — ככה רואים התקדמות, והיעד מתכייל."):(lastWeigh?"⚖️ A week since your last weigh-in — weigh yourself? You'll see progress and the target calibrates.":"⚖️ Weigh yourself once a week — you'll see progress and the target calibrates.")}</span>
+          <button data-weigh-go onClick={()=>{ setTab("log"); setLogSub("body"); }} style={{padding:"6px 10px",borderRadius:9,border:"none",background:"#8C6D53",color:"#FFFFFF",fontSize:12.5,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>{lang==="he"?"להישקל":"Weigh in"}</button>
+          <button aria-label={lang==="he"?"אחר כך":"Later"} onClick={()=>{ const d=new Date(); d.setDate(d.getDate()+3); const k=todayKeyFromDate(d); save("wfpb_weigh_snooze",k); setWeighSnooze(k); }} style={{background:"none",border:"none",color:"#6B7C72",fontSize:15,cursor:"pointer",padding:0}}>✕</button></div>}
         {/* 🍖 גמיש: יום שאינו צמחי — הסבר קצר, ואפשרות לתכנן בכל זאת יום צמחי */}
         {tab==="meals"&&dashSource!=="actual"&&profile.flex&&!omniBannerX&&!flexOwnDay(dayIdx)&&MEAL_KEYS.some(mk=>flexOwnMeal(dayIdx,mk))&&<div style={{display:"flex",gap:6,alignItems:"flex-start",fontSize:12.5,color:"#4A5A50",background:"#F7EFE3",borderRadius:10,padding:"6px 10px",margin:"8px 0",lineHeight:1.45}}><span style={{flex:1}}>{lang==="he"?"🍖 היום יש גם ״ארוחות משלי״ — עם הצעה למנה מן החי (הערכה), שנספרת בסיכום התזונתי. אפשר להחליף אותה בכרטיס.":"🍖 Today also has 'my own meals' — with a suggested animal-based dish (estimate), counted in the nutrition summary. You can change it on the card."}</span><button aria-label={lang==="he"?"סגור":"Close"} onClick={()=>{ setOmniBannerX(true); save("wfpb_omni_banner_x",true); }} style={{background:"transparent",border:"none",color:"#8C6D53",fontSize:15,cursor:"pointer",padding:"0 2px",lineHeight:1}}>✕</button></div>}
         {tab==="meals"&&dashSource!=="actual"&&flexOwnDay(dayIdx)&&<div style={{fontSize:13.5,color:"#1E3A2B",background:"#F7EFE3",border:"1px solid #e3cfb2",borderRadius:12,padding:"9px 12px",margin:"8px 0",lineHeight:1.5}}>{lang==="he"
@@ -26364,7 +26387,8 @@ function AppInner(){
               </button>
             </div>
             {saveDayToast && <div style={{fontSize:12.5,color:"#2e7d32",marginTop:4,textAlign:"center"}}>{saveDayToast}</div>}
-            <div style={{display:"flex",gap:8,marginTop:8}}>{printWeekBtn}</div>
+            <div style={{display:"flex",gap:8,marginTop:8}}>{printWeekBtn}{!weekIsEmpty&&<button data-save-week onClick={saveWeekNow} style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #b9d3b4",background:"#EEF6EC",color:"#1E5631",fontSize:12,fontWeight:700,cursor:"pointer"}}>{lang==="he"?"📌 שמור את השבוע":"📌 Save the week"}</button>}</div>
+            {savedWeekToast&&<div style={{fontSize:12.5,color:"#2e7d32",marginTop:4,textAlign:"center"}}>{savedWeekToast}</div>}
             {/* "על מה מבוסס התפריט?" — עבר לכאן מתפריט 🤖 שהוסר (לבקשת המשתמש) */}
             <button onClick={()=>setBasisOpen(o=>!o)} aria-expanded={basisOpen} style={{width:"100%",marginTop:8,padding:"4px 0",border:"none",background:"transparent",color:"#4A5A50",fontSize:12.5,cursor:"pointer",textAlign:"start"}}>ⓘ {lang==="he"?"על מה מבוסס התפריט?":"What is the menu built from?"} {basisOpen?"▲":"▼"}</button>
             {basisOpen&&<div style={{fontSize:12.5,lineHeight:1.55,color:"#1E3A2B",background:"#FBFAF7",border:"1px solid #E2DED4",borderRadius:10,padding:"8px 10px",marginTop:2}}>{lang==="he"
@@ -26388,7 +26412,7 @@ function AppInner(){
               {sidebarNavNode}
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{display:"flex",gap:8,marginBottom:6,maxWidth:520}}>{clearWeekBtn}{printWeekBtn}{!weekIsEmpty&&<button onClick={()=>setShoppingListOpen(true)} style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #b9d3b4",background:"#EEF6EC",color:"#1E5631",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{lang==="he"?"🛒 רשימת קניות":"🛒 Shopping list"}</button>}</div>
+              <div style={{display:"flex",gap:8,marginBottom:6,maxWidth:520}}>{clearWeekBtn}{printWeekBtn}{!weekIsEmpty&&<button data-save-week onClick={saveWeekNow} title={savedWeekToast||""} style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #b9d3b4",background:"#EEF6EC",color:"#1E5631",fontSize:12,fontWeight:700,cursor:"pointer"}}>{savedWeekToast?"✅":(lang==="he"?"📌 שמור את השבוע":"📌 Save the week")}</button>}{!weekIsEmpty&&<button onClick={()=>setShoppingListOpen(true)} style={{flex:1,padding:"10px 4px",borderRadius:10,border:"1px solid #b9d3b4",background:"#EEF6EC",color:"#1E5631",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{lang==="he"?"🛒 רשימת קניות":"🛒 Shopping list"}</button>}</div>
               {(hasAnyLog||dashSource==="actual")&&dashSourceToggleNode}
               <div style={{display:"grid",gridTemplateColumns:"1fr 44px 1fr",gap:10}}>
                 <div id="onboard-mealcard">
