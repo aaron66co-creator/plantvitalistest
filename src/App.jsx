@@ -16230,7 +16230,8 @@ function trimLossDay(d, target, dri, hp, wKg, excl){ if (!d||!hp||!hp.losing||!d
   // ומחזירים את אותן קלוריות מפריט רזה באותו יום — לחם/פיתה, דגן, קטנית או מנה דלת שומן (עד +40% ממנו)
   const leanAdd=need=>{ const ch=[]; let left=need;
     const c=MAIN.flatMap(m=>(d[m]||[]).filter(x=>x&&!x._user&&!x._keep&&!isBowlRecipe(x.fk)&&(TEMP_FDB[x.fk]?._isRecipe||["דגן","קטנית"].includes(FDB[x.fk]?.cat))))
-      .map(x=>{ const p=ingNut(x.fk,100,x.soaked)||{}; return {x,kpg:(p.kcal||0)/100,fd:(p.fat||0)*9/((p.kcal)||1)}; }).filter(o=>o.kpg>0.5&&o.fd<0.2).sort((a,b)=>a.fd-b.fd);
+      .map(x=>{ const p=ingNut(x.fk,100,x.soaked)||{}; return {x,kpg:(p.kcal||0)/100,fd:(p.fat||0)*9/((p.kcal)||1),pd:(p.protein||0)*4/((p.kcal)||1)}; }).filter(o=>o.kpg>0.5&&o.fd<0.2)
+      .sort((a,b)=>target<=1350?(b.pd-a.pd):(a.fd-b.fd)); /* יעד נמוך — קודם הדל בשומן העשיר בחלבון (קטניות), כדי לא לאבד חלבון */
     for (const o of c){ if (left<=2) break; const base=o.x._la0||o.x.g, room=base*1.4-o.x.g; if (room<1) continue; const add=Math.min(room,left/o.kpg);
       ch.push([o.x,o.x.g,o.x._la0]); o.x._la0=base; o.x.g=Math.round((o.x.g+add)*10)/10; left-=add*o.kpg; }
     if (left>Math.max(8,need*0.25)){ ch.forEach(([x,g0,la])=>{ x.g=g0; if (la===undefined) delete x._la0; else x._la0=la; }); return null; }
@@ -17590,6 +17591,8 @@ function StorageHealthRow({lang,row,lbl,exportCode,importCode}){ const he=lang==
     {msg&&<div style={{fontSize:12,color:"#1E5631",marginTop:5}}>{msg}</div>}
     <div style={{fontSize:10.5,color:"#6B7C72",marginTop:4}}>{he?"הקוד כולל פרופיל, מצבים רפואיים, אוכל/ת הכל, רגישויות, מזונות מוחרגים ושפה — בלי תפריט, יומן או סיסמה.":"The code includes profile, medical conditions, I eat everything, sensitivities, excluded foods and language — no menu, log or password."}</div></>}
   </div>); }
+// 🔠 טקסט גדול (לבקשת המשתמש): הגדלה של כל המסך פי 1.15 — נשמר במכשיר (גם בלי "לזכור את הפרטים שלי")
+function applyLargeText(on){ try{ document.documentElement.style.zoom=on?"1.15":""; }catch(e){} }
 function MySettingsModal({lang,onClose,profile,setProfile,tdee,target,onInfo,section,detailView,toggleDetail,toggleLang,rememberProfile,setRememberProfile,onBudget,showBudget,exportCode,importCode}){ const he=lang==="he";
   const row={background:"#FFFFFF",border:"1px solid #E2DED4",borderRadius:12,padding:"10px 12px",marginBottom:8};
   const lbl={fontSize:13,fontWeight:800,color:"#1E3A2B",marginBottom:6};
@@ -17649,6 +17652,7 @@ function MySettingsModal({lang,onClose,profile,setProfile,tdee,target,onInfo,sec
         <div style={{fontSize:11.5,color:"#4A5A50",marginTop:4,lineHeight:1.45}}>{he?"לא צריך לרשום ביומן כל ארוחה. מה שלא רשמתם — נחשב כאילו נאכל בדיוק לפי התפריט. רושמים רק כשאכלתם משהו אחר או דילגתם על ארוחה. בלי הסימון — נספר רק מה שנרשם ביומן.":"No need to log every meal. Anything you don't log counts as eaten exactly by the menu. Log only when you ate something else or skipped a meal. Unchecked — only what you log is counted."}</div>
         <details style={{marginTop:4}}><summary style={{cursor:"pointer",fontSize:11.5,color:"#2277a8",fontWeight:700}}>{he?"ⓘ מה זה?":"ⓘ What is it?"}</summary>
           <div style={{fontSize:11.5,color:"#4A5A50",lineHeight:1.45,marginTop:3}}>{he?"דוגמה: בתפריט היה סלט עדשים בצהריים, ואכלתם פיצה — רושמים ביומן פיצה. את שאר הארוחות לא צריך לרשום. היום נכנס למעקב השבועי למחרת. במעקב ובדוח לדיאטנית ימים שלא נרשם בהם דבר מסומנים \"לפי התפריט\", כי ייתכן שאכלתם אחרת.":"Example: the menu had a lentil salad for lunch and you ate pizza — log the pizza. The other meals need no logging. The day enters weekly tracking the next day. In tracking and the dietitian report, days with nothing logged are marked \"from the menu\", since you may have eaten differently."}</div></details></div>
+      <div style={{...row,marginTop:6}}><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",...lbl,marginBottom:0}}><input data-large-text type="checkbox" defaultChecked={!!load("wfpb_large_text",false)} onChange={e=>{ save("wfpb_large_text",e.target.checked); applyLargeText(e.target.checked); }} style={{width:18,height:18,accentColor:"#2e7d32"}}/>🔠 {he?"טקסט גדול":"Large text"}</label></div>
       </details>
       <details data-sec="tools" open={section==="tools"} style={{marginTop:10}}><summary style={{fontSize:14,fontWeight:800,color:"#1E3A2B",cursor:"pointer",padding:"6px 2px",listStyle:"revert"}}>{he?"🧰 כלים ושמירה":"🧰 Tools & saving"}</summary>
       <StorageHealthRow lang={lang} row={row} lbl={lbl} exportCode={exportCode} importCode={importCode}/>
@@ -22436,6 +22440,7 @@ function SimpleDaySummary({totals,target,profile,lang,full,week,cost,dailyBudget
 
     if (naKInRange(totals,hp)===false) lines.push(kNaLine(lang));
     lines.push(simpleLine(pct>=95&&pct<=105?"✓":"•", (fw<1?(he?"הקלוריות של הארוחות הצמחיות ":"Calories of the plant-based meals "):"")+(pct>=95&&pct<=105?(fw<1?(he?"בטווח (ביחס לחלקן מהיום)":"in range (for their share of the day)"):(he?"הקלוריות בטווח":"Calories in range")):pct<95?(fw<1?(he?"מתחת ליעד":"below target"):(he?"הקלוריות מתחת ליעד":"Calories below target")):(fw<1?(he?"מעל היעד":"above target"):(he?"הקלוריות מעל היעד":"Calories above target"))), pct>=95&&pct<=105?"#2e7d32":"#a6440f"));
+    if (target&&target<=1350&&effectiveGoal(profile)==="lose") lines.push(simpleLine("ℹ️",he?"ביעד נמוך (עד 1,350 קק״ל) קשה להגיע לכל היעדים בכל יום — מומלץ ליווי דיאטנית.":"At a low target (up to 1,350 kcal) it's hard to meet every goal each day — guidance from a dietitian is recommended.","#4A5A50"));
     if (w && (totals.protein||0) < w*hp.protPerKg*0.97) lines.push(simpleLine("•",he?"חלבון נמוך — כדאי להוסיף קטנית, טופו או תורמוס.":"Protein is low — add legumes, tofu or lupins.","#a6440f"));
     // ויטמינים ומינרלים — לפי הממוצע השבועי כשיש 3 ימים ומעלה (לבקשת המשתמש), בניסוח רך: "כדאי לחזק", לא "חסר"
     const useWeek=!!week&&week.n>=WEEK_MIN_DAYS; const mv=k=>useWeek?(week.totals[k]||0)/week.n:(totals[k]||0);
@@ -25333,6 +25338,7 @@ function AppInner(){
   const lastWeigh=Object.keys(weightLog||{}).filter(k=>+weightLog[k]>0).sort().pop()||null;
   const daysSinceWeigh=lastWeigh?Math.round((new Date(todayKey()+"T00:00:00")-new Date(lastWeigh+"T00:00:00"))/86400000):null;
   const weighDue=effectiveGoal(profile)==="lose"&&(daysSinceWeigh==null||daysSinceWeigh>=7)&&!(weighSnooze&&weighSnooze>=todayKey());
+  useEffect(()=>{ applyLargeText(!!load("wfpb_large_text",false)); },[]); // 🔠 טקסט גדול — מהכניסה
   function toggleSoaked(mk,idx){
     setMeals(prev=>{
       const cur=prev[dayKey]?.[mk]||[];
