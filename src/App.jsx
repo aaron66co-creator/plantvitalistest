@@ -19688,16 +19688,21 @@ function SavedDaysModal({onClose,onLoad,onSaveToday,lang}){
 
 // 🔄 החלפת מנה בודדת (סקירת משתמש): עד 3 חלופות מאותו סוג — מתכון מאותה קטגוריה, או מזון מאותה קבוצה — באותן קלוריות,
 // בלי מזונות שסומנו 🚫/אלרגיה ובלי מה שכבר בארוחה. הקרובות ביותר ביחס חלבון/קלוריות
-function swapAlternatives(ing, mealIngs, recipes, excl){ const fd=FDB[ing.fk]||TEMP_FDB[ing.fk]; if(!fd) return [];
+// קטגוריות קרובות להחלפת מנה (לבקשת המשתמש): תבשיל קטניות ⇄ סלט קטניות ⇄ מרק ⇄ פשטידה וכו'
+const SWAP_REL=[["תבשילי קטניות","סלטי קטניות","מרקים","פשטידות"],["תבשילי דגנים","ארוחות סלט","קערות"],["דייסות","קערות"]];
+const SWAP_NO_BF=new Set(["תבשילי קטניות","תבשילי דגנים","מרקים"]); // בלי תבשילים ומרקים בבוקר
+function swapAlternatives(ing, mealIngs, recipes, excl, opts){ const o=opts||{}; const fd=FDB[ing.fk]||TEMP_FDB[ing.fk]; if(!fd) return [];
   const k0=ingNut(ing.fk,ing.g).kcal||0; if(k0<=0) return []; const n0=ingNut(ing.fk,100); const pk0=(n0.protein||0)/Math.max(1,n0.kcal||1);
   const inMeal=new Set((mealIngs||[]).map(x=>x.fk)); let pool=[];
-  if (fd._isRecipe){ const cat=recipeCatOfFk(ing.fk); pool=(recipes||[]).map(r=>r.id).filter(id=>TEMP_FDB[id]&&recipeCatOfFk(id)===cat); }
+  const cat0=fd._isRecipe?recipeCatOfFk(ing.fk):null;
+  if (fd._isRecipe){ const cats=new Set([cat0]); if (o.related) SWAP_REL.forEach(gr=>{ if (gr.includes(cat0)) gr.forEach(c=>cats.add(c)); });
+    pool=(recipes||[]).filter(r=>!(excl&&(r.ings||[]).some(x=>excl.has(x.fk)))).map(r=>r.id).filter(id=>{ if (!TEMP_FDB[id]) return false; const c=recipeCatOfFk(id); return cats.has(c)&&!(o.mk==="breakfast"&&c!==cat0&&SWAP_NO_BF.has(c)); }); }
   else pool=Object.keys(FDB).filter(fk=>{ const f=FDB[fk]; return f.cat===fd.cat&&!f._isRecipe&&!f.logOnly&&!/יבש|גולמי|קמח/.test(f.he||"")&&getServingUnit(fk,f,"he"); });
   pool=pool.filter(fk=>fk!==ing.fk&&!inMeal.has(fk)&&!(excl&&excl.has(fk)));
   return pool.map(fk=>{ const n=ingNut(fk,100); const kpg=(n.kcal||0)/100; if(kpg<=0) return null; let g=k0/kpg; const f=FDB[fk]||TEMP_FDB[fk];
-      if (f._isRecipe&&f._servingG){ const q=f._servingG/4; g=Math.max(q*2,Math.round(g/q)*q); } else { const su=getServingUnit(fk,f,"he"); g=su&&su.g?Math.max(su.g*0.5,Math.round(g/(su.g*0.25))*su.g*0.25):Math.max(10,Math.round(g/5)*5); }
-      return {fk,g:Math.round(g*10)/10,score:Math.abs((n.protein||0)/Math.max(1,n.kcal||1)-pk0)}; })
-    .filter(Boolean).sort((a,b)=>a.score-b.score).slice(0,3); }
+      if (f._isRecipe&&f._servingG){ const q=f._servingG/4; g=Math.max(q*2,Math.round(g/q)*q); if (o.related&&isBowlRecipe(fk)) g=Math.min(g,f._servingG); /* דייסה/קערה — עד מנה אחת */ } else { const su=getServingUnit(fk,f,"he"); g=su&&su.g?Math.max(su.g*0.5,Math.round(g/(su.g*0.25))*su.g*0.25):Math.max(10,Math.round(g/5)*5); }
+      return {fk,g:Math.round(g*10)/10,score:Math.abs((n.protein||0)/Math.max(1,n.kcal||1)-pk0)+(f._isRecipe&&recipeCatOfFk(fk)!==cat0?0.01:0)}; })
+    .filter(Boolean).sort((a,b)=>a.score-b.score).slice(0,o.n||3); }
 // "(להוספה)" → מילים ברורות (סקירת משתמש): זרעים/פשתן/נבט חיטה — "(לפזר מעל)"; מלח/וואקמה — "(לתיבול)"
 function addonWord(fk,lang){ const sp=fk==="saltIodized"||fk==="wakame"; return lang==="he"?(sp?" (לתיבול)":" (לפזר מעל)"):(sp?" (to season)":" (to sprinkle)"); }
 function MealBuilder({mealKey,currentIngs,onClose,onSave,lang,recipes=[],excludedFks,onToggleExclude,simple,profile,target}){ // simple — בלי מספרים (לבקשת המשתמש)
@@ -20191,7 +20196,7 @@ function buildWeekMenuPrintHTML(week, lang){ const he=lang==="he";
 // מתכונים מאתמול (לבקשת המשתמש — פחות בישול): כל מתכון שהופיע ביום הקודם מסומן "♻️ מאתמול" — אין צורך לבשל שוב
 function prevDayRecipeSet(week, dayIdx){ if (!week||!(dayIdx>0)) return null; const pd=week[`d${dayIdx-1}`]; if (!pd) return null;
   return new Set(MEAL_KEYS.flatMap(mk=>pd[mk]||[]).map(x=>x&&x.fk).filter(fk=>TEMP_FDB[fk]?._isRecipe&&recipeCatOfFk(fk)!=="משקאות")); }
-function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple,note,noteFk,pack,leftFks,own,omni,flexSwitch}){
+function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple,note,noteFk,pack,leftFks,own,omni,flexSwitch,onSwapItem,swapExcl}){
   const omniId=omni?omniIdOf(ings):null, omniDish=omniId?omniById(omniId):null; // ארוחה משלי עם הצעת מנה מן החי
   const noteOnItem=!!(note&&noteFk&&(ings||[]).some(x=>x.fk===noteFk)); // ההערה מוצגת ליד המנה עצמה
   const tx=T[lang];
@@ -20206,6 +20211,17 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
   // גרירה ושחרור (Drag & Drop) בין כרטיסי ארוחה: כל צ'יפ-רכיב ניתן לגרירה (draggable), והכרטיס כולו הוא אזור-
   // שחרור. onMoveItem (מועבר מ-App) אחראי לבצע את ההעברה בפועל בנתונים — כאן רק ה-UI של הגרירה עצמה
   const[isDragOver,setIsDragOver]=useState(false);
+  // 🔄 החלפת מנה בלחיצה (לבקשת המשתמש): לחיצה ראשונה — החלופה הראשונה; כל לחיצה נוספת — הבאה, ובסוף חזרה למקור
+  const[swapCyc,setSwapCyc]=useState(null), [swapNote,setSwapNote]=useState(null);
+  const canSwap=(fk,g,addon)=>{ if (!onSwapItem||addon) return false; const f=FDB[fk]||TEMP_FDB[fk]; if (!f||f.cat==="מן החי"||fk==="saltIodized"||fk==="wakame") return false; return f._isRecipe||(ingNut(fk,g).kcal||0)>=60; };
+  const doSwap=idx=>{ const cur=ings[idx]; if (!cur) return; let c=swapCyc;
+    const same=c&&c.idx===idx&&cur.fk===(c.pos<0?c.orig.fk:c.alts[c.pos].fk);
+    if (!same){ const alts=swapAlternatives(cur,ings,recipes,swapExcl,{n:6,related:true,mk:mealKey}); if (!alts.length){ setSwapNote({idx,text:lang==="he"?"אין כרגע חלופה מתאימה למנה הזו":"No suitable alternative for this dish"}); return; }
+      c={idx,orig:{fk:cur.fk,g:cur.g},alts,pos:-1}; }
+    const pos=c.pos+1>=c.alts.length?-1:c.pos+1; const nx=pos<0?c.orig:c.alts[pos];
+    setSwapCyc({...c,pos}); const msg=onSwapItem(idx,{fk:nx.fk,g:nx.g},pos<0);
+    const k=pos<0?(lang==="he"?"חזרה למנה המקורית":"Back to the original dish"):(lang==="he"?`חלופה ${pos+1} מתוך ${c.alts.length} · לחיצה נוספת — הבאה`:`Option ${pos+1} of ${c.alts.length} · tap again for the next`);
+    setSwapNote({idx,text:k+(msg?" — "+msg:""),warn:!!msg}); };
   return(
     <div
       onDragOver={onMoveItem?(e=>{e.preventDefault();setIsDragOver(true);}):undefined}
@@ -20290,6 +20306,8 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
                       📖 {lang==="he"?"מתכון":"recipe"}
                     </button>
                   )}
+                  {canSwap(fk,g,addon) && <button data-swap-item onClick={()=>doSwap(idx)} title={lang==="he"?"החלף במנה אחרת (לחיצה נוספת — חלופה נוספת)":"Swap for another dish (tap again for more)"}
+                      style={{marginInlineStart:3,marginInlineEnd:isLast?0:3,background:"#EEF6EC",border:"1px solid #cfe3cb",borderRadius:6,color:"#1E5631",fontSize:10,padding:"1px 5px",cursor:"pointer",lineHeight:1.4}}>🔄</button>}
                   {soakable && !simple && ( /* 💧 השריה — רק עם ערכים תזונתיים, שם רואים את השפעתה (לבקשת המשתמש) */
                     <button onClick={()=>onToggleSoak(idx)}
                       title={lang==="he"?(soaked?"מושרה — לחץ לביטול":"לא מושרה — לחץ לסימון כמושרה"):(soaked?"Soaked — tap to unmark":"Not soaked — tap to mark as soaked")}
@@ -20303,6 +20321,8 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
             }, lang, true, (its,key)=>{ const sp=its.every(x=>x.fk==="saltIodized"||x.fk==="wakame"), sd=its.every(x=>!(x.fk==="saltIodized"||x.fk==="wakame")); /* שורה אחת לתיבול/פיזור (לבקשת המשתמש: שורות "·" בודדות) */
               return <span key={key} data-addon-line style={{width:"100%",unicodeBidi:"plaintext",color:"#4A5A50"}}>{sp?"🧂 ":sd?"🌱 ":"🧂 "}{lang==="he"?(sp?"לתיבול: ":sd?"לפזר מעל: ":"לתיבול ולפזר מעל: "):(sp?"To season: ":sd?"To sprinkle: ":"To season and sprinkle: ")}{its.map(x=>itemTextOf(x.fk,x.g,lang)).join(" · ")}</span>; })}
           </div>
+          {swapNote&&onSwapItem&&<div data-swap-note style={{marginTop:5,fontSize:11.5,lineHeight:1.45,color:swapNote.warn?"#8C4A1E":"#1E5631",background:swapNote.warn?"#FFF4E5":"#EEF6EC",border:`1px solid ${swapNote.warn?"#F0D2A8":"#cfe3cb"}`,borderRadius:8,padding:"4px 8px",display:"flex",gap:6,alignItems:"flex-start"}}>
+            <span style={{flex:1}}>{swapNote.warn?"⚠️ ":"🔄 "}{swapNote.text}</span><button onClick={()=>setSwapNote(null)} style={{background:"none",border:"none",color:"inherit",cursor:"pointer",fontSize:12,padding:0}}>✕</button></div>}
         </>
       }
       </div>
@@ -25163,6 +25183,19 @@ function AppInner(){
     });
   }
   // מתג "מושרה" לפריט בודד (קטנית/דגן בלבד) — עדכון פשוט של אינדקס ברשימת הרכיבים, לא נוגע בשאר הפריטים
+  // 🔄 החלפת מנה בכרטיס הארוחה המתוכננת + בדיקת חוסרים אחרי ההחלפה (חלבון, סידן, ברזל, סיבים)
+  function swapItemInMeal(mk,idx,it,back){
+    const day=meals[dayKey]||{}; const cur=day[mk]||[]; if (!cur[idx]) return null;
+    const next=cur.map((x,i)=>i===idx?{...it,...(back?{}:{_user:true})}:x);
+    const all0=MEAL_KEYS.flatMap(k=>day[k]||[]), all1=MEAL_KEYS.flatMap(k=>k===mk?next:(day[k]||[]));
+    setMeals(prev=>{ const nextMeals={...prev,[dayKey]:{...(prev[dayKey]||{}),[mk]:next}}; save("wfpb_meals",nextMeals); return nextMeals; });
+    const t0=totalNut(all0), t1=totalNut(all1); const he=lang==="he";
+    const tg={protein:wKg?wKg*hp.protPerKg:0,calcium:dri.calcium?.dri,iron:dri.iron?.dri,fiber:target?14*target/1000:0};
+    const nm={protein:he?"חלבון":"protein",calcium:he?"סידן":"calcium",iron:he?"ברזל":"iron",fiber:he?"סיבים":"fiber"};
+    const low=Object.keys(tg).filter(k=>tg[k]>0&&(t0[k]||0)-(t1[k]||0)>=tg[k]*0.05&&(t1[k]||0)<tg[k]*0.9) /* רק ירידה של ממש (5%+ מהיעד) אל מתחת ל-90% */.map(k=>`${nm[k]} ${Math.round((t1[k]||0)/tg[k]*100)}%`);
+    if (!low.length) return null;
+    return he?`היום ירד מתחת ליעד: ${low.join(", ")}. אפשר לנסות חלופה אחרת, או ״השלם יום״ להשלמה`:`Today is now below target: ${low.join(", ")}. Try another option, or "Complete day" to fill the gap`;
+  }
   function toggleSoaked(mk,idx){
     setMeals(prev=>{
       const cur=prev[dayKey]?.[mk]||[];
@@ -26149,7 +26182,7 @@ function AppInner(){
                 pack={packOf(mk,getMeal(mk))} onTimeChange={t=>setMealTime(mk,t)}
                 onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
                 onSaved={()=>planGuard(()=>setSavedOpen(mk),dashSource)}
-                onToggleSoak={idx=>toggleSoaked(mk,idx)}
+                onToggleSoak={idx=>toggleSoaked(mk,idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?((idx,it,back)=>swapItemInMeal(mk,idx,it,back)):undefined} swapExcl={excludedFks}
                 onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
                 lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/></div>
             ))}
@@ -26230,7 +26263,7 @@ function AppInner(){
                   pack={packOf("breakfast",getMeal("breakfast"))} onTimeChange={t=>setMealTime("breakfast",t)}
                   onBuild={()=>planGuard(()=>setBuilderOpen({mk:"breakfast",mode:dashSource}),dashSource)}
                   onSaved={()=>planGuard(()=>setSavedOpen("breakfast"),dashSource)}
-                  onToggleSoak={idx=>toggleSoaked("breakfast",idx)}
+                  onToggleSoak={idx=>toggleSoaked("breakfast",idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,"breakfast")?((idx,it,back)=>swapItemInMeal("breakfast",idx,it,back)):undefined} swapExcl={excludedFks}
                   onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
                   lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 </div>
@@ -26266,7 +26299,7 @@ function AppInner(){
                     pack={packOf(mk,getMeal(mk))} onTimeChange={t=>setMealTime(mk,t)}
                     onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
                     onSaved={()=>planGuard(()=>setSavedOpen(mk),dashSource)}
-                    onToggleSoak={idx=>toggleSoaked(mk,idx)}
+                    onToggleSoak={idx=>toggleSoaked(mk,idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?((idx,it,back)=>swapItemInMeal(mk,idx,it,back)):undefined} swapExcl={excludedFks}
                     onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
                     lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 ))}
