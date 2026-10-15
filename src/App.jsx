@@ -19102,6 +19102,16 @@ function ShoppingListModal({meals,recipes,lang,onClose}){
     );
   };
   const rowsGrid=arr=><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",columnGap:12}}>{arr.map(it=>renderRow(it))}</div>;
+  // 📤 שליחת הרשימה (לבקשת המשתמש): טקסט לפי מחלקות בסופר, בלי מה שכבר סומן כנקנה — לוואטסאפ או להודעה
+  const [shareMsg,setShareMsg]=useState(null);
+  const shareText=()=>{ const he=lang==="he"; const g=dd(groupShoppingListByAisle(freshAcc)); const L=[he?"🛒 רשימת קניות":"🛒 Shopping list"];
+    AISLES_HE.filter(c=>g[c]&&g[c].length).forEach(c=>{ const its=g[c].filter(it=>!checked[it.key]); if (!its.length) return; L.push("",`${AISLE_EMOJI[c]||""} ${he?c:(AISLE_MAP[c]||c)}`.trim()); its.forEach(it=>L.push("• "+it.name)); });
+    if (!hidePantry){ const pi=pantryCatKeys.flatMap(c=>pantryGroups[c]).filter(it=>!checked[it.key]); if (pi.length){ L.push("",he?"🏠 מהמזווה":"🏠 Pantry"); pi.forEach(it=>L.push("• "+it.name)); } }
+    return L.join("\n"); };
+  const doShare=async()=>{ const text=shareText(), he=lang==="he";
+    try{ if (navigator.share){ await navigator.share({text}); return; } }catch(e){ if (e&&e.name==="AbortError") return; }
+    let copied=false; try{ await navigator.clipboard.writeText(text); copied=true; }catch(e){}
+    setShareMsg({copied,text,he}); };
 
   return(
     <div style={{position:"fixed",inset:0,background:"#000000cc",zIndex:60,display:"flex",alignItems:isDesktop?"center":"flex-end"}} onClick={onClose}>
@@ -19132,7 +19142,15 @@ function ShoppingListModal({meals,recipes,lang,onClose}){
             style={{background:"#E8EFE9",border:"1px solid #bcd4bf",borderRadius:8,color:"#2e7d32",padding:"4px 8px",fontSize:10,cursor:"pointer"}}>
             {allChecked?tx.shoppingListUncheckAll:tx.shoppingListCheckAll}
           </button>
+          <button data-share-list onClick={doShare}
+            style={{background:"#2e7d32",border:"none",borderRadius:8,color:"#FFFFFF",padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+            📤 {lang==="he"?"שלח את הרשימה":"Send the list"}
+          </button>
         </div>
+        {shareMsg&&<div data-share-msg style={{fontSize:12,color:"#1E3A2B",background:"#EEF6EC",border:"1px solid #cfe3cb",borderRadius:8,padding:"6px 9px",marginBottom:10,lineHeight:1.5}}>
+          {shareMsg.copied?(shareMsg.he?"✅ הרשימה הועתקה — אפשר להדביק בכל הודעה. ":"✅ Copied — paste it into any message. "):(shareMsg.he?"אפשר לשלוח ישר: ":"Send it directly: ")}
+          <a href={"https://wa.me/?text="+encodeURIComponent(shareMsg.text)} target="_blank" rel="noopener noreferrer" style={{color:"#1E5631",fontWeight:800}}>{shareMsg.he?"לפתוח בוואטסאפ":"Open in WhatsApp"}</a>
+          <button onClick={()=>setShareMsg(null)} style={{background:"none",border:"none",color:"#6B7C72",cursor:"pointer",marginInlineStart:6}}>✕</button></div>}
         <div style={{fontSize:10,color:"#1E3A2B",marginBottom:10}}>{totalItems} {tx.shoppingListItemsCount}</div>
         {catKeys.map(c=>(
           <div key={c} style={{background:"#FFFFFF",borderRadius:10,padding:"8px 10px",marginBottom:8,border:`1px solid ${sectionColor(c)}33`}}>
@@ -20261,7 +20279,7 @@ function buildWeekMenuPrintHTML(week, lang){ const he=lang==="he";
 // מתכונים מאתמול (לבקשת המשתמש — פחות בישול): כל מתכון שהופיע ביום הקודם מסומן "♻️ מאתמול" — אין צורך לבשל שוב
 function prevDayRecipeSet(week, dayIdx){ if (!week||planPos(dayIdx)===0) return null; const pd=week[`d${(dayIdx+6)%7}`]; if (!pd) return null; /* היום הראשון בתפריט — בלי "מאתמול" */
   return new Set(MEAL_KEYS.flatMap(mk=>pd[mk]||[]).map(x=>x&&x.fk).filter(fk=>TEMP_FDB[fk]?._isRecipe&&recipeCatOfFk(fk)!=="משקאות")); }
-function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple,note,noteFk,pack,leftFks,own,omni,flexSwitch,onSwapItem,swapExcl,onOtherMeal}){
+function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple,note,noteFk,pack,leftFks,own,omni,flexSwitch,onSwapItem,swapExcl,onOtherMeal,onNeverSuggest}){
   const omniId=omni?omniIdOf(ings):null, omniDish=omniId?omniById(omniId):null; // ארוחה משלי עם הצעת מנה מן החי
   const noteOnItem=!!(note&&noteFk&&(ings||[]).some(x=>x.fk===noteFk)); // ההערה מוצגת ליד המנה עצמה
   const tx=T[lang];
@@ -20284,11 +20302,13 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
   const doSwap=idx=>{ const cur=ings[idx]; if (!cur) return; let c=swapCyc;
     const same=c&&c.idx===idx&&cur.fk===(c.pos<0?c.orig.fk:c.alts[c.pos].fk);
     if (!same){ const alts=swapAlternatives(cur,ings,recipes,swapExcl,{n:6,related:true,mk:mealKey}); if (!alts.length){ setSwapNote({idx,text:lang==="he"?"אין כרגע חלופה מתאימה למנה הזו":"No suitable alternative for this dish"}); return; }
-      c={idx,orig:{fk:cur.fk,g:cur.g},alts,pos:-1}; }
+      c={idx,orig:{fk:cur.fk,g:cur.g},alts,pos:-1};
+      // לומדת ממך (לבקשת המשתמש): מנה שהוחלפה פעמיים — מציעים לא להציע אותה יותר
+      try{ const cnt=load("wfpb_swap_away",{})||{}; cnt[cur.fk]=(cnt[cur.fk]||0)+1; save("wfpb_swap_away",cnt); c.away=cnt[cur.fk]>=2&&onNeverSuggest?cur.fk:null; }catch(e){} }
     const pos=c.pos+1>=c.alts.length?-1:c.pos+1; const nx=pos<0?c.orig:c.alts[pos];
     setSwapCyc({...c,pos}); const msg=onSwapItem(idx,{fk:nx.fk,g:nx.g},pos<0);
     const k=pos<0?(lang==="he"?"חזרה למנה המקורית":"Back to the original dish"):(lang==="he"?`חלופה ${pos+1} מתוך ${c.alts.length} · לחיצה נוספת — הבאה`:`Option ${pos+1} of ${c.alts.length} · tap again for the next`);
-    setSwapNote({idx,text:k+(msg?" — "+msg:""),warn:!!msg}); };
+    setSwapNote({idx,text:k+(msg?" — "+msg:""),warn:!!msg,away:c.away||null}); };
   return(
     <div
       onDragOver={onMoveItem?(e=>{e.preventDefault();setIsDragOver(true);}):undefined}
@@ -20391,7 +20411,10 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
           {onOtherMeal&&ings.length>0&&<div style={{display:"flex",justifyContent:"flex-end",marginTop:4}}><button data-other-meal onClick={doOtherMeal} disabled={otherBusy} title={lang==="he"?"בונה מחדש רק את הארוחה הזו":"Rebuilds only this meal"}
             style={{background:"#EEF6EC",border:"1px solid #cfe3cb",borderRadius:8,color:"#1E5631",fontSize:11.5,fontWeight:700,padding:"3px 9px",cursor:otherBusy?"wait":"pointer"}}>🔄 {otherBusy?(lang==="he"?"מחפש…":"Looking…"):(lang==="he"?"ארוחה אחרת":"Another meal")}</button></div>}
           {swapNote&&onSwapItem&&<div data-swap-note style={{marginTop:5,fontSize:11.5,lineHeight:1.45,color:swapNote.warn?"#8C4A1E":"#1E5631",background:swapNote.warn?"#FFF4E5":"#EEF6EC",border:`1px solid ${swapNote.warn?"#F0D2A8":"#cfe3cb"}`,borderRadius:8,padding:"4px 8px",display:"flex",gap:6,alignItems:"flex-start"}}>
-            <span style={{flex:1}}>{swapNote.warn?"⚠️ ":"🔄 "}{swapNote.text}</span><button onClick={()=>setSwapNote(null)} style={{background:"none",border:"none",color:"inherit",cursor:"pointer",fontSize:12,padding:0}}>✕</button></div>}
+            <span style={{flex:1}}>{swapNote.warn?"⚠️ ":"🔄 "}{swapNote.text}
+              {swapNote.away&&onNeverSuggest&&<button data-never-suggest onClick={()=>{ const fk=swapNote.away; onNeverSuggest(fk); try{ const cnt=load("wfpb_swap_away",{})||{}; delete cnt[fk]; save("wfpb_swap_away",cnt); }catch(e){}
+                  setSwapNote({idx:-1,text:lang==="he"?`המנה ״${foodName(fk,lang)}״ לא תוצע יותר (אפשר לבטל ב״לעולם לא להציע״ בפרופיל)`:`'${foodName(fk,lang)}' won't be suggested again (undo under 'Never suggest' in the profile)`}); }}
+                style={{display:"block",marginTop:4,background:"#FFFFFF",border:"1px solid #d9c2a3",borderRadius:8,color:"#8C4A1E",fontSize:11.5,fontWeight:700,padding:"3px 9px",cursor:"pointer"}}>🚫 {lang==="he"?`החלפת את ״${foodName(swapNote.away,lang)}״ כבר פעמיים — לא להציע יותר?`:`You've swapped '${foodName(swapNote.away,lang)}' twice — stop suggesting it?`}</button>}</span><button onClick={()=>setSwapNote(null)} style={{background:"none",border:"none",color:"inherit",cursor:"pointer",fontSize:12,padding:0}}>✕</button></div>}
         </>
       }
       </div>
@@ -25296,6 +25319,8 @@ function AppInner(){
     const next=planPos(dayIdx)<6?new Set(MEAL_KEYS.flatMap(mk=>(nd[mk]||[]).map(x=>x&&x.fk))):new Set();
     return {cook:recs.filter(fk=>!prev.has(fk)).map(fk=>({fk,tmr:next.has(fk)})),ready:recs.filter(fk=>prev.has(fk))}; },[meals,dayKey,dayIdx]);
   const [cookOpen,setCookOpen]=useState(false);
+  // "לא להציע יותר" מתוך החלפת מנה — מוסיף לרשימת "לעולם לא להציע" (בלי להסיר אם כבר שם)
+  const addNeverSuggest=fk=>setExcludedFksArr(prev=>{ if (prev.includes(fk)) return prev; const next=[...prev,fk]; save(EXCLUDED_FKS_STORAGE,next); return next; });
   function toggleSoaked(mk,idx){
     setMeals(prev=>{
       const cur=prev[dayKey]?.[mk]||[];
@@ -26290,7 +26315,7 @@ function AppInner(){
                 pack={packOf(mk,getMeal(mk))} onTimeChange={t=>setMealTime(mk,t)}
                 onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
                 onSaved={()=>planGuard(()=>setSavedOpen(mk),dashSource)}
-                onToggleSoak={idx=>toggleSoaked(mk,idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?((idx,it,back)=>swapItemInMeal(mk,idx,it,back)):undefined} swapExcl={excludedFks} onOtherMeal={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?()=>otherMealFor(mk):undefined}
+                onToggleSoak={idx=>toggleSoaked(mk,idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?((idx,it,back)=>swapItemInMeal(mk,idx,it,back)):undefined} swapExcl={excludedFks} onOtherMeal={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?()=>otherMealFor(mk):undefined} onNeverSuggest={addNeverSuggest}
                 onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
                 lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/></div>
             ))}
@@ -26371,7 +26396,7 @@ function AppInner(){
                   pack={packOf("breakfast",getMeal("breakfast"))} onTimeChange={t=>setMealTime("breakfast",t)}
                   onBuild={()=>planGuard(()=>setBuilderOpen({mk:"breakfast",mode:dashSource}),dashSource)}
                   onSaved={()=>planGuard(()=>setSavedOpen("breakfast"),dashSource)}
-                  onToggleSoak={idx=>toggleSoaked("breakfast",idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,"breakfast")?((idx,it,back)=>swapItemInMeal("breakfast",idx,it,back)):undefined} swapExcl={excludedFks} onOtherMeal={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,"breakfast")?()=>otherMealFor("breakfast"):undefined}
+                  onToggleSoak={idx=>toggleSoaked("breakfast",idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,"breakfast")?((idx,it,back)=>swapItemInMeal("breakfast",idx,it,back)):undefined} swapExcl={excludedFks} onOtherMeal={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,"breakfast")?()=>otherMealFor("breakfast"):undefined} onNeverSuggest={addNeverSuggest}
                   onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
                   lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 </div>
@@ -26407,7 +26432,7 @@ function AppInner(){
                     pack={packOf(mk,getMeal(mk))} onTimeChange={t=>setMealTime(mk,t)}
                     onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
                     onSaved={()=>planGuard(()=>setSavedOpen(mk),dashSource)}
-                    onToggleSoak={idx=>toggleSoaked(mk,idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?((idx,it,back)=>swapItemInMeal(mk,idx,it,back)):undefined} swapExcl={excludedFks} onOtherMeal={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?()=>otherMealFor(mk):undefined}
+                    onToggleSoak={idx=>toggleSoaked(mk,idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?((idx,it,back)=>swapItemInMeal(mk,idx,it,back)):undefined} swapExcl={excludedFks} onOtherMeal={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?()=>otherMealFor(mk):undefined} onNeverSuggest={addNeverSuggest}
                     onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
                     lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 ))}
