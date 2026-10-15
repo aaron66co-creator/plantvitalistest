@@ -22639,6 +22639,16 @@ const suppBtn=lang=>(<button data-supp-btn onClick={()=>window.dispatchEvent(new
 const b12Marked=()=>{ const L=load("wfpb_supp_log",null); return !!L&&Object.values(L.days||{}).some(d=>d&&d.b12); };
 const b12Line=(profile,lang)=>{ const he=lang==="he", v=isVeganProfile(profile);
   return simpleLine("💊",<>{he?`B12 — ${v?"חובה בתזונה טבעונית":"מומלץ בתזונה צמחונית"}: תוסף לפי הנחיה קלינית מדיאטנית/רופא.`:`B12 — ${v?"essential on a vegan diet":"recommended on a vegetarian diet"}: a supplement per clinical guidance from a dietitian/doctor.`}{suppBtn(lang)}</>,v?"#a6440f":undefined); };
+// יוד (לבקשת המשתמש): בתפריט צמחי אי אפשר להגיע ליעד ממלח מיודד בלי לעבור את תקרת הנתרן — שורה עם הפניה לתוסף, עד שמסמנים
+// תוסף יוד ביומן. אפור (בין הדרישה הממוצעת ליעד) — "קרוב ליעד, אבל לא בוודאות"; כתום (מתחת לדרישה הממוצעת) — "כנראה לא מספיק"
+const iodineLine=(val,dri,hp,lang)=>{ if (iodineSuppOn()) return null; const he=lang==="he", T=dri?.iodine?.dri||150, E=dri?.iodine?.warn||95; if (!(val<T)) return null;
+  const lowNa=(hp?.sodiumMax||2300)<=2000, below=val<E;
+  const txt=he?(below?"יוד — כנראה לא מספיק מהתפריט. מלח מיודד מוגבל בגלל תקרת הנתרן. מומלץ לברר עם רופא/ה או דיאטן/ית לגבי תוסף יוד."
+      :"יוד — קרוב ליעד, אבל לא בוודאות. בתפריט צמחי קשה להגיע ליעד המלא מהמזון, ובישראל יש מחסור ביוד. כדאי לברר עם רופא/ה או דיאטן/ית אם צריך תוסף יוד.")
+    :(below?"Iodine — probably not enough from the menu. Iodized salt is limited by the sodium ceiling. Ask your doctor or dietitian about an iodine supplement."
+      :"Iodine — close to the target, but not for sure. On a plant-based menu it's hard to reach the full target from food, and iodine deficiency is common in Israel. Ask your doctor or dietitian whether you need an iodine supplement.");
+  const extra=lowNa?(he?" תקרת הנתרן שלך נמוכה יותר, ולכן התפריט מוסיף פחות מלח.":" Your sodium ceiling is lower, so the menu adds less salt."):"";
+  return <div key="iodine" data-iodine-line>{simpleLine("🧂",<>{txt}{extra}{suppBtn(lang)}</>,below?"#a6440f":undefined)}</div>; };
 function SimpleDaySummary({totals,target,profile,lang,full,week,cost,dailyBudget,items}){
   const he=lang==="he"; const dri=getDRI(profile.age||35,profile.sex||"male",profile.pregnant,menoArgOf(profile)); const hp=resolveHealthProfile(profile);
   const fw=week&&week.flex&&week.flex.dayW>0&&week.flex.dayW<1?week.flex.dayW:1; /* אוכל/ת הכל — יום חלקי: מול חלק היום שתוכנן */
@@ -22664,6 +22674,7 @@ function SimpleDaySummary({totals,target,profile,lang,full,week,cost,dailyBudget
     if (low.length) lines.push(<button key="gaps" data-day-gaps onClick={()=>{ try{ window.dispatchEvent(new Event("pv-go-nutrition")); }catch(e){} }} style={{display:"flex",gap:7,alignItems:"flex-start",textAlign:"start",background:"none",border:"none",padding:0,marginBottom:5,cursor:"pointer",fontSize:15.5,fontWeight:600,color:"#8a3408",lineHeight:1.5}}><span>•</span><span>{he?`${useWeek?"השבוע":"היום"} כדאי לחזק ${low.length===1?"רכיב אחד":low.length+" רכיבים"} (${low.slice(0,3).map(k=>DRI_LABELS[k].he).join(", ")}${low.length>3?"…":""}) — מה להוסיף: `:`${useWeek?"This week":"Today"}, ${low.length} nutrient${low.length>1?"s":""} worth boosting (${low.slice(0,3).map(k=>DRI_LABELS[k].en).join(", ")}${low.length>3?"…":""}) — what to add: `}<u style={{color:"#2277a8"}}>{he?"בטבלה ב״📊 תזונה״":"see the table in '📊 Nutrition'"}</u></span></button>);
     if (!low.length && pct>=95 && pct<=105) lines.push(simpleLine("✓",naIssue?(he?"שאר הערכים בטווח — רק הנתרן דורש תשומת לב":"Everything else is on target — only sodium needs attention"):(he?"היום מאוזן":"A balanced day"),"#2e7d32"));
     if (!profile.flex&&!b12Marked()) lines.push(<Fragment key="b12">{b12Line(profile,lang)}</Fragment>);
+    if (!profile.flex) { const il=iodineLine(mv("iodine"),dri,hp,lang); if (il) lines.push(il); }
     lines.push(<div key="n" style={{fontSize:14,color:"#34443b",marginTop:4}}>{he?"התמונה המלאה — לאורך השבוע, בלשונית ״📊 תזונה״.":"The full picture is weekly — in the 📊 Nutrition tab."}</div>);
   }
   // עלות יומית (כשהתקציב מופעל בהגדרות) — גלויה תמיד, מעל הסיכום המקופל (לבקשת המשתמש: "לא רואה סיכום יומי לעלויות")
@@ -22707,7 +22718,7 @@ function SimpleMicroPanel({weekTotals,days,profile,lang,full,sourceLabel,weekIte
     if (isMenopause(profile)&&soyDays&&soyDays.n>0){ const caP=!flex&&days?Math.round((weekTotals.calcium||0)/days/12):null; const okS=soyDays.soy>=soyDays.n, okC=caP==null||caP>=95, frM=soyDays.frMax!=null?Math.round(soyDays.frMax*10)/10:null, okF=frM==null||frM<=2.05;
       lines.push(<div key="meno" data-meno-check>{simpleLine(okS&&okC&&okF?"✓":"🌸",he?`🌸 גיל המעבר: סויה מלאה ב־${soyDays.soy}/${soyDays.n} ימים${caP!=null?` · סידן ${caP}% מ־1,200 מ"ג`:""}${frM!=null?` · פרי: עד ${frM} יחידות ביום${okF?"":" (היעד — עד 2)"}`:""}${okS?"":" — בימים בלי סויה אפשר להוסיף כוס משקה סויה, טופו או אדממה"}.`:`🌸 Menopause: whole soy on ${soyDays.soy}/${soyDays.n} days${caP!=null?` · calcium ${caP}% of 1,200 mg`:""}${frM!=null?` · fruit: up to ${frM} servings a day${okF?"":" (target — up to 2)"}`:""}${okS?"":" — on days without soy add a cup of soy drink, tofu or edamame"}.`)}</div>); }
     if (flex||profile.flex) lines.push(simpleLine("💊",he?"B12 וויטמין D — לפי יומן התוספים.":"B12 and vitamin D — see the supplement log.")); /* אוכל/ת הכל — לפי הפרופיל, גם כשאין נתוני ארוחות (באג: הוצג "מומלץ בתזונה צמחונית") */
-    else { lines.push(b12Line(profile,lang)); lines.push(simpleLine("☀️",<>{he?"ויטמין D — מומלץ לרוב המבוגרים.":"Vitamin D — recommended for most adults."}{suppBtn(lang)}</>)); }
+    else { lines.push(b12Line(profile,lang)); { const iv=(weekTotals.iodine||0)/days; const il=iv>=(dri?.iodine?.warn||95)?iodineLine(iv,dri,hp,lang):null; if (il) lines.push(il); } /* מתחת לדרישה הממוצעת — כבר בהצעות למעלה */ lines.push(simpleLine("☀️",<>{he?"ויטמין D — מומלץ לרוב המבוגרים.":"Vitamin D — recommended for most adults."}{suppBtn(lang)}</>)); }
     lines.push(flex?flexBasisLine(flex,lang):<div key="n" style={{fontSize:14,color:"#34443b",marginTop:4}}>{he?`מבוסס על ${days===1?"יום אחד":days+" ימים"} עם תפריט השבוע (${sourceLabel}).`:`Based on ${days} days with a menu this week (${sourceLabel}).`}</div>);
   }
   return <SimpleShell lang={lang} title={flex?(he?"📅 השבוע — בארוחות הצמחיות":"📅 This week — in the plant-based meals"):(he?"📅 השבוע במבט אחד":"📅 This week at a glance")} full={full}>
