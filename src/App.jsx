@@ -109,6 +109,7 @@ function resolveHealthProfile(profile){
 }
 
 const MEAL_KEYS=["breakfast","snack","lunch","dinner"];
+const NO_MEALS=Object.freeze({}); // תפריט מוסתר (מצב רפואי חוסם) — אותו אובייקט תמיד, כדי לא להפעיל חישובים מחדש
 // סדר התצוגה (לבקשת המשתמש): ארוחת הביניים בין הצהריים לערב. MEAL_KEYS נשאר כמו שהוא לחישובים ולמחוללים
 const MEAL_DISPLAY=["breakfast","lunch","snack","dinner"];
 const WEEK_DAYS_HE=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
@@ -21457,7 +21458,7 @@ function planBlockOf(p){
   if (needD.length && !p?.dietitian) return {kind:"needDietitian",flags:needD};
   return null;
 }
-function PlanBlockedNotice({block,lang,onOpenProfile}){
+function PlanBlockedNotice({block,lang,onOpenProfile,hiddenPlan}){
   if (!block) return null; const he=lang==="he"; const names=block.flags.map(k=>MEDICAL_FLAGS[k][he?"he":"en"]).join(he?", ":", ");
   const title=he?"⛔ התכנון חסום":"⛔ Planning is blocked";
   const body=block.kind==="age"
@@ -21476,6 +21477,7 @@ function PlanBlockedNotice({block,lang,onOpenProfile}){
   return (<div style={{background:"#FDECEA",border:"1px solid #e6a39c",borderRadius:12,padding:"10px 12px",marginBottom:8,color:"#1E3A2B",direction:he?"rtl":"ltr"}}>
     <div style={{fontSize:15,fontWeight:800,color:"#b3261e",marginBottom:4}}>{title}</div>
     <div style={{fontSize:13.5,lineHeight:1.55}}>{body}</div>
+    {hiddenPlan&&<div data-plan-hidden style={{fontSize:13,color:"#1E3A2B",marginTop:6,lineHeight:1.5,background:"#FFFFFF",borderRadius:9,padding:"6px 9px"}}>{he?"📋 התפריט שבנית קודם מוסתר: הוא נבנה לאדם בריא ולא מתאים למצב שסימנת. אם הסימון היה בטעות — מבטלים אותו בפרופיל, והתפריט חוזר.":"📋 The menu you built earlier is hidden: it was built for a healthy adult and doesn't suit the condition you marked. If you marked it by mistake, unmark it in the profile and the menu comes back."}</div>}
     <div style={{fontSize:12.5,color:"#34443b",marginTop:5}}>{he?"גם בנייה ידנית של ארוחות חסומה. אפשר עדיין לתעד ביומן מה אכלת בפועל.":"Manual meal building is blocked too. You can still record what you actually ate in the log."}</div>
     {onOpenProfile&&(block.kind==="needDietitian"||block.kind==="unanswered")&&<button onClick={onOpenProfile} style={{marginTop:8,padding:"7px 12px",borderRadius:9,border:"1px solid #b3261e",background:"#FFFFFF",color:"#b3261e",fontSize:13,fontWeight:800,cursor:"pointer"}}>{he?"לפרופיל ←":"Open profile →"}</button>}
   </div>);
@@ -24860,7 +24862,12 @@ function AppInner(){
   },[]);
 
   useState(()=>{ loadAutoSalads(); return 0; }); // סלטי "ירקות ועלים" שאוחדו — נרשמים לפני שהארוחות השמורות מוצגות
-  const[meals,setMeals]=useState(()=>load("wfpb_meals",{}));
+  const[mealsAll,setMeals]=useState(()=>load("wfpb_meals",{}));
+  // מצב רפואי שחוסם תכנון (כליות, סוכרת בלי ליווי וכו'), כשכבר יש תפריט שנבנה לפני הסימון (נמצא בבדיקה: התפריט נשאר עם
+  // "✓ היום מאוזן", רשימת קניות ורישום "לפי התפריט"): התפריט מוסתר בכל המסכים — לא נמחק; ביטול הסימון מחזיר אותו
+  const __pb0=planBlockOf(profile);
+  const planHidden=!!__pb0&&__pb0.kind!=="unanswered"&&Object.values(mealsAll||{}).some(d=>MEAL_KEYS.some(mk=>((d||{})[mk]||[]).length));
+  const meals=planHidden?NO_MEALS:mealsAll;
   // האפליקציה נשארה פתוחה ברקע יותר מ-30 דקות — כשחוזרים אליה זו כניסה חדשה: התפריט המתוכנן מתאפס (כמו בטעינה)
   useEffect(()=>{
     const onVis=()=>{ if (document.visibilityState==="visible") { if (idleTooLong()) { setMeals({}); save("wfpb_meals",{}); } markSeen(); } else markSeen(); };
@@ -25313,7 +25320,7 @@ function AppInner(){
         if (!isDayDocumented(actualIntake,dk)) {
           // "ימים שלא תיעדתי — לחשב לפי התפריט" (לבקשת המשתמש): יום שעבר, יש לו תפריט ולא תועד — נרשם כמתוכנן, ומסומן
           const pd=planSnap[dk]?.items||{}; const has=MEAL_KEYS.some(mk=>(pd[mk]||[]).length);
-          if (assumePlannedOf(profile)&&dk<trackToday&&has) { const t=trackTotalsOf(MEAL_KEYS.flatMap(mk=>pd[mk]||[])); const c=Math.round(dayCost(pd,priceOverrides)*100)/100; const om=omniDayRec(MEAL_KEYS.map(mk=>pd[mk]||[])); const nr={p:t,cp:c,a:t,ca:c,sig:"assumed",as:1,...(om?{om}:{})};
+          if (assumePlannedOf(profile)&&!planHidden&&dk<trackToday&&has) { const t=trackTotalsOf(MEAL_KEYS.flatMap(mk=>pd[mk]||[])); const c=Math.round(dayCost(pd,priceOverrides)*100)/100; const om=omniDayRec(MEAL_KEYS.map(mk=>pd[mk]||[])); const nr={p:t,cp:c,a:t,ca:c,sig:"assumed",as:1,...(om?{om}:{})};
             if (JSON.stringify(nr)!==JSON.stringify(next[dk])) { next[dk]=nr; changed=true; } return; }
           if (next[dk]) { delete next[dk]; changed=true; } return; }
         const rec=next[dk]; const sig=JSON.stringify(actualIntake[dk]); const past=dk<trackToday;
@@ -25894,7 +25901,7 @@ function AppInner(){
         <button data-start-manual onClick={()=>planGuard(()=>setBuilderOpen({mk:"breakfast",mode:"planned"}),"planned")} style={{width:"100%",padding:"10px 4px",borderRadius:12,border:"1.5px solid #6FA07A",background:"#FFFFFF",color:"#1A1A1A",fontSize:14,fontWeight:800,cursor:"pointer"}}>{lang==="he"?"✏️ מתחילים בארוחת הבוקר":"✏️ Start with breakfast"}</button></div>
     </div>:planBtnsRow}</div>):null;
   const autoPlanNode=(
-    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ if (planBlock.kind==="unanswered"){ setWizOpen(true); return; } try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<><AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
+    planBlock?<PlanBlockedNotice hiddenPlan={planHidden} block={planBlock} lang={lang} onOpenProfile={()=>{ if (planBlock.kind==="unanswered"){ setWizOpen(true); return; } try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<><AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
       onSuggestDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("full");setDayPlanOpen(true);})}
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
@@ -25908,7 +25915,7 @@ function AppInner(){
   // גרסה ייעודית לסרגל הצד ב-Desktop (לבקשת המשתמש): האופציות מוצגות ישירות בסרגל עצמו (alwaysOpen), לא בחלון
   // נפתח בלחיצה. "השלם יום" ו"נקה" הוסרו מכאן והועברו לתוך לוח הארוחות עצמו (בין קוביית בוקר לצהריים)
   const autoPlanNodeSidebar=(
-    planBlock?<PlanBlockedNotice block={planBlock} lang={lang} onOpenProfile={()=>{ if (planBlock.kind==="unanswered"){ setWizOpen(true); return; } try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<>{weekEmptyCta}</>
+    planBlock?<PlanBlockedNotice hiddenPlan={planHidden} block={planBlock} lang={lang} onOpenProfile={()=>{ if (planBlock.kind==="unanswered"){ setWizOpen(true); return; } try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<>{weekEmptyCta}</>
   );
   // מקטע החלפת "מתוכנן/בפועל" — מוצג בראש אזור התוכן הראשי גם בפריסת ה-Desktop. כפתור האיפוס הידני (🧹) שהיה
   // כאן הוסר (לבקשת המשתמש): הוא התייתר ברגע שנוסף איפוס אוטומטי של התפריט המתוכנן בכל כניסה חדשה לאפליקציה
@@ -26867,7 +26874,7 @@ function AppInner(){
           </div></div></div>}
       {planBlockOpen&&<div onClick={()=>setPlanBlockOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:130,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
         <div onClick={e=>e.stopPropagation()} style={{background:"#FFFFFF",borderRadius:14,maxWidth:440,width:"100%",padding:14}}>
-          <PlanBlockedNotice block={planBlock} lang={lang}/>
+          <PlanBlockedNotice hiddenPlan={planHidden} block={planBlock} lang={lang}/>
           <button onClick={()=>setPlanBlockOpen(false)} style={{width:"100%",padding:"10px 0",borderRadius:10,border:"1px solid #D9D3C5",background:"#F5F2EB",color:"#1E3A2B",fontSize:14,fontWeight:800,cursor:"pointer"}}>{lang==="he"?"הבנתי":"OK"}</button>
         </div>
       </div>}
