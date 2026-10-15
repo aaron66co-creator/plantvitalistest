@@ -20261,7 +20261,7 @@ function buildWeekMenuPrintHTML(week, lang){ const he=lang==="he";
 // מתכונים מאתמול (לבקשת המשתמש — פחות בישול): כל מתכון שהופיע ביום הקודם מסומן "♻️ מאתמול" — אין צורך לבשל שוב
 function prevDayRecipeSet(week, dayIdx){ if (!week||planPos(dayIdx)===0) return null; const pd=week[`d${(dayIdx+6)%7}`]; if (!pd) return null; /* היום הראשון בתפריט — בלי "מאתמול" */
   return new Set(MEAL_KEYS.flatMap(mk=>pd[mk]||[]).map(x=>x&&x.fk).filter(fk=>TEMP_FDB[fk]?._isRecipe&&recipeCatOfFk(fk)!=="משקאות")); }
-function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple,note,noteFk,pack,leftFks,own,omni,flexSwitch,onSwapItem,swapExcl}){
+function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,onMoveItem,lang,recipes,priceOverrides,simple,note,noteFk,pack,leftFks,own,omni,flexSwitch,onSwapItem,swapExcl,onOtherMeal}){
   const omniId=omni?omniIdOf(ings):null, omniDish=omniId?omniById(omniId):null; // ארוחה משלי עם הצעת מנה מן החי
   const noteOnItem=!!(note&&noteFk&&(ings||[]).some(x=>x.fk===noteFk)); // ההערה מוצגת ליד המנה עצמה
   const tx=T[lang];
@@ -20277,7 +20277,9 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
   // שחרור. onMoveItem (מועבר מ-App) אחראי לבצע את ההעברה בפועל בנתונים — כאן רק ה-UI של הגרירה עצמה
   const[isDragOver,setIsDragOver]=useState(false);
   // 🔄 החלפת מנה בלחיצה (לבקשת המשתמש): לחיצה ראשונה — החלופה הראשונה; כל לחיצה נוספת — הבאה, ובסוף חזרה למקור
-  const[swapCyc,setSwapCyc]=useState(null), [swapNote,setSwapNote]=useState(null);
+  const[swapCyc,setSwapCyc]=useState(null), [swapNote,setSwapNote]=useState(null), [otherBusy,setOtherBusy]=useState(false);
+  const doOtherMeal=()=>{ if (!onOtherMeal||otherBusy) return; setOtherBusy(true); setTimeout(()=>{ let r=null; try{ r=onOtherMeal(); }catch(e){} setOtherBusy(false); setSwapCyc(null);
+    setSwapNote(r?{idx:-1,text:(lang==="he"?"ארוחה חדשה":"A new meal")+(r.note?" — "+r.note:""),warn:!!r.note}:{idx:-1,text:lang==="he"?"לא נמצאה כרגע ארוחה אחרת מתאימה":"No other suitable meal right now"}); },40); };
   const canSwap=(fk,g,addon)=>{ if (!onSwapItem||addon) return false; const f=FDB[fk]||TEMP_FDB[fk]; if (!f||f.cat==="מן החי"||fk==="saltIodized"||fk==="wakame") return false; return f._isRecipe||(ingNut(fk,g).kcal||0)>=60; };
   const doSwap=idx=>{ const cur=ings[idx]; if (!cur) return; let c=swapCyc;
     const same=c&&c.idx===idx&&cur.fk===(c.pos<0?c.orig.fk:c.alts[c.pos].fk);
@@ -20386,6 +20388,8 @@ function MealCard({mealKey,ings,time,onTimeChange,onBuild,onSaved,onToggleSoak,o
             }, lang, true, (its,key)=>{ const sp=its.every(x=>x.fk==="saltIodized"||x.fk==="wakame"), sd=its.every(x=>!(x.fk==="saltIodized"||x.fk==="wakame")); /* שורה אחת לתיבול/פיזור (לבקשת המשתמש: שורות "·" בודדות) */
               return <span key={key} data-addon-line style={{width:"100%",unicodeBidi:"plaintext",color:"#4A5A50"}}>{sp?"🧂 ":sd?"🌱 ":"🧂 "}{lang==="he"?(sp?"לתיבול: ":sd?"לפזר מעל: ":"לתיבול ולפזר מעל: "):(sp?"To season: ":sd?"To sprinkle: ":"To season and sprinkle: ")}{its.map(x=>itemTextOf(x.fk,x.g,lang)).join(" · ")}</span>; })}
           </div>
+          {onOtherMeal&&ings.length>0&&<div style={{display:"flex",justifyContent:"flex-end",marginTop:4}}><button data-other-meal onClick={doOtherMeal} disabled={otherBusy} title={lang==="he"?"בונה מחדש רק את הארוחה הזו":"Rebuilds only this meal"}
+            style={{background:"#EEF6EC",border:"1px solid #cfe3cb",borderRadius:8,color:"#1E5631",fontSize:11.5,fontWeight:700,padding:"3px 9px",cursor:otherBusy?"wait":"pointer"}}>🔄 {otherBusy?(lang==="he"?"מחפש…":"Looking…"):(lang==="he"?"ארוחה אחרת":"Another meal")}</button></div>}
           {swapNote&&onSwapItem&&<div data-swap-note style={{marginTop:5,fontSize:11.5,lineHeight:1.45,color:swapNote.warn?"#8C4A1E":"#1E5631",background:swapNote.warn?"#FFF4E5":"#EEF6EC",border:`1px solid ${swapNote.warn?"#F0D2A8":"#cfe3cb"}`,borderRadius:8,padding:"4px 8px",display:"flex",gap:6,alignItems:"flex-start"}}>
             <span style={{flex:1}}>{swapNote.warn?"⚠️ ":"🔄 "}{swapNote.text}</span><button onClick={()=>setSwapNote(null)} style={{background:"none",border:"none",color:"inherit",cursor:"pointer",fontSize:12,padding:0}}>✕</button></div>}
         </>
@@ -25256,6 +25260,10 @@ function AppInner(){
     const next=cur.map((x,i)=>i===idx?{...it,...(back?{}:{_user:true})}:x);
     const all0=MEAL_KEYS.flatMap(k=>day[k]||[]), all1=MEAL_KEYS.flatMap(k=>k===mk?next:(day[k]||[]));
     setMeals(prev=>{ const nextMeals={...prev,[dayKey]:{...(prev[dayKey]||{}),[mk]:next}}; save("wfpb_meals",nextMeals); return nextMeals; });
+    return gapNoteOf(all0,all1);
+  }
+  // הערת חוסרים אחרי החלפה (מנה או ארוחה שלמה): רק ירידה של ממש (5%+ מהיעד) אל מתחת ל-90%
+  function gapNoteOf(all0,all1){
     const t0=totalNut(all0), t1=totalNut(all1); const he=lang==="he";
     const tg={protein:wKg?wKg*hp.protPerKg:0,calcium:dri.calcium?.dri,iron:dri.iron?.dri,fiber:target?14*target/1000:0};
     const nm={protein:he?"חלבון":"protein",calcium:he?"סידן":"calcium",iron:he?"ברזל":"iron",fiber:he?"סיבים":"fiber"};
@@ -25263,6 +25271,31 @@ function AppInner(){
     if (!low.length) return null;
     return he?`היום ירד מתחת ליעד: ${low.join(", ")}. אפשר לנסות חלופה אחרת, או ״השלם יום״ להשלמה`:`Today is now below target: ${low.join(", ")}. Try another option, or "Complete day" to fill the gap`;
   }
+  // 🔄 ארוחה אחרת (לבקשת המשתמש): בונה מחדש רק את הארוחה הזו — שאר היום נשאר כמו שהוא, כמו "השלם יום" לארוחה ריקה.
+  // המתכונים שהיו בארוחה לא חוזרים, כדי שתתקבל ארוחה אחרת באמת
+  function otherMealFor(mk){
+    const cur=meals[dayKey]||{}; const old=cur[mk]||[]; if (!old.length) return null;
+    const ex={}; MEAL_KEYS.forEach(k=>{ ex[k]=k===mk?[]:(cur[k]||[]); });
+    const excl2=new Set([...excludedFks,...old.filter(x=>TEMP_FDB[x.fk]?._isRecipe).map(x=>x.fk)]);
+    let d=null;
+    try{ d=simpleMode
+      ? (generateSimpleWeekPlan(target,recipes,dri,wKg,hp,excl2,{...simpleOpts(),days:1,workDays:(simpleOpts().workDays||[]).includes(dayIdx)?[0]:[],existingWeek:{d0:ex}}).d0||{})
+      : (()=>{ /* מלא: יום חדש שלם, ולוקחים ממנו את הארוחה הזו — מותאמת לקלוריות של הארוחה הקודמת */
+          const g=withBudgetCtx(budgetCtxNow(),()=>generateDayPlan(target,wKg,hp,dri,recipeIds.filter(id=>!excl2.has(id)),{},excl2))||{};
+          const kOf=a=>(a||[]).reduce((t,x)=>t+(ingNut(x.fk,x.g,x.soaked).kcal||0),0); const k0=kOf(old), k1=kOf(g[mk]); const f=k1>0?Math.max(0.7,Math.min(1.4,k0/k1)):1;
+          return {[mk]:(g[mk]||[]).map(x=>({...x,g:Math.round(x.g*f*10)/10}))}; })(); }catch(e){ return null; }
+    const nw=((d&&d[mk])||[]).filter(x=>x&&x.fk).map(({_added,...x})=>x); if (!nw.length) return null;
+    const all0=MEAL_KEYS.flatMap(k=>cur[k]||[]), all1=MEAL_KEYS.flatMap(k=>k===mk?nw:(cur[k]||[]));
+    setMeals(prev=>{ const nextMeals={...prev,[dayKey]:{...(prev[dayKey]||{}),[mk]:nw}}; save("wfpb_meals",nextMeals); return nextMeals; });
+    return {note:gapNoteOf(all0,all1)};
+  }
+  // 🍳 מה מבשלים היום (לבקשת המשתמש): מתכונים חדשים היום (ומה ממשיך למחר) ומה מוכן מאתמול
+  const cookToday=useMemo(()=>{ const day=(meals||{})[dayKey]||{};
+    const recs=[...new Set(MEAL_KEYS.flatMap(mk=>(day[mk]||[]).map(x=>x&&x.fk)).filter(fk=>fk&&TEMP_FDB[fk]?._isRecipe&&recipeCatOfFk(fk)!=="משקאות"))];
+    const prev=prevDayRecipeSet(meals,dayIdx)||new Set(); const nd=(meals||{})[`d${(dayIdx+1)%7}`]||{};
+    const next=planPos(dayIdx)<6?new Set(MEAL_KEYS.flatMap(mk=>(nd[mk]||[]).map(x=>x&&x.fk))):new Set();
+    return {cook:recs.filter(fk=>!prev.has(fk)).map(fk=>({fk,tmr:next.has(fk)})),ready:recs.filter(fk=>prev.has(fk))}; },[meals,dayKey,dayIdx]);
+  const [cookOpen,setCookOpen]=useState(false);
   function toggleSoaked(mk,idx){
     setMeals(prev=>{
       const cur=prev[dayKey]?.[mk]||[];
@@ -26240,6 +26273,14 @@ function AppInner(){
         {tab==="meals"&&dashSource!=="actual"&&flexOwnDay(dayIdx)&&<div style={{fontSize:13.5,color:"#1E3A2B",background:"#F7EFE3",border:"1px solid #e3cfb2",borderRadius:12,padding:"9px 12px",margin:"8px 0",lineHeight:1.5}}>{lang==="he"
           ?<>🍖 <b>יום משלי</b> — לפי מה שבחרתם (״🍖 אני אוכל/ת הכל״), כל ארוחה היום היא הצעה למנה מן החי (נספרת בסיכום התזונתי). רוצים מנה אחרת? ״🔄 הצעה אחרת״ בכרטיס. רוצים בכל זאת תפריט צמחי להיום? ״📅 תפריט חדש ליום״ בראש המסך (או 🍖⇄ לארוחה אחת).</>
           :<>🍖 <b>My own day</b> — per your choice ('🍖 I eat everything'), each meal today is a suggested animal-based dish (counted in the nutrition summary). Want another dish? '🔄 Another suggestion' on the card. Want a plant-based menu today anyway? '📅 New day menu' at the top (or 🍖⇄ for one meal).</>}</div>}
+        {tab==="meals"&&dashSource!=="actual"&&!weekIsEmpty&&(cookToday.cook.length+cookToday.ready.length)>0&&(()=>{ const he=lang==="he", n=cookToday.cook.length, r=cookToday.ready.length;
+          const head=he?`🍳 ${n?(n===1?"היום מכינים מנה אחת":`היום מכינים ${n} מנות`):"היום אין מנה חדשה להכנה"}${r?` · ${r===1?"אחת מוכנה":`${r} מוכנות`} מאתמול`:""}`:`🍳 ${n?`Prepare ${n} dish${n>1?"es":""} today`:"Nothing new to prepare today"}${r?` · ${r} ready from yesterday`:""}`;
+          return <div data-cook-today style={{background:"#FFFDF8",border:"1px solid #E2DED4",borderRadius:12,padding:"7px 11px",margin:"6px 0 8px",fontSize:13,color:"#1E3A2B",lineHeight:1.5}}>
+            <button onClick={()=>setCookOpen(o=>!o)} aria-expanded={cookOpen} style={{width:"100%",background:"none",border:"none",padding:0,color:"inherit",fontSize:13,fontWeight:700,cursor:"pointer",textAlign:"start",display:"flex",justifyContent:"space-between",gap:8}}><span>{head}</span><span>{cookOpen?"▲":"▼"}</span></button>
+            {cookOpen&&<div style={{marginTop:4}}>
+              {cookToday.cook.map(({fk,tmr})=><div key={fk}>• {foodName(fk,lang)}{tmr?<span style={{color:"#8C6D53",fontWeight:700}}>{he?" — גם למחר":" — for tomorrow too"}</span>:null}</div>)}
+              {cookToday.ready.map(fk=><div key={fk} style={{color:"#4A5A50"}}>♻️ {foodName(fk,lang)}{he?" — מאתמול":" — from yesterday"}</div>)}
+            </div>}</div>; })()}
         {tab==="meals"&&!desktopMealsLayout&&(
           <div onTouchStart={onMealsTouchStart} onTouchMove={onMealsTouchMove} onTouchEnd={onMealsTouchEnd} onTouchCancel={onMealsTouchEnd} data-swipe-days="1" style={{touchAction:"pan-y"}} /* הדפדפן גולל רק אנכית — תנועה אופקית נשארת להחלקה בין ימים */>
             {topupToast&&<div data-topup-toast role="status" style={{position:"fixed",insetInline:12,bottom:84,zIndex:300,background:"#1E3A2B",color:"#fff",borderRadius:14,padding:"10px 12px",fontSize:13,lineHeight:1.5,boxShadow:"0 6px 18px rgba(0,0,0,.25)",direction:lang==="he"?"rtl":"ltr"}}>{topupToast}</div>}
@@ -26249,7 +26290,7 @@ function AppInner(){
                 pack={packOf(mk,getMeal(mk))} onTimeChange={t=>setMealTime(mk,t)}
                 onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
                 onSaved={()=>planGuard(()=>setSavedOpen(mk),dashSource)}
-                onToggleSoak={idx=>toggleSoaked(mk,idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?((idx,it,back)=>swapItemInMeal(mk,idx,it,back)):undefined} swapExcl={excludedFks}
+                onToggleSoak={idx=>toggleSoaked(mk,idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?((idx,it,back)=>swapItemInMeal(mk,idx,it,back)):undefined} swapExcl={excludedFks} onOtherMeal={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?()=>otherMealFor(mk):undefined}
                 onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
                 lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/></div>
             ))}
@@ -26330,7 +26371,7 @@ function AppInner(){
                   pack={packOf("breakfast",getMeal("breakfast"))} onTimeChange={t=>setMealTime("breakfast",t)}
                   onBuild={()=>planGuard(()=>setBuilderOpen({mk:"breakfast",mode:dashSource}),dashSource)}
                   onSaved={()=>planGuard(()=>setSavedOpen("breakfast"),dashSource)}
-                  onToggleSoak={idx=>toggleSoaked("breakfast",idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,"breakfast")?((idx,it,back)=>swapItemInMeal("breakfast",idx,it,back)):undefined} swapExcl={excludedFks}
+                  onToggleSoak={idx=>toggleSoaked("breakfast",idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,"breakfast")?((idx,it,back)=>swapItemInMeal("breakfast",idx,it,back)):undefined} swapExcl={excludedFks} onOtherMeal={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,"breakfast")?()=>otherMealFor("breakfast"):undefined}
                   onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
                   lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 </div>
@@ -26366,7 +26407,7 @@ function AppInner(){
                     pack={packOf(mk,getMeal(mk))} onTimeChange={t=>setMealTime(mk,t)}
                     onBuild={()=>planGuard(()=>setBuilderOpen({mk,mode:dashSource}),dashSource)}
                     onSaved={()=>planGuard(()=>setSavedOpen(mk),dashSource)}
-                    onToggleSoak={idx=>toggleSoaked(mk,idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?((idx,it,back)=>swapItemInMeal(mk,idx,it,back)):undefined} swapExcl={excludedFks}
+                    onToggleSoak={idx=>toggleSoaked(mk,idx)} onSwapItem={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?((idx,it,back)=>swapItemInMeal(mk,idx,it,back)):undefined} swapExcl={excludedFks} onOtherMeal={dashSource==="planned"&&!planBlock&&!flexOwnMeal(dayIdx,mk)?()=>otherMealFor(mk):undefined}
                     onMoveItem={dashSource==="planned"?((fromMk,idx,toMk)=>moveItemBetweenMeals(fromMk,idx,toMk)):undefined}
                     lang={lang} recipes={recipes} priceOverrides={priceOverrides} simple={!detailView}/>
                 ))}
