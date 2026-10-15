@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+import { readFileSync } from "node:fs";
+// גרסה צמחונית: בשום מסך לא מופיע ״אוכל/ת הכל״
+const VARIANT = (() => { try { return (readFileSync(path.join(root, "src/variant.js"), "utf8").match(/VARIANT\s*=\s*"(\w+)"/) || [])[1] || "main"; } catch { return "main"; } })();
 let pw; for (const p of ["playwright", "/opt/node22/lib/node_modules/playwright/index.mjs"]) { try { pw = await import(p); break; } catch {} }
 if (!pw) { console.log("⚠️ Playwright לא מותקן — דילוג על בדיקת הדפדפן"); process.exit(0); }
 const PORT = 4700 + Math.floor(Math.random() * 200);
@@ -19,8 +22,11 @@ async function run(mobile) {
   const ctx = await b.newContext(mobile ? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true } : { viewport: { width: 1366, height: 900 } });
   await ctx.addInitScript(() => { try { if (!sessionStorage.getItem("__smoke")) { sessionStorage.setItem("__smoke", "1"); localStorage.setItem("wfpb_fresh_start_v", "1"); localStorage.setItem("pv_demo_terms_v1", "t"); sessionStorage.setItem("wfpb_unlocked_v1", "1"); sessionStorage.setItem("wfpb_session_active", "1"); } } catch {} });
   const p = await ctx.newPage(); const errs = []; p.on("pageerror", e => errs.push(e.message));
-  const tag = mobile ? "טלפון" : "מחשב"; const step = async (name, fn) => { try { await fn(); await p.waitForTimeout(350); results.push([tag, name, errs.length ? "✗ " + errs.splice(0).join(" | ").slice(0, 160) : "✓"]); } catch (e) { results.push([tag, name, "✗ " + e.message.split("\n")[0].slice(0, 160)]); } };
+  const tag = mobile ? "טלפון" : "מחשב"; const step = async (name, fn) => { try { await fn(); await p.waitForTimeout(350);
+      await vegScan();
+      results.push([tag, name, errs.length ? "✗ " + errs.splice(0).join(" | ").slice(0, 160) : "✓"]); } catch (e) { results.push([tag, name, "✗ " + e.message.split("\n")[0].slice(0, 160)]); } };
   const btn = t => p.locator("button:visible", { hasText: t }).first();
+  const vegScan = async () => { if (VARIANT !== "veg") return; const t = await p.evaluate(() => document.body.innerText); const m = t.match(/.{0,30}(אוכל\/ת הכל|אוכלי כל|ארוחה משלי|eat everything).{0,30}/); if (m) errs.push("גרסה צמחונית — מוצג: " + m[0]); };
   const closeAll = async () => { await p.keyboard.press("Escape"); for (const c of await p.locator("button:visible", { hasText: /^✕$/ }).all()) await c.click({ timeout: 1000 }).catch(() => {}); await p.waitForTimeout(250); };
   await p.goto(`http://localhost:${PORT}/`); await p.waitForTimeout(2500);
   await step("הצהרה ושאלון", async () => {
@@ -34,10 +40,10 @@ async function run(mobile) {
   await step("החלפת מנה 🔄", async () => { const s = p.locator("[data-swap-item]:visible"); if (await s.count()) await s.first().click(); });
   await step("ארוחה אחרת", async () => { const o = p.locator("[data-other-meal]:visible"); if (await o.count()) { await o.first().click(); await p.waitForTimeout(1500); } });
   await step("עוד פעולות", async () => { const m = btn("עוד פעולות"); if (await m.count()) await m.click(); });
-  await step("רשימת קניות", async () => { await btn("רשימת קניות").click(); await p.waitForTimeout(500); await closeAll(); });
-  await step("פרופיל והגדרות", async () => { await btn("הפרופיל").click(); await p.waitForTimeout(500); for (const s of await p.locator("summary:visible").all()) await s.click().catch(() => {}); await closeAll(); });
+  await step("רשימת קניות", async () => { await btn("רשימת קניות").click(); await p.waitForTimeout(500); await vegScan(); await closeAll(); });
+  await step("פרופיל והגדרות", async () => { await btn("הפרופיל").click(); await p.waitForTimeout(500); for (const s of await p.locator("summary:visible").all()) await s.click().catch(() => {}); await vegScan(); await closeAll(); });
   for (const item of ["שאלו שאלה", "מדריך למשתמש", "שאלות ותשובות", "ספריית הידע", "מקורות הנתונים", "טבלת המזונות", "על האפליקציה"])
-    await step(item, async () => { await btn("מידע").click(); await p.waitForTimeout(300); await btn(item).click(); await p.waitForTimeout(600); await closeAll(); });
+    await step(item, async () => { await btn("מידע").click(); await p.waitForTimeout(300); await btn(item).click(); await p.waitForTimeout(600); await vegScan(); await closeAll(); });
   for (const tab of mobile ? ["תזונה", "יומן", "מתכונים", "ארוחות"] : ["אבות המזון", "מיקרו", "יומן", "מתכונים", "ארוחות"])
     await step("לשונית " + tab, async () => { const t = p.locator("button:visible", { hasText: tab }).last(); await t.click(); await p.waitForTimeout(700); });
   const hs = await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1); results.push([tag, "בלי גלילה הצידה", hs ? "✗" : "✓"]);
