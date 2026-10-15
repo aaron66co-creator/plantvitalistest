@@ -15943,8 +15943,8 @@ function wholeSnackFruitDay(d, excl, hp){ if (!d||!Array.isArray(d.snack)||(d.__
   // (ב) שני פירות שלמים יקרים מדי בקלוריות (יעד נמוך) — פרי אחד שלם באותן קלוריות
   const cap=typeof fruitMaxU==="function"?fruitMaxU(hp):4; const unitsOther=["breakfast","lunch","dinner"].flatMap(m=>d[m]||[]).reduce((a,x)=>a+fruitUnitsOfItem(x),0);
   if (nx.length>=2&&(sum(nx)-k0>25||unitsOther+nx.reduce((a,x)=>a+fruitUnitsOfItem(x),0)>cap+0.01)){
-    const opts=[...new Set([...fr.map(x=>x.fk),...SMALL_FRUITS])].filter(f=>FDB[f]&&!ex.has(f)&&uG(f)&&(fr.some(x=>x.fk===f)||!used.has(f)))
-      .map(f=>{ const kU=ingNut(f,uG(f)).kcal||1, n=Math.max(1,Math.round(k0/kU)); return {fk:f,g:Math.round(n*uG(f)*10)/10,err:Math.abs(n*kU-k0)}; }).sort((a,b)=>a.err-b.err);
+    const opts=[...new Set([...fr.map(x=>x.fk),...SMALL_FRUITS,...SNACK_FRUITS])].filter(f=>FDB[f]&&!ex.has(f)&&uG(f)&&(fr.some(x=>x.fk===f)||!used.has(f)))
+      .map(f=>{ const kU=ingNut(f,uG(f)).kcal||1; return {fk:f,g:Math.round(uG(f)*10)/10,err:Math.abs(kU-k0)}; }).sort((a,b)=>a.err-b.err); /* יחידה אחת — לא "2 שזיפים" */
     if (opts.length) nx=[{fk:opts[0].fk,g:opts[0].g}]; }
   d.snack=[...d.snack.filter(x=>!fr.includes(x)),...nx]; const delta=sum(nx)-k0;
   if (delta>3){ const c=kcalCompensate(d,delta); if (c) c.x.g=c.g; }
