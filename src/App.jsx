@@ -21580,6 +21580,18 @@ function RxSettingsSection({profile,setProfile,lang,row,lbl}){ const he=lang==="
       <button data-rx-check onClick={()=>rxVerify(code).then(setRes)} disabled={!code.trim()} style={{marginTop:6,background:"#1E3A2B",color:"#FFFFFF",border:"none",borderRadius:9,padding:"7px 14px",fontSize:13.5,fontWeight:700,cursor:code.trim()?"pointer":"default",opacity:code.trim()?1:0.5}}>{he?"בדיקה ואישור":"Check & approve"}</button></>}
     <RxImportModal res={res} lang={lang} onClose={()=>setRes(null)} onApprove={()=>{ setProfile(p=>rxApplyToProfile(p,{...res.payload,__ok:true,__code:res.code})); setRes(null); setCode(""); }}/>
   </div>; }
+// גרסת מחקר: כרטיס הפתיחה למשתתף/ת חדש/ה — קודם טוענים את מרשם המחקר מהצוות, ואז שאלון קצר
+function ResearchWelcome({lang,setProfile,onOpenProfile}){ const he=lang==="he"; const[code,setCode]=useState(""); const[res,setRes]=useState(null);
+  return <div data-rx-welcome style={{background:"#EAF1FB",border:"1px solid #b8cde8",borderRadius:12,padding:"12px 13px",marginBottom:8,color:"#1E3A2B",direction:he?"rtl":"ltr"}}>
+    <div style={{fontSize:16,fontWeight:800,color:"#15507a",marginBottom:4}}>{he?"👋 ברוכים הבאים למחקר":"👋 Welcome to the study"}</div>
+    <div style={{fontSize:13.5,lineHeight:1.55}}><b>{he?"שלב 1 — מרשם המחקר. ":"Step 1 — the research prescription. "}</b>{he?"פותחים את הקישור או סורקים את ה-QR שקיבלת מצוות המחקר. אפשר גם להדביק כאן את הקוד:":"Open the link or scan the QR you got from the research team. You can also paste the code here:"}</div>
+    {setProfile&&<><textarea data-rx-code value={code} onChange={e=>setCode(e.target.value)} placeholder="PVRX1…" style={{width:"100%",minHeight:44,marginTop:6,fontSize:12,boxSizing:"border-box",direction:"ltr",borderRadius:8,border:"1px solid #b8cde8"}}/>
+    <button data-rx-check onClick={()=>rxVerify(code).then(setRes)} disabled={!code.trim()} style={{marginTop:6,background:"#15507a",color:"#FFFFFF",border:"none",borderRadius:9,padding:"8px 14px",fontSize:14,fontWeight:800,cursor:code.trim()?"pointer":"default",opacity:code.trim()?1:0.5}}>{he?"בדיקה ואישור":"Check & approve"}</button></>}
+    <div style={{fontSize:13.5,lineHeight:1.55,marginTop:10}}><b>{he?"שלב 2 — כמה פרטים עליך ":"Step 2 — a few details about you "}</b>{he?"(גיל, גובה, משקל ופעילות). את היעדים וסוג התזונה קובע המרשם.":"(age, height, weight and activity). Targets and diet type come from the prescription."}</div>
+    {onOpenProfile&&<button onClick={onOpenProfile} style={{marginTop:7,padding:"8px 14px",borderRadius:10,border:"1px solid #15507a",background:"#FFFFFF",color:"#15507a",fontSize:13.5,fontWeight:800,cursor:"pointer"}}>{he?"לשאלון הקצר ←":"To the short questionnaire →"}</button>}
+    <div style={{fontSize:12,color:"#4A5A50",marginTop:8,lineHeight:1.5}}>{he?"אין לך קוד או קישור? פנו לצוות המחקר.":"No code or link? Contact the research team."}</div>
+    <RxImportModal res={res} lang={lang} onClose={()=>setRes(null)} onApprove={()=>{ setProfile(p=>rxApplyToProfile(p,{...res.payload,__ok:true,__code:res.code})); setRes(null); setCode(""); }}/>
+  </div>; }
 function planBlockOf(p){
   const age=+p?.age; const fl=medicalFlagsOf(p);
   if (age>0 && age<18) return {kind:"age",flags:[]};
@@ -21592,8 +21604,8 @@ function planBlockOf(p){
   if (needD.length && !p?.dietitian) return {kind:"needDietitian",flags:needD};
   return null;
 }
-function PlanBlockedNotice({block,lang,onOpenProfile,hiddenPlan}){
-  if (!block) return null; const he=lang==="he"; const names=block.flags.map(k=>MEDICAL_FLAGS[k][he?"he":"en"]).join(he?", ":", ");
+function PlanBlockedNotice({block,lang,onOpenProfile,hiddenPlan,setProfile}){
+  if (!block) return null; if (IS_RESEARCH&&block.kind==="unanswered") return <ResearchWelcome lang={lang} setProfile={setProfile} onOpenProfile={onOpenProfile}/>; const he=lang==="he"; const names=block.flags.map(k=>MEDICAL_FLAGS[k][he?"he":"en"]).join(he?", ":", ");
   const title=he?"⛔ התכנון חסום":"⛔ Planning is blocked";
   const body=block.kind==="age"
     ? (he?"האפליקציה מיועדת למבוגרים בגיל 18 ומעלה בלבד.":"The app is intended for adults aged 18+ only.")
@@ -26072,7 +26084,7 @@ function AppInner(){
   // ראש מסך הארוחות (לבקשת המשתמש): תמיד שני כפתורים קטנים — שבוע (ראשי) ויום. בשבוע ריק — "הצע"; כשיש תפריט —
   // "🔄 תפריט חדש" במסגרת בלבד (וכשיש מה לדרוס נפתח חלון אישור). ההשלמה — בתחתית, מתחת לארוחות
   // שבוע ריק (לבקשת המשתמש): כותרת "✨ הצע לי:" ומתחתיה שני כפתורים שווים — תפריט לשבוע / תפריט ליום
-  const wizAuto=!!planBlock&&planBlock.kind==="unanswered"&&!firstDisc&&!showWelcome&&!onboardActive&&!wizDismissed; // משתמש חדש — האשף נפתח מעצמו (ונשאר פתוח עד סיום/סגירה)
+  const wizAuto=(IS_RESEARCH?(rxActive(profile)&&!(+profile.age>0&&+profile.height>0&&+profile.weight>0)):(!!planBlock&&planBlock.kind==="unanswered"))&&!firstDisc&&!showWelcome&&!onboardActive&&!wizDismissed; // משתמש חדש — האשף נפתח מעצמו (ונשאר פתוח עד סיום/סגירה)
   useEffect(()=>{ if (wizAuto) setWizOpen(true); },[wizAuto]);
   // שבוע ריק (לבקשת המשתמש: בסוף השאלון נפתח מסך הארוחות, ובו בוחרים) — כרטיס "איך תרצו להתחיל?": 🤖 תכנון אוטומטי
   // (שבוע / יום) או ✏️ בנייה ידנית (נפתח "בנה וערוך" של ארוחת הבוקר)
@@ -26099,7 +26111,7 @@ function AppInner(){
         <button data-start-manual onClick={()=>planGuard(()=>setBuilderOpen({mk:"breakfast",mode:"planned"}),"planned")} style={{width:"100%",padding:"10px 4px",borderRadius:12,border:"1.5px solid #6FA07A",background:"#FFFFFF",color:"#1A1A1A",fontSize:14,fontWeight:800,cursor:"pointer"}}>{lang==="he"?"✏️ מתחילים בארוחת הבוקר":"✏️ Start with breakfast"}</button></div>
     </div>:planBtnsRow}</div>):null;
   const autoPlanNode=(
-    planBlock?<PlanBlockedNotice hiddenPlan={planHidden} block={planBlock} lang={lang} onOpenProfile={()=>{ if (planBlock.kind==="unanswered"){ setWizOpen(true); return; } try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<><AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
+    planBlock?<PlanBlockedNotice hiddenPlan={planHidden} block={planBlock} lang={lang} setProfile={setProfile} onOpenProfile={()=>{ if (planBlock.kind==="unanswered"){ setWizOpen(true); return; } try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<><AutoPlanMenu lang={lang} mealStyle={profile.mealStyle} onMealStyle={k=>setProfile(p=>({...p,mealStyle:k}))} onSwap={()=>setSwapOpen(true)}
       onSuggestDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("full");setDayPlanOpen(true);})}
       onSuggestRecipesNSFDayPlan={()=>askBudgetThen("day",()=>{setDayPlanMode("recipesNSF");setDayPlanOpen(true);})}
       onSuggestWeekPlan={()=>askBudgetThen("week",()=>{setWeekPlanMode("full");setWeekPlanOpen(true);})}
@@ -26113,7 +26125,7 @@ function AppInner(){
   // גרסה ייעודית לסרגל הצד ב-Desktop (לבקשת המשתמש): האופציות מוצגות ישירות בסרגל עצמו (alwaysOpen), לא בחלון
   // נפתח בלחיצה. "השלם יום" ו"נקה" הוסרו מכאן והועברו לתוך לוח הארוחות עצמו (בין קוביית בוקר לצהריים)
   const autoPlanNodeSidebar=(
-    planBlock?<PlanBlockedNotice hiddenPlan={planHidden} block={planBlock} lang={lang} onOpenProfile={()=>{ if (planBlock.kind==="unanswered"){ setWizOpen(true); return; } try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<>{weekEmptyCta}</>
+    planBlock?<PlanBlockedNotice hiddenPlan={planHidden} block={planBlock} lang={lang} setProfile={setProfile} onOpenProfile={()=>{ if (planBlock.kind==="unanswered"){ setWizOpen(true); return; } try{ window.dispatchEvent(new Event("pv-open-profile")); const el=[...document.querySelectorAll("#onboard-profile,#onboard-profile-mobile")].find(e=>e.offsetParent); el?.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){} }}/>:<>{weekEmptyCta}</>
   );
   // מקטע החלפת "מתוכנן/בפועל" — מוצג בראש אזור התוכן הראשי גם בפריסת ה-Desktop. כפתור האיפוס הידני (🧹) שהיה
   // כאן הוסר (לבקשת המשתמש): הוא התייתר ברגע שנוסף איפוס אוטומטי של התפריט המתוכנן בכל כניסה חדשה לאפליקציה
@@ -26727,7 +26739,7 @@ function AppInner(){
               {cookToday.ready.map(fk=><div key={fk} style={{color:"#4A5A50"}}>♻️ {foodName(fk,lang)}{he?" — מאתמול":" — from yesterday"}</div>)}
             </div>}</div>; })()}
         {tab==="meals"&&<RxBanner profile={profile} lang={lang}/>}
-        {rxPending&&<RxImportModal res={rxPending} lang={lang} onClose={()=>setRxPending(null)} onApprove={()=>{ const r=rxPending; setProfile(p=>rxApplyToProfile(p,{...r.payload,__ok:true,__code:r.code})); setRxPending(null); }}/>}
+        {rxPending&&!firstDisc&&<RxImportModal res={rxPending} lang={lang} onClose={()=>setRxPending(null)} onApprove={()=>{ const r=rxPending; setProfile(p=>rxApplyToProfile(p,{...r.payload,__ok:true,__code:r.code})); setRxPending(null); }}/>}
         {tab==="meals"&&!weekIsEmpty&&!planBlock&&dayIdx===new Date().getDay()&&(()=>{ const r=(actLog||{})[trackToday]; if (!r||!(+r.min>=20)) return null; const he=lang==="he";
           // יום אימון (מהתיעוד ב״🏃 פעילות גופנית״): הארוחה העשירה ביותר בחלבון היום — לאחרי האימון
           const pr=MEAL_KEYS.map(mk=>[mk,(getMeal(mk)||[]).reduce((a,x)=>a+(ingNut(x.fk,x.g,x.soaked).protein||0),0)]).sort((a,b)=>b[1]-a[1])[0]; if (!pr||!(pr[1]>0)) return null;
@@ -26992,7 +27004,7 @@ function AppInner(){
       {showWelcome&&!firstDisc&&<WelcomeModal lang={lang} onClose={()=>{dismissWelcome();setTab("meals");}} onStartTour={(full)=>{dismissWelcome();setTab("meals");setInfoOpen(null);fillDemoDayIfEmpty();setTourFull(!!full);setOnboardActive(true);}}/>}
       {wizOpen&&<ProfileWizard profile={profile} setProfile={setProfile} target={target} lang={lang} onInfo={setInfoOpen}
         onClose={()=>{ setWizOpen(false); setWizDismissed(true); }}
-        onFinish={()=>{ const flagged=medicalFlagsOf(profile).length>0; setProfile(p=>({...p,mealStyle:p.mealStyle||"simple",sex:p.sex||"male",activity:p.activity||"medium"})); setWizOpen(false); setWizDismissed(true);
+        onFinish={()=>{ const flagged=medicalFlagsOf(profile).filter(k=>!(rxActive(profile)&&RX_COVERED.has(k))).length>0; setProfile(p=>({...p,mealStyle:p.mealStyle||"simple",sex:p.sex||"male",activity:p.activity||"medium"})); setWizOpen(false); setWizDismissed(true);
           if (flagged){ setTimeout(()=>{ try{ window.dispatchEvent(new Event("pv-open-profile")); }catch(e){} },50); } else setTab("meals"); }}/>} {/* בסיום — מסך הארוחות, ובו בוחרים תכנון אוטומטי או בנייה ידנית (לבקשת המשתמש) */}
       {onboardActive&&<OnboardTour lang={lang} steps={tourFull?ONBOARD_STEPS:ONBOARD_STEPS_SHORT} onDone={()=>{setDayPlanOpen(false);setInfoMenuOpen(false);setOnboardActive(false);setTab("meals");}} setTab={setTab} setDayPlanMode={setDayPlanMode} setDayPlanOpen={setDayPlanOpen} setInfoMenuOpen={setInfoMenuOpen}/>}
       {savedDaysOpen&&<SavedDaysModal onClose={()=>setSavedDaysOpen(false)} onSaveToday={name=>saveDayAsTemplate(name)}
