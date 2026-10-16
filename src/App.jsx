@@ -19510,17 +19510,26 @@ const CONSENT_TEXT={he:"קראתי ואני מאשר/ת: אני בן/בת 18 ו�
 // מהות האפליקציה בכניסה הראשונה (לבקשת המשתמש: "שידעו מה מהות האפליקציה, כרגע אין שום מידע")
 const APP_INTRO={he:["בונה לך תפריט שבועי שלם — עם מתכונים ורשימת קניות — שמכוון ליעדי הקלוריות, החלבון, הוויטמינים והמינרלים שלך.","ישראלית: מזונות ומנות מקומיים, נתוני מזון ממשרד הבריאות, ויעדים לפי ההמלצות שהוא מאמץ.","לטבעונים, לצמחונים, ולמי שאוכל הכל ורוצה לשלב יותר ארוחות צמחיות — בקצב שלו."],
   en:["Builds you a complete weekly menu — with recipes and a shopping list — aimed at your calorie, protein, vitamin and mineral targets.","Israeli: local foods and dishes, Ministry of Health food data, and targets by the recommendations it adopts.","For vegans, vegetarians, and people who eat everything and want more plant-based meals — at their own pace."]};
+// 🔬 גרסת המחקר (לבקשת המשתמש): מסך הפתיחה, ההצהרה והאזהרות — למשתתפי מחקר
+const RESEARCH_INTRO_ITEMS={he:["כלי במסגרת המחקר — לא תחליף לטיפול רפואי. ממשיכים את הטיפול הרפואי והתרופות כרגיל.","ההשתתפות לפי טופס ההסכמה שחתמת עליו מול צוות המחקר.","הרגשה לא טובה, שינוי בתרופות, הריון או אבחנה חדשה — לפנות לרופא/ה ולצוות המחקר.","הנתונים נשמרים רק במכשיר שלך."],
+  en:["A tool within the study — not a substitute for medical care. Continue your medical treatment and medications as usual.","Participation is according to the consent form you signed with the research team.","Feeling unwell, a change in medications, pregnancy or a new diagnosis — contact your doctor and the research team.","Your data is stored only on your device."]};
+if (IS_RESEARCH) {
+  CONSENT_TEXT.he="קראתי ואני מאשר/ת: אני בן/בת 18 ומעלה ומשתתף/ת במחקר לאחר שחתמתי על טופס הסכמה. ידוע לי שהאפליקציה היא כלי במסגרת המחקר ואינה תחליף לייעוץ או לטיפול רפואי, ושאמשיך את הטיפול הרפואי שלי כרגיל.";
+  CONSENT_TEXT.en="I have read and I confirm: I am 18 or older and take part in the study after signing a consent form. I understand the app is a tool within the study and not a substitute for medical advice or care, and that I will continue my medical treatment as usual.";
+  APP_INTRO.he=["גרסה למשתתפי מחקר בלבד, בהזמנת צוות המחקר.","התפריט נבנה לפי ״מרשם מחקר״ שהצוות מפיק לך — קישור, QR או קוד — עם היעדים וסוג התזונה שנקבעו לך.","תפריט שבועי שלם עם מתכונים ורשימת קניות; הצוות קובע כמה ארוחות צמחיות בשבוע — לאוכלי כל, לצמחונים ולטבעונים."];
+  APP_INTRO.en=["For study participants only, invited by the research team.","The menu follows a 'research prescription' the team issues for you — a link, QR or code — with the targets and diet type set for you.","A complete weekly menu with recipes and a shopping list; the team sets how many plant-based meals a week — for people who eat everything, vegetarians and vegans."];
+}
 function consentOk(){ const c=load(CONSENT_KEY,null); return !!(c&&c.v>=CONSENT_VERSION); }
 function FirstRunDisclaimer({lang,onOk,onFull}){ const he=lang==="he"; const[agree,setAgree]=useState(false);
-  const items=he?["מידע כללי בלבד — לא ייעוץ רפואי.","למבוגרים בריאים בגיל 18 ומעלה. עם מצב רפואי, בהריון או בהנקה, או עם הפרעת אכילה — רק בליווי רופא/ה או דיאטן/ית.","לפני שינוי בתזונה — כדאי להתייעץ עם איש/אשת מקצוע.","הנתונים נשמרים רק במכשיר שלך."]
+  const items=IS_RESEARCH?RESEARCH_INTRO_ITEMS[he?"he":"en"]:he?["מידע כללי בלבד — לא ייעוץ רפואי.","למבוגרים בריאים בגיל 18 ומעלה. עם מצב רפואי, בהריון או בהנקה, או עם הפרעת אכילה — רק בליווי רופא/ה או דיאטן/ית.","לפני שינוי בתזונה — כדאי להתייעץ עם איש/אשת מקצוע.","הנתונים נשמרים רק במכשיר שלך."]
     :["General information only — not medical advice.","For healthy adults aged 18+. With a medical condition, pregnancy or breastfeeding, or an eating disorder — only with a doctor or dietitian.","Before a change in diet — consult a professional.","Your data is stored only on your device."];
   return (<div style={{position:"fixed",inset:0,zIndex:390,background:"#0009",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div style={{background:"#FBF8F3",borderRadius:18,width:"100%",maxWidth:420,maxHeight:"92vh",overflowY:"auto",padding:"20px 20px 16px",border:"1px solid #E2DED4",direction:he?"rtl":"ltr",color:"#1E3A2B"}}>
       <div data-app-intro style={{background:"#E8F3EA",border:"1px solid #9cc9a5",borderRadius:12,padding:"10px 12px",marginBottom:12}}>
-        <div style={{fontSize:16,fontWeight:800,color:"#2e7d32",marginBottom:4}}>{he?"🌿 PlantVitalis — תכנון תפריט צמחי מאוזן":"🌿 PlantVitalis — balanced plant-based menu planning"}</div>
+        <div style={{fontSize:16,fontWeight:800,color:"#2e7d32",marginBottom:4}}>{IS_RESEARCH?(he?`🔬 PlantVitalis — גרסת מחקר ${RESEARCH_VERSION}`:`🔬 PlantVitalis — research version ${RESEARCH_VERSION}`):he?"🌿 PlantVitalis — תכנון תפריט צמחי מאוזן":"🌿 PlantVitalis — balanced plant-based menu planning"}</div>
         {(he?APP_INTRO.he:APP_INTRO.en).map(t=><div key={t} style={{fontSize:13.5,lineHeight:1.5,marginBottom:3}}>• {t}</div>)}
       </div>
-      <div style={{fontSize:17,fontWeight:800,marginBottom:10}}>{he?"⚠️ לפני שמתחילים":"⚠️ Before you start"}</div>
+      <div style={{fontSize:17,fontWeight:800,marginBottom:10}}>{IS_RESEARCH?(he?"⚠️ חשוב לדעת":"⚠️ Important"):he?"⚠️ לפני שמתחילים":"⚠️ Before you start"}</div>
       {items.map(t=><div key={t} style={{fontSize:14,lineHeight:1.55,marginBottom:6}}>• {t}</div>)}
       <label style={{display:"flex",gap:10,alignItems:"flex-start",marginTop:10,padding:"10px 12px",borderRadius:12,background:agree?"#E8F5E9":"#FFFFFF",border:agree?"2px solid #2e7d32":"1px solid #D9D3C5",cursor:"pointer"}}>
         <input type="checkbox" checked={agree} onChange={e=>setAgree(e.target.checked)} style={{width:22,height:22,flexShrink:0,marginTop:2,accentColor:"#2e7d32"}}/>
