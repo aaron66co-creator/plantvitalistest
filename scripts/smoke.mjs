@@ -31,6 +31,7 @@ async function run(mobile) {
   await p.goto(`http://localhost:${PORT}/`); await p.waitForTimeout(2500);
   await step("הצהרה ושאלון", async () => {
     await p.locator("input[type=checkbox]:visible").first().check(); await btn("המשך").click(); await p.waitForTimeout(600);
+    if (VARIANT === "research" && !(await p.locator("[data-wizard]").count())) { await btn("לשאלון הקצר").click(); await p.waitForTimeout(400); } // גרסת מחקר: בלי מרשם האשף לא נפתח מעצמו
     const W = p.locator("[data-wizard]"); await W.locator("button", { hasText: "נקבה" }).click(); const ins = W.locator("input");
     await ins.nth(0).fill("45"); await ins.nth(1).fill("163"); await ins.nth(2).fill("78");
     await W.locator("button", { hasText: "המשך" }).click(); await p.waitForTimeout(300); await W.locator("button", { hasText: "ירידה במשקל" }).click();
