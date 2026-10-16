@@ -3,7 +3,8 @@ import { VARIANT } from "./variant.js";
 import QRCode from "qrcode";
 // גרסה (קוד אחד לשלוש הגרסאות — לבקשת המשתמש): "main" ראשית · "veg" צמחונית (בלי ״אוכל/ת הכל״) · "demo2" הדגמה לדיאטנית.
 // כל מאגר מחזיק רק את src/variant.js שלו; שאר src/ מועתק מהמאגר הראשי ב-npm run sync
-const IS_VEG=VARIANT==="veg", IS_DEMO2=VARIANT==="demo2";
+const IS_VEG=VARIANT==="veg", IS_DEMO2=VARIANT==="demo2", IS_RESEARCH=VARIANT==="research";
+const RESEARCH_VERSION="1.0"; // גרסת המחקר — עולה רק בשחרור מתועד למאגר המחקר (CHANGELOG-research.md)
 
 
 const T={he:{title:"תכנון ארוחות ומעקב",subtitle:"🌿 טבעוני או צמחוני (חלב וביצים לבחירה)",meals:"🥗 ארוחות",macrosTab:"🍽 אבות המזון",micro:"💊 מיקרו",clearWeek:"🗑 נקה",profile:"👤 הפרופיל שלי",height:"גובה ס״מ",weight:"משקל ק״ג",age:"גיל",male:"זכר",female:"נקבה",low:"קלה",medium:"בינונית",high:"גבוהה",activity:"פעילות",goal:"מטרה",maintain:"שמירה",lose:"ירידה",gain:"עלייה",breakfast:"ארוחת בוקר",snack:"ארוחת ביניים",lunch:"ארוחת צהריים",dinner:"ארוחת ערב",build:"✏️ בנה וערוך",saved:"📂",suggest:"💡",buildMeal:"בנה ארוחה",saveMeal:"💾 שמור",saveLabel:"שם הארוחה...",saveBtn:"שמור",confirm:"✅ אשר",noMeals:"לחץ בנה / הצע",noSaved:"אין ארוחות שמורות",loadMeal:"✅ טען",deleteMeal:"🗑",deletePerm:"מחק לצמיתות",cancel:"ביטול",savedMeals:"ארוחות שמורות",suggestions:"הצעות",items:"פריטים",searchFood:"🔍 חפש...",all:"הכל",grams:"גר׳",per100:"לכל 100גר׳",daily:"📊 סיכום יומי",calories:"קלוריות",carb:"פח׳",prot:"חלב׳",fat:"שומן",fiber:"סיבים",carbTarget:"≤55%",protTarget:"≥18%",fatTarget:"≤30%",protPerKg:"חלבון/ק״ג",protGoal:"יעד 1.0–1.6",vitE:"ויטמין E",calcium:"סידן",omega:"אומגה",ratio:"יחס Ω6:Ω3",vitamins:"💊 ויטמינים ומינרלים",deficiencies:"⚠️ חוסרים",enterData:"הזן נתונים",footer:"🌱 פח׳≤55% · חלב׳≥18% · שומן≤30% · VitE≥15mg · Ca≥1000mg",saved_toast:"✅ נשמר!",dir:"rtl",infoEdit:"✎ ערוך",infoSave:"💾 שמור",infoCancel:"ביטול",infoPlaceholder:"הוסף טקסט כאן...",clearMeal:"🗑 נקה ארוחה",clearConfirm:"בטוח?",clearYes:"כן",clearNo:"לא",wfpbInfo:"🌿 WFPB",ndsLabel:"🏆 צפיפות נוטריאנטים",ndsScore:"ציון NDS",ndsInfo:"מדד צפיפות",swapBtn:"🔄 אופטימיזציה",swapTitle:"💡 הצעות אופטימיזציה",swapApply:"✅ החל",swapSkip:"דלג",swapNoIssues:"הארוחות מאוזנות — אין הצעות שינוי",swapExplain:"מה עושה האופטימיזציה?",disclaimer:"⚠ אזהרת שימוש",healthProfile:"🏥 פרופיל בריאותי",healthNone:"ללא",spices:"🧂 תבלינים",mealTime:"שעת ארוחה",bmi:"BMI",bmiLabel:"מדד מסת גוף",recipes:"📖 מתכונים",newRecipe:"➕ מתכון חדש",recipeName:"שם המתכון...",servings:"מנות",recipeType:"סוג",recipeTypePie:"🥧 פשטידה",recipeTypeBaked:"🍞 מאפה",recipeTypeSoup:"🍲 מרק",recipeTypeStew:"🫕 תבשיל",saveRecipe:"💾 שמור מתכון",editRecipe:"✎ ערוך",deleteRecipe:"🗑 מחק",addToMeal:"➕ הוסף לארוחה",perServing:"לכל מנה",noRecipes:"אין מתכונים עדיין",recipeAdded:"✅ נוסף!",confirmDeleteRecipe:"מחק מתכון?",generalSuggestBtn:"🔀 הצעות כלליות",generalSuggestConfirm:"האם ברצונך להשתמש באפשרות זו?",generalSuggestYes:"כן",generalSuggestNo:"לא",dayPlanBtn:"🗓️ הצע ארוחות ליום",dayPlanTitle:"🗓️ תפריט מוצע ליום",dayPlanSubtitle:"מכסה קטניות, דגנים, ירק, עלים, פרי, אגוזים, זרעים, שומן, חלבון ותבלינים בתוך תקציב הקלוריות",dayPlanApply:"✅ החל על היום",dayPlanRegenerate:"🔄 הצע שוב",dayPlanClose:"ביטול",personalDayPlanBtn:"השלם יום",personalDayPlanSubtitle:"בנוי אך ורק מהארוחות השמורות והמתכונים שלך — ארוחות שכבר בנית היום נשארות כפי שהן, ורק החלקים הריקים מושלמים",personalDayPlanEmpty:"אין עדיין ארוחות שמורות או מתכונים מתאימים למלא את החלקים הריקים — שמור כמה ארוחות או מתכונים ונסה שוב",recipesNSFDayPlanBtn:"🍓 הצע ארוחות ממתכונים ליום",recipesNSFDayPlanSubtitle:"בנוי בעיקר מהמתכונים שלך — משלים בפריטי אגוזים/זרעים/פרי/ירק/דגן/קטנית/עלים גולמיים לפי הצורך, כדי לעמוד ביעד הקלורי במדויק",recipesNSFDayPlanEmpty:"אין מספיק מתכונים או פריטי אגוזים/זרעים/פרי כדי לבנות יום שלם — הוסף מתכונים או נסה שוב",recipesNSFWeekPlanBtn:"🍓×7 הצע ארוחות ממתכונים לשבוע",weekPlanBtn:"🗓️×7 הצע ארוחות לשבוע",weekPlanTitle:"🗓️×7 תפריט מוצע לשבוע",weekPlanSubtitle:"עומד בסך הקלוריות השבועי, ב-RDA השבועי לכל מיקרו-נוטריאנט וביחסי אומגה ונתרן/אשלגן — לרוחב 7 ימים, בדיוק כמו במנגנון היומי",weekPlanApply:"✅ החל על כל השבוע",weekPlanApplyConfirm:"⚠️ לחץ שוב לאישור — יחליף את כל ארוחות השבוע",weekPlanRegenerate:"🔄 הצע שבוע חדש",weekPlanWeekly:"שבועי",weekPlanDayLabel:"יום",shoppingListBtn:"🛒 רשימת קניות",shoppingListTitle:"🛒 רשימת קניות שבועית",shoppingListSubtitle:"מרוכז מכל הארוחות שהוגדרו בכל ימות השבוע, מאורגן לפי קבוצות מזון",shoppingListEmpty:"עדיין לא הוגדרו ארוחות באף יום השבוע — הוסף ארוחות כדי לראות רשימת קניות",shoppingListCheckAll:"✅ סמן הכל",shoppingListUncheckAll:"↺ נקה סימונים",shoppingListItemsCount:"פריטים",shoppingListSortNutrition:"🥗 מיון תזונתי",shoppingListSortStore:"🏬 מיון לפי סופר",shoppingListShopModeOff:"🛍️ מצב קניה",shoppingListShopModeOn:"🛍️ מצב קניה: פעיל",shoppingListPantryTitle:"מוצרי מזווה (כנראה כבר יש בבית)",resetDayLog:"🗑 איפוס יומן היום",resetDayLogConfirm:"לאפס את כל יומן האכילה בפועל של היום הזה? זה לא ישנה את התפריט המתוכנן — הוא יישאר כפי שהוא, רק התיעוד בפועל יימחק ויחזור להציג את המתוכנן כברירת מחדל.",resetDayLogYes:"כן, אפס",resetDayLogNo:"ביטול",resetDayLogEmpty:"אין מה לאפס — עדיין לא תועד דבר ביום הזה",resetDayLogDone:"✅ יומן היום אופס",
@@ -17765,7 +17766,7 @@ function MySettingsModal({neverList,onToggleNever,lang,onClose,profile,setProfil
           <div style={{fontSize:11.5,color:"#4A5A50",lineHeight:1.45,marginTop:3}}>{he?"דוגמה: בתפריט היה סלט עדשים בצהריים, ואכלתם פיצה — רושמים ביומן פיצה. את שאר הארוחות לא צריך לרשום. היום נכנס למעקב השבועי למחרת. במעקב ובדוח לדיאטנית ימים שלא נרשם בהם דבר מסומנים \"לפי התפריט\", כי ייתכן שאכלתם אחרת.":"Example: the menu had a lentil salad for lunch and you ate pizza — log the pizza. The other meals need no logging. The day enters weekly tracking the next day. In tracking and the dietitian report, days with nothing logged are marked \"from the menu\", since you may have eaten differently."}</div></details></div>
       <div style={{...row,marginTop:6}}><label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",...lbl,marginBottom:0}}><input data-large-text type="checkbox" defaultChecked={!!load("wfpb_large_text",false)} onChange={e=>{ save("wfpb_large_text",e.target.checked); applyLargeText(e.target.checked); }} style={{width:18,height:18,accentColor:"#2e7d32"}}/>🔠 {he?"טקסט גדול":"Large text"}</label></div>
       </details>
-      <RxSettingsSection profile={profile} setProfile={setProfile} lang={lang} row={row} lbl={lbl}/>
+      {IS_RESEARCH&&<RxSettingsSection profile={profile} setProfile={setProfile} lang={lang} row={row} lbl={lbl}/>}
       <details data-sec="tools" open={section==="tools"} style={{marginTop:10}}><summary style={{fontSize:14,fontWeight:800,color:"#1E3A2B",cursor:"pointer",padding:"6px 2px",listStyle:"revert"}}>{he?"🧰 כלים ושמירה":"🧰 Tools & saving"}</summary>
       <StorageHealthRow lang={lang} row={row} lbl={lbl} exportCode={exportCode} importCode={importCode}/>
       <div style={row}><div style={lbl}>🧰 {he?"כלים נוספים":"More tools"}</div>
@@ -19576,6 +19577,10 @@ if (IS_VEG) { try {
   ONBOARD_STEPS.forEach(st=>{ ["he","en"].forEach(L=>{ if (st[L]) st[L]={...st[L],desc:vegTx(st[L].desc)}; }); });
   ONBOARD_SHORT_TEXT.forEach(r=>{ r[0]=vegTx(r[0]); r[1]=vegTx(r[1]); });
 } catch(e){} }
+// מצב מחקר — הטקסטים (פרק במדריך, שאלה בשאלות ותשובות) רק בגרסת המחקר; שם גם שורת הגרסה ב״על האפליקציה״
+if (!IS_RESEARCH) { try { ["he","en"].forEach(L=>{ const D=INFO_DEFAULTS[L]; if (D&&typeof D.userGuide==="string") D.userGuide=D.userGuide.split("\n\n").filter(b=>!/^🔬 /.test(b)).join("\n\n");
+    (FAQ[L]||[]).forEach(g=>{ g.q=(g.q||[]).filter(x=>!/מחקר|study/i.test(x.q)); }); }); } catch(e){} }
+else { try { INFO_DEFAULTS.he.about=(INFO_DEFAULTS.he.about||"")+`\n\n🔬 גרסת מחקר ${RESEARCH_VERSION} — גרסה יציבה למשתתפי מחקר; מתעדכנת רק בשחרור מתועד.`; INFO_DEFAULTS.en.about=(INFO_DEFAULTS.en.about||"")+`\n\n🔬 Research version ${RESEARCH_VERSION} — a stable version for study participants; updated only in a documented release.`; } catch(e){} }
 const ONBOARD_STEPS_SHORT=[0,3,4,6,8,1].map((i,n)=>{ const st=ONBOARD_STEPS[i], t=x=>x.title.replace(/^\d+\.\s*/,"");
   return {...st,he:{title:`${n+1}. ${t(st.he)}`,desc:ONBOARD_SHORT_TEXT[n][0]},en:{title:`${n+1}. ${t(st.en)}`,desc:ONBOARD_SHORT_TEXT[n][1]}}; });
 function OnboardTour({lang,onDone,setTab,setDayPlanMode,setDayPlanOpen,setInfoMenuOpen,steps:STEPS=ONBOARD_STEPS}){
@@ -21514,8 +21519,9 @@ async function rxVerify(code){ try { const m=String(code||"").trim().match(/PVRX
     if (payload.exp&&payload.exp<todayKey()) return {ok:false,err:"exp",payload};
     if (IS_VEG&&payload.diet==="omni") return {ok:false,err:"diet",payload};
     return {ok:true,payload,code:"PVRX1."+m[1]+"."+m[2]}; } catch(e){ return {ok:false,err:"format"}; } }
-const rxActive=p=>!!(p&&p.rx&&p.rx.__ok&&(!p.rx.exp||p.rx.exp>=todayKey()));
-const rxExpired=p=>!!(p&&p.rx&&p.rx.__ok&&p.rx.exp&&p.rx.exp<todayKey());
+// מצב מחקר פעיל רק בגרסת המחקר (variant "research") — בשאר הגרסאות מרשם לא משפיע על כלום
+const rxActive=p=>!!(IS_RESEARCH&&p&&p.rx&&p.rx.__ok&&(!p.rx.exp||p.rx.exp>=todayKey()));
+const rxExpired=p=>!!(IS_RESEARCH&&p&&p.rx&&p.rx.__ok&&p.rx.exp&&p.rx.exp<todayKey());
 // ארוחות צמחיות בשבוע (לאוכלי כל) → טבלת ימים × ארוחות: קודם בוקר, אחר כך ערב, אחר כך צהריים — לאורך השבוע
 function rxGridOf(n){ const k=Math.max(0,Math.min(21,Math.round(+n||0))); const g=Object.fromEntries([0,1,2,3,4,5,6].map(d=>[`d${d}`,[]])); let c=0;
   for (const mk of ["breakfast","dinner","lunch"]) for (let d=0; d<7&&c<k; d++){ g[`d${d}`].push(mk); c++; } return g; }
@@ -21532,7 +21538,7 @@ function rxSummaryLines(rx,he){ const L=[]; const nm=(o,k)=>o[k]?(he?o[k].he:o[k
   L.push((he?"חלבון: ":"Protein: ")+(rx.protKg||1.2)+(he?" גר' לק״ג":" g/kg")+(rx.protMealMin?(he?` · לפחות ${rx.protMealMin} גר' בארוחה עיקרית`:` · at least ${rx.protMealMin} g per main meal`):""));
   L.push((he?"נתרן: עד ":"Sodium: up to ")+(rx.naCap||2300)+(he?" מ״ג":" mg")+(rx.satFatPct?(he?` · שומן רווי עד ${rx.satFatPct}%`:` · saturated fat up to ${rx.satFatPct}%`):"")+(rx.carbMeal?(he?` · פחמימות ${rx.carbMeal[0]}–${rx.carbMeal[1]} גר' בארוחה`:` · carbs ${rx.carbMeal[0]}–${rx.carbMeal[1]} g per meal`):""));
   return L; }
-function RxBanner({profile,lang}){ const he=lang==="he"; if (!profile||!profile.rx||!profile.rx.__ok) return null; const rx=profile.rx; const exp=rxExpired(profile);
+function RxBanner({profile,lang}){ const he=lang==="he"; if (!IS_RESEARCH||!profile||!profile.rx||!profile.rx.__ok) return null; const rx=profile.rx; const exp=rxExpired(profile);
   return <div data-rx-banner style={{background:exp?"#FDECEA":"#EAF1FB",border:`1px solid ${exp?"#e6a39c":"#b8cde8"}`,borderRadius:12,padding:"8px 11px",margin:"6px 0",fontSize:13.5,color:"#1E3A2B",lineHeight:1.5}}>
     <b>🔬 {he?"מחקר":"Study"} {rx.study} · {he?"משתתף/ת":"Participant"} {rx.pid}</b>{rx.arm?<> · {rx.arm}</>:null}
     <div>{exp?(he?"⛔ תוקף המרשם פג — התפריט חזר להגדרות הרגילות. פנו לצוות המחקר.":"⛔ The prescription has expired — the menu is back to regular settings. Contact the research team.")
@@ -21553,6 +21559,7 @@ function RxImportModal({res,lang,onApprove,onClose}){ const he=lang==="he"; if (
 function RxSettingsSection({profile,setProfile,lang,row,lbl}){ const he=lang==="he"; const[code,setCode]=useState(""); const[res,setRes]=useState(null); const[ask,setAsk]=useState(false);
   const rx=profile.rx&&profile.rx.__ok?profile.rx:null;
   return <div data-rx-settings style={row}><div style={lbl}>🔬 {he?"מחקר":"Research"}</div>
+    <div style={{fontSize:11.5,color:"#6B7C72",marginBottom:4}}>{he?`גרסת מחקר ${RESEARCH_VERSION}`:`Research version ${RESEARCH_VERSION}`}</div>
     {rx?<>
       <div style={{fontSize:13,lineHeight:1.55,color:"#1E3A2B"}}><b>{rx.study}</b> · {he?"משתתף/ת":"Participant"} {rx.pid}{rx.arm?<> · {rx.arm}</>:null} · {he?"עד":"until"} {rx.exp}{rxExpired(profile)?<b style={{color:"#b3261e"}}> · {he?"פג תוקף":"expired"}</b>:null}</div>
       <div style={{fontSize:12.5,lineHeight:1.55,marginTop:5,background:"#EAF1FB",borderRadius:9,padding:"6px 9px"}}>{rxSummaryLines(rx,he).map((l,i)=><div key={i}>• {l}</div>)}<div style={{marginTop:3,color:"#15507a",fontWeight:700}}>{he?"🔒 נקבע על ידי צוות המחקר — לא ניתן לשינוי כאן.":"🔒 Set by the research team — can't be changed here."}</div></div>
@@ -25060,8 +25067,8 @@ function AppInner(){
     if (!has) localStorage.removeItem(PLAN_META_KEY); else if (!localStorage.getItem(PLAN_META_KEY)) localStorage.setItem(PLAN_META_KEY,JSON.stringify({start:new Date().getDay(),at:Date.now()})); }catch{} },[mealsAll]);
   // 🔬 מרשם מחקר: קישור ?rx= → אימות → אישור; מרשם שמור נבדק שוב בכל טעינה; שדות שהמרשם קובע — ננעלים
   const[rxPending,setRxPending]=useState(null);
-  useEffect(()=>{ try{ const q=new URLSearchParams(window.location.search).get("rx"); if (!q) return; rxVerify(q).then(setRxPending); const u=new URL(window.location.href); u.searchParams.delete("rx"); window.history.replaceState(null,"",u.toString()); }catch(e){} },[]);
-  useEffect(()=>{ if (!profile.rx) return; if (!profile.rx.__code){ setProfile(p=>{ const {rx:_r,...q}=p; return q; }); return; } rxVerify(profile.rx.__code).then(r=>{ if (!r.ok&&r.err!=="exp") setProfile(p=>{ const {rx:_r,...q}=p; return q; }); }); },[]); // eslint-disable-line
+  useEffect(()=>{ try{ const q=new URLSearchParams(window.location.search).get("rx"); if (!q||!IS_RESEARCH) return; rxVerify(q).then(setRxPending); const u=new URL(window.location.href); u.searchParams.delete("rx"); window.history.replaceState(null,"",u.toString()); }catch(e){} },[]);
+  useEffect(()=>{ if (!profile.rx) return; if (!IS_RESEARCH||!profile.rx.__code){ setProfile(p=>{ const {rx:_r,...q}=p; return q; }); return; } rxVerify(profile.rx.__code).then(r=>{ if (!r.ok&&r.err!=="exp") setProfile(p=>{ const {rx:_r,...q}=p; return q; }); }); },[]); // eslint-disable-line
   useEffect(()=>{ if (!rxActive(profile)) return; const want=rxApplyToProfile(profile,profile.rx); if (["medical","flex","eatsDairyEggs","flexGrid"].some(k=>JSON.stringify(want[k])!==JSON.stringify(profile[k]))) setProfile(p=>rxActive(p)?rxApplyToProfile(p,p.rx):p); },[profile.medical,profile.flex,profile.eatsDairyEggs,profile.flexGrid,profile.rx]); // eslint-disable-line
   const userExclFks=useMemo(()=>new Set([...excludedFksArr,...(profile.sensitivities||[]).flatMap(k=>SENS_GROUPS[k]?.fks||[])]),[excludedFksArr,sensKey]); // למנות מן החי (בלי LOG_ONLY)
   const excludedFks=useMemo(()=>new Set([...LOG_ONLY_FKS,...excludedFksArr,...(profile.sensitivities||[]).flatMap(k=>SENS_GROUPS[k]?.fks||[]),...(iodineSupp?["wakame"]:[])]),[excludedFksArr,sensKey,iodineSupp]);
@@ -27226,7 +27233,7 @@ function StaffRxScreen(){ const he=true; const KEYK="pv_rx_staff_key";
   const chip=(on,txt,fn,dis)=><button key={txt} onClick={fn} disabled={dis} style={{padding:"6px 10px",borderRadius:16,border:on?"2px solid #2e7d32":"1px solid #D9D3C5",background:on?"#E8F3EA":"#FFFFFF",fontSize:13,cursor:dis?"default":"pointer",opacity:dis?0.5:1,margin:"0 0 6px 6px"}}>{txt}</button>;
   return <div dir="rtl" data-staff-rx style={{minHeight:"100vh",background:"#F5F2EB",color:"#1E3A2B",fontFamily:"system-ui,sans-serif",padding:"16px",boxSizing:"border-box"}}>
     <div style={{maxWidth:560,margin:"0 auto"}}>
-      <div style={{fontSize:20,fontWeight:800}}>🔬 PlantVitalis — מרשם מחקר (צוות)</div>
+      <div style={{fontSize:20,fontWeight:800}}>🔬 PlantVitalis — מרשם מחקר (צוות)</div><div style={{fontSize:12,color:"#6B7C72"}}>גרסת מחקר {RESEARCH_VERSION}</div>
       <div style={{fontSize:13,color:"#4A5A50",margin:"4px 0 12px",lineHeight:1.5}}>המרשם קובע למשתתף יעדים, סוג תזונה ומצבים רפואיים, וחתום במפתח של צוות המחקר — המשתתף לא יכול לשנות אותו. אינסולין, סולפונילאוריאה, מחלת כליות, הריון, מדלל דם והפרעת אכילה — מחוץ לפרוטוקול: האפליקציה ממשיכה לחסום אותם.</div>
       {!key?<div style={box}>{lab("מפתח החתימה של צוות המחקר")}<div style={{fontSize:12.5,color:"#4A5A50",marginBottom:5}}>מדביקים פעם אחת. נשמר רק במכשיר הזה — לא בשרת ולא בקוד.</div>
         <textarea data-staff-key value={keyTxt} onChange={e=>setKeyTxt(e.target.value)} style={{...inp,minHeight:70,direction:"ltr",fontSize:12}}/>{keyErr&&<div style={{color:"#b3261e",fontSize:13}}>{keyErr}</div>}
@@ -27266,7 +27273,7 @@ function StaffRxScreen(){ const he=true; const KEYK="pv_rx_staff_key";
       </>}
     </div></div>; }
 export default function App(){
-  const staff=(()=>{ try{ return new URLSearchParams(window.location.search).has("staff"); }catch{ return false; } })(); // 🔬 מסך הצוות למרשמי מחקר
+  const staff=IS_RESEARCH&&(()=>{ try{ return new URLSearchParams(window.location.search).has("staff"); }catch{ return false; } })(); // 🔬 מסך הצוות — רק בגרסת המחקר
   const app=<PasswordGate>{staff?<StaffRxScreen/>:<AppInner/>}</PasswordGate>;
   return IS_DEMO2?<DemoGate>{app}</DemoGate>:app;
 }
