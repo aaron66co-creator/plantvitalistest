@@ -96,7 +96,7 @@ const isMenopause = p => !!p?.menopause && p?.sex!=="male" && (+p?.age||0)>=40;
 // BMI 30 ומעלה: החלבון מחושב לפי "משקל ייחוס" מתוקנן — המשקל ב-BMI 25 ועוד 25% מהעודף (שיטה קלינית מקובלת; אין הסכמה
 // אחת). בפועל: הרצפה והתקרה לק"ג מוקטנות ביחס ייחוס/משקל, כי בכל הקוד היעד = משקל בפועל × לק"ג
 function proteinRefWeight(p){ const h=+p?.height, w=+p?.weight; if(!h||!w) return null; const m2=(h/100)**2, bmi=w/m2; if (bmi<30) return null; const w25=25*m2; return Math.round((w25+0.25*(w-w25))*10)/10; }
-// מרשם מחקר בתוקף: חלבון (גר' לק״ג, לפי משקל הייחוס) ותקרת הנתרן — לפי המרשם; שומן רווי, פחמימות לארוחה וחלבון לארוחה — לשלב הבא (hp.rx)
+// מרשם מחקר בתוקף: חלבון (גר' לק״ג, לפי משקל הייחוס) ותקרת הנתרן — לפי המרשם; שומן רווי, פחמימות לארוחה וחלבון לארוחה — hp.rx, נאכפים ב-rxCardioWeek
 function resolveHealthProfile(profile){ const hp=resolveHealthProfile__base(profile); if (!rxActive(profile)) return hp; const rx=profile.rx;
   const refW=proteinRefWeight(profile), w=+profile?.weight||0, refF=refW&&w?refW/w:1; const pk=+rx.protKg>0?Math.round(+rx.protKg*refF*1000)/1000:hp.protPerKg;
   return {...hp, protPerKg:pk, protPerKgMax:Math.max(hp.protPerKgMax||1.6,(+rx.protKg||0)+0.2), sodiumMax:Math.min(hp.sodiumMax||2300,+rx.naCap||2300), rx:{satFatPct:rx.satFatPct||null,carbMeal:rx.carbMeal||null,protMealMin:rx.protMealMin||null}}; }
@@ -16182,6 +16182,62 @@ function fruitCapDay(d, target, dri, excl, allowMk, maxU=2){ if (!d) return d; c
     const pool=["lunch","dinner","breakfast","snack"].flatMap(m=>(d[m]||[]).filter(it=>free(m,it)&&grp(it)<9&&!isFr(it)&&!fruitUnitsOfItem(it)).map(it=>({it,m,g0:it.g}))).sort((a,b)=>grp(a.it)-grp(b.it));
     for (const p of pool){ if (left<=5) break; const kpg=kOf(p.it)/(p.it.g||1); if (!(kpg>0)) continue; const add=Math.min(p.g0*0.5,left/kpg); if (add<1) continue; p.it.g=Math.round((p.it.g+add)*10)/10; left-=add*kpg; } }
   return d; }
+// מודול 2 — כללים קרדיו-מטבוליים ממרשם מחקר (hp.rx; פעיל רק בגרסת המחקר עם מרשם בתוקף). רץ בסוף, אחרי מנות מן החי,
+// כדי שגם הן ייכנסו לכללים: (1) חלבון מינימלי בצהריים ובערב, (2) פחמימות בטווח בבוקר/צהריים/ערב, (3) שומן רווי יומי עד
+// התקרה, ובסוף תקרת הנתרן של המרשם. מהלכים קטנים, בתוך הארוחה; פריטים שהמשתמש/ת קבע/ה (_user/_keep) לא משתנים
+function rxCardioDay(d, hp, dri, target, excl, isOwnMeal, med, usedIds){ const R=hp&&hp.rx; if (!R||!d) return d; const ex=excl instanceof Set?excl:new Set(excl||[]);
+  const MAIN=["breakfast","lunch","dinner"], PM=["lunch","dinner"], ALLM=["breakfast","snack","lunch","dinner"];
+  const nut=x=>ingNut(x.fk,x.g,x.soaked); const mt=m=>sumNuts([...((d.__fx||{})[m]||[]),...(d[m]||[])].map(nut)); const dayK=()=>ALLM.reduce((a,m)=>a+(mt(m).kcal||0),0);
+  const free=m=>(d[m]||[]).filter(x=>!x._user&&!x._keep&&x.g>0); const orig=new Map(); ALLM.forEach(m=>(d[m]||[]).forEach(x=>orig.set(x,x.g)));
+  const step=x=>{ const pu=PIECE_UNITS[x.fk]; return pu&&pu.g>=20?pu.g:Math.max(5,Math.round(x.g*0.12)); };
+  const dens=(x,k)=>{ const n=ingNut(x.fk,100,x.soaked); return (n[k]||0)/Math.max(1,n.kcal||0); };
+  const isProt=x=>{ const p100=ingNut(x.fk,100,x.soaked).protein||0; return p100>=8||(p100>=5&&dens(x,"protein")>=0.07); }; // מקור חלבון אמיתי (לא ירק עם יחס חלבון/קלוריות גבוה)
+  const grow=(x,dir,maxF,minF)=>{ const o=orig.get(x)||x.g, st=step(x), g=Math.round((x.g+dir*st)*10)/10; if (g>o*maxF+0.01||g<o*minF-0.01||g<=0) return false; x.g=g; return true; };
+  const cLo=R.carbMeal?+R.carbMeal[0]:null, cHi=R.carbMeal?+R.carbMeal[1]:null;
+  // ארוחה מן החי שלא עומדת בכללים — מחליפים מנה: בונים מועמדים באותו גודל קלורי ובוחרים את העומדת בחלבון ובפחמימות,
+  // עם הכי מעט שומן רווי ונתרן (כמו בחירת דג/עוף במצב הים-תיכוני). מנה שכבר יש באותו יום / בשבוע — רק אם אין אחרת
+  const naCap=(dri&&dri._naCap)||2300;
+  const omniSwap=(m,force)=>{ const cur=mt(m), mk0=Math.round(cur.kcal||0); if (!mk0) return false; const dayIds=new Set(ALLM.filter(x=>x!==m).map(x=>omniIdOf(d[x])).filter(Boolean));
+    const okP=t=>!(R.protMealMin>0&&PM.includes(m))||(t.protein||0)>=R.protMealMin-0.3, ok=t=>okP(t)&&(cLo==null||((t.carbs||0)>=cLo-0.3&&(t.carbs||0)<=cHi+0.3));
+    if (!force&&ok(cur)) return false; let best=null;
+    for (const tol of [0.12,0.2]){ if (best) break; for (const dish of omniCands(m,ex,false,med)){ if (dayIds.has(dish.id)) continue; const its=omniBuildMeal(dish,m,target,ex,mk0,med?{med:true}:undefined); const t=sumNuts(its.map(nut));
+      if (Math.abs((t.kcal||0)-mk0)>mk0*tol||!okP(t)) continue; /* אין מנה שעומדת בשניהם — מספיק חלבון; הפחמימות מתוקנות בשלב הבא (עונש בניקוד) */
+      const sc=(t.satFat||0)*9+(t.sodium||0)/40+(usedIds&&usedIds.has(dish.id)?60:0)+(ok(t)?0:200); if (!best||sc<best.sc) best={its,sc,id:dish.id}; } }
+    if (!best) return false; const old=omniIdOf(d[m]); d[m]=best.its; best.its.forEach(x=>orig.set(x,x.g)); if (usedIds){ usedIds.add(best.id); } return !!old||true; };
+  PM.concat(["breakfast"]).forEach(m=>{ if (isOwnMeal(m)&&!(d.__fx&&d.__fx[m])&&(d[m]||[]).some(x=>x._omni)) omniSwap(m,false); });
+  // (1) חלבון: מגדילים את מקור החלבון הצפוף ביותר; מפצים בקלוריות מפריט עתיר פחמימות (בלי לרדת מתחת לטווח הפחמימות)
+  if (R.protMealMin>0) for (const m of PM){ if (d.__fx&&d.__fx[m]) continue;
+    for (let r=0; r<12&&(mt(m).protein||0)<R.protMealMin-0.3; r++){
+      const pr=free(m).filter(isProt).sort((a,b)=>dens(b,"protein")-dens(a,"protein"));
+      let moved=null; for (const x of pr){ const k0=nut(x).kcal||0; if (grow(x,1,isOwnMeal(m)?1.5:1.75,0)){ moved={x,dk:(nut(x).kcal||0)-k0}; break; } }
+      if (!moved){ const own=isOwnMeal(m); const add=own?null:PROT_TOPUP_ADD.find(fk=>FDB[fk]&&!ex.has(fk)&&!(d[m]||[]).some(y=>y.fk===fk)); if (!add) break;
+        const it={fk:add,g:add==="tofu"?60:50,_id:uid(),_addedProt:1}; d[m]=[...(d[m]||[]),it]; orig.set(it,it.g); moved={x:it,dk:nut(it).kcal||0}; }
+      if (dayK()>target*1.03){ let need=moved.dk; const cb=free(m).filter(x=>x!==moved.x&&dens(x,"carbs")>=0.12&&!isProt(x)).sort((a,b)=>dens(b,"carbs")-dens(a,"carbs"));
+        for (const x of cb){ while (need>15){ const k0=nut(x).kcal||0, c0=mt(m).carbs||0; if (!grow(x,-1,9,0.5)) break; if (cLo!=null&&(mt(m).carbs||0)<cLo){ grow(x,1,9,0); break; } need-=k0-(nut(x).kcal||0); if (c0===mt(m).carbs) break; } } } } }
+  // (2) פחמימות לארוחה בטווח
+  const carbPass=()=>{ if (cLo!=null) for (const m of MAIN){ if (d.__fx&&d.__fx[m]) continue;
+    for (let r=0; r<40; r++){ const c=mt(m).carbs||0; if (c>cHi+0.3){ const cb=free(m).filter(x=>dens(x,"carbs")>=0.08&&(nut(x).carbs||0)>=3).sort((a,b)=>dens(b,"carbs")-dens(a,"carbs")); if (!cb.some(x=>grow(x,-1,9,0.5))) break; }
+      else if (c<cLo-0.3){ const cb=free(m).filter(x=>dens(x,"carbs")>=0.12&&dens(x,"satFat")<0.01).sort((a,b)=>dens(b,"carbs")-dens(a,"carbs")); if (!cb.some(x=>grow(x,1,1.5,0))) break; }
+      else break; }
+    // פיצוי קלורי אחרי קיצוץ פחמימות: מגדילים חלבון באותה ארוחה (עד התקרות שלמעלה)
+    for (let r=0; r<6&&dayK()<target*0.96; r++){ const pr=free(m).filter(x=>isProt(x)&&dens(x,"carbs")<0.12).sort((a,b)=>dens(b,"protein")-dens(a,"protein")); if (!pr.some(x=>grow(x,1,isOwnMeal(m)?1.5:1.75,0))) break; } } };
+  carbPass();
+  capSodium(d,dri,target);
+  // (3) שומן רווי יומי עד התקרה: מקטינים את התורם הגדול ביותר (עד מחצית); מחזירים קלוריות מפריט דל שומן רווי עתיר פחמימות
+  if (R.satFatPct>0) for (let r=0; r<20; r++){ const T=sumNuts(ALLM.flatMap(m=>[...((d.__fx||{})[m]||[]),...(d[m]||[])]).map(nut)); if ((T.satFat||0)*9/Math.max(1,T.kcal||0)*100<=R.satFatPct) break;
+    const c=ALLM.flatMap(m=>free(m).map(x=>({m,x}))).sort((a,b)=>(nut(b.x).satFat||0)-(nut(a.x).satFat||0));
+    const moved=c.some(({m,x})=>{ if (!((nut(x).satFat||0)>0.5)||!grow(x,-1,9,0.5)) return false;
+      if (R.protMealMin>0&&PM.includes(m)&&(mt(m).protein||0)<R.protMealMin-0.3){ grow(x,1,9,0); return false; } return true; }); // בלי לרדת מתחת למינימום החלבון בארוחה
+    if (!moved){ const om=ALLM.filter(m=>isOwnMeal(m)&&!(d.__fx&&d.__fx[m])&&(d[m]||[]).some(x=>x._omni)).sort((a,b)=>(mt(b).satFat||0)-(mt(a).satFat||0))[0];
+      const keep=om&&d[om], s0=om&&(mt(om).satFat||0); if (!om||!omniSwap(om,true)||(mt(om).satFat||0)>=s0){ if (om) d[om]=keep; break; } } }
+  // נתרן עדיין מעל התקרה — בדרך כלל ממנה מן החי מעובדת: מחליפים את ארוחת "משלי" עתירת הנתרן במנה דלה יותר
+  for (let r=0; r<3; r++){ const T=sumNuts(ALLM.flatMap(m=>[...((d.__fx||{})[m]||[]),...(d[m]||[])]).map(nut)); if ((T.sodium||0)<=naCap) break;
+    const om=ALLM.filter(m=>isOwnMeal(m)&&!(d.__fx&&d.__fx[m])&&(d[m]||[]).some(x=>x._omni)).sort((a,b)=>(mt(b).sodium||0)-(mt(a).sodium||0))[0]; if (!om) break;
+    const before=mt(om).sodium||0, keep=d[om]; if (!omniSwap(om,true)||(mt(om).sodium||0)>=before){ d[om]=keep; break; } }
+  carbPass(); /* שלבי הנתרן והשומן הרווי מזיזים מנות — בדיקה אחרונה של טווח הפחמימות */
+  return d; }
+function rxCardioWeek(week, hp, dri, target, excl, isOwn, med){ if (!week||!hp||!hp.rx) return week; const used=new Set(); Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>MEAL_KEYS.forEach(mk=>{ const id=omniIdOf(week[k][mk]); if (id) used.add(id); }));
+  Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>{ const di=+k.slice(1); rxCardioDay(week[k],hp,dri,target,excl,mk=>!!(isOwn&&isOwn(di,mk)),med,used); }); return week; }
 function topUpProteinWeek(week, target, dri, hp, wKg, excl){ if (!week) return week; if (hp&&hp.macroStyle){ Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>{ week[k]=macroStyleDay(week[k],target,dri,excl,+k.slice(1)); }); macroMisoWeek(week,target,dri,excl); } Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>{ if (hp&&hp.menopause){ week[k]=fruitCapDay(week[k],target,dri,excl); week[k]=ensureWholeSoyDay(week[k],target,excl); } topUpProteinDay(week[k],target,dri,hp,wKg,excl); }); capCookiesWeek(week,target,dri,hp,excl); return week; }
 // דייסה/קערה — עד מנה אחת (לבקשת המשתמש: "3 מנות של אותה דייסה בארוחה אחת" — קודם עד 1½ מנה, כ-3 כוסות)
 const isBowlRecipe=fk=>{ const t=TEMP_FDB[fk]; return !!(t&&t._isRecipe&&(/^(דייסה|קערה)$/.test(t._recipeType||"")||/^(דייסת|קערת)/.test(t.he||""))); };
@@ -21557,11 +21613,25 @@ function rxSummaryLines(rx,he){ const L=[]; const nm=(o,k)=>o[k]?(he?o[k].he:o[k
   L.push((he?"חלבון: ":"Protein: ")+(rx.protKg||1.2)+(he?" גר' לק״ג":" g/kg")+(rx.protMealMin?(he?` · לפחות ${rx.protMealMin} גר' בארוחה עיקרית`:` · at least ${rx.protMealMin} g per main meal`):""));
   L.push((he?"נתרן: עד ":"Sodium: up to ")+(rx.naCap||2300)+(he?" מ״ג":" mg")+(rx.satFatPct?(he?` · שומן רווי עד ${rx.satFatPct}%`:` · saturated fat up to ${rx.satFatPct}%`):"")+(rx.carbMeal?(he?` · פחמימות ${rx.carbMeal[0]}–${rx.carbMeal[1]} גר' בארוחה`:` · carbs ${rx.carbMeal[0]}–${rx.carbMeal[1]} g per meal`):""));
   return L; }
-function RxBanner({profile,lang}){ const he=lang==="he"; if (!IS_RESEARCH||!profile||!profile.rx||!profile.rx.__ok) return null; const rx=profile.rx; const exp=rxExpired(profile);
+// עמידה בכללי המרשם בתפריט המתוכנן (מודול 2): ימים בתקרת השומן הרווי, ארוחות בטווח הפחמימות, ארוחות עיקריות עם מספיק חלבון
+function rxComplianceOf(meals,R){ if (!meals||!R) return null; const out={sat:[0,0],carb:[0,0],prot:[0,0]};
+  Object.keys(meals).filter(k=>/^d\d$/.test(k)&&meals[k]).forEach(k=>{ const d=meals[k]; const mt=m=>sumNuts((d[m]||[]).map(x=>ingNut(x.fk,x.g,x.soaked))); const T=sumNuts(MEAL_KEYS.flatMap(m=>d[m]||[]).map(x=>ingNut(x.fk,x.g,x.soaked))); if (!(T.kcal>300)) return;
+    if (R.satFatPct){ out.sat[1]++; if ((T.satFat||0)*9/T.kcal*100<=R.satFatPct+0.05) out.sat[0]++; }
+    ["breakfast","lunch","dinner"].forEach(m=>{ const t=mt(m); if (!(t.kcal>50)) return; if (R.carbMeal){ out.carb[1]++; if ((t.carbs||0)>=R.carbMeal[0]-0.5&&(t.carbs||0)<=R.carbMeal[1]+0.5) out.carb[0]++; }
+      if (R.protMealMin&&m!=="breakfast"){ out.prot[1]++; if ((t.protein||0)>=R.protMealMin-0.5) out.prot[0]++; } }); });
+  return out.sat[1]||out.carb[1]||out.prot[1]?out:null; }
+function RxBanner({profile,lang,meals}){ const he=lang==="he"; if (!IS_RESEARCH||!profile||!profile.rx||!profile.rx.__ok) return null; const rx=profile.rx; const exp=rxExpired(profile);
+  const cmp=!exp&&rxComplianceOf(meals,resolveHealthProfile(profile).rx); const fr=([a,b])=>`${a}/${b}`;
   return <div data-rx-banner style={{background:exp?"#FDECEA":"#EAF1FB",border:`1px solid ${exp?"#e6a39c":"#b8cde8"}`,borderRadius:12,padding:"8px 11px",margin:"6px 0",fontSize:13.5,color:"#1E3A2B",lineHeight:1.5}}>
     <b>🔬 {he?"מחקר":"Study"} {rx.study} · {he?"משתתף/ת":"Participant"} {rx.pid}</b>{rx.arm?<> · {rx.arm}</>:null}
     <div>{exp?(he?"⛔ תוקף המרשם פג — התפריט חזר להגדרות הרגילות. פנו לצוות המחקר.":"⛔ The prescription has expired — the menu is back to regular settings. Contact the research team.")
-      :(he?`התפריט נבנה לפי הנחיות צוות המחקר — עד ${rx.exp?rx.exp.split("-").reverse().join("."):"—"}.`:`The menu follows the research team's instructions — until ${rx.exp||"—"}.`)}{rx.contact?<> {he?"לפניות:":"Contact:"} {rx.contact}</>:null}</div></div>; }
+      :(he?`התפריט נבנה לפי הנחיות צוות המחקר — עד ${rx.exp?rx.exp.split("-").reverse().join("."):"—"}.`:`The menu follows the research team's instructions — until ${rx.exp||"—"}.`)}{rx.contact?<> {he?"לפניות:":"Contact:"} {rx.contact}</>:null}</div>
+    {cmp&&<details data-rx-compliance style={{marginTop:3}}><summary style={{cursor:"pointer",fontSize:12.5,color:"#15507a",fontWeight:700}}>{he?"עמידה במרשם בתפריט השבוע":"Prescription compliance this week"}</summary>
+      <div style={{fontSize:12.5,lineHeight:1.55,marginTop:3}}>
+        {cmp.sat[1]>0&&<div>• {he?`שומן רווי עד ${rx.satFatPct}%: ${fr(cmp.sat)} ימים`:`Saturated fat ≤${rx.satFatPct}%: ${fr(cmp.sat)} days`}</div>}
+        {cmp.carb[1]>0&&<div>• {he?`פחמימות ${rx.carbMeal[0]}–${rx.carbMeal[1]} גר' בארוחה: ${fr(cmp.carb)} ארוחות`:`Carbs ${rx.carbMeal[0]}–${rx.carbMeal[1]} g per meal: ${fr(cmp.carb)} meals`}</div>}
+        {cmp.prot[1]>0&&<div>• {he?`חלבון לפחות ${rx.protMealMin} גר' בצהריים ובערב: ${fr(cmp.prot)} ארוחות`:`Protein ≥${rx.protMealMin} g at lunch and dinner: ${fr(cmp.prot)} meals`}</div>}
+        <div style={{color:"#4A5A50",marginTop:2}}>{he?"לפי התפריט המתוכנן. שינויים ידניים בארוחות יכולים לשנות את התמונה.":"Based on the planned menu. Manual changes to meals can change this."}</div></div></details>}</div>; }
 function RxImportModal({res,lang,onApprove,onClose}){ const he=lang==="he"; if (!res) return null;
   return <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={onClose}>
     <div data-rx-import onClick={e=>e.stopPropagation()} dir={he?"rtl":"ltr"} style={{background:"#FFFFFF",borderRadius:14,padding:"18px 16px",maxWidth:420,width:"100%",color:"#1E3A2B"}}>
@@ -23280,12 +23350,12 @@ function WeeklyCaPBar({plannedTotals,actualTotals,lang,onInfo}){
 // בדיוק כמו KNaPanel/CaPPanel, לבקשת המשתמש. הבדל מכוון אחד: כולסטרול מוצג כ"טווח-ייחוס" ניטרלי (אפור), לא
 // כיעד ירוק/אדום — כי אין תקרה רפואית רשמית עדכנית (ראו חלונית המידע "satfat") ולכן פס ירוק/אדום היה משדר
 // ודאות-מדעית שלא קיימת. שומן רוֹווי כן מקבל יעד רגיל (≤10% מהקלוריות) — שם יש קונצנזוס ברור (AHA/WHO).
-function SatFatCholPanel({totals,lang,onInfo,dayLabel}){
+function SatFatCholPanel({totals,lang,onInfo,dayLabel,satCap=10}){ const sc=satCap, sl=Math.max(1,sc-3); /* מרשם מחקר — התקרה של הצוות (ברירת מחדל 10%) */
   const satFatG=totals.satFat||0;
   const kcalActual=calcKcalActual(totals)||1;
   const satFatPct=Math.round(satFatG*9/kcalActual*100);
   // תלת-גוני: ירוק עד 7%, צהוב 7–10%, אדום מעל 10% (במקום עובר/נכשל בינארי מול 10% בלבד)
-  const satFatColor=triColor(satFatPct,[7,10]);
+  const satFatColor=triColor(satFatPct,[sl,sc]);
   const cholMg=totals.cholesterol||0;
   // כולסטרול — לידיעה בלבד, בצבע ניטרלי (לבקשת המשתמש, אוק' 2026: אין יעד מספרי בהנחיות העדכניות)
   const cholColor="#5b6b62";
@@ -23304,8 +23374,8 @@ function SatFatCholPanel({totals,lang,onInfo,dayLabel}){
           <span style={{fontSize:15,fontWeight:700,color:"#1E3A2B"}}>{lang==="he"?"שומן רוֹווי":"Saturated Fat"}</span>
           <span style={{fontSize:15,fontWeight:800,color:satFatColor}}>{fmtN(satFatG,1)}g ({satFatPct}%)</span>
         </div>
-        <Bar value={satFatPct} goal={10} color={satFatColor} h={8} trackColor="#CFC7B8"/>
-        <div style={{fontSize:15,color:"#1E3A2B",marginTop:3}}>{lang==="he"?"יעד: עד 10% מהקלוריות (ירוק ≤7% · צהוב 7–10% · אדום >10%)":"Target: up to 10% of calories (green ≤7% · yellow 7–10% · red >10%)"}</div>
+        <Bar value={satFatPct} goal={sc} color={satFatColor} h={8} trackColor="#CFC7B8"/>
+        <div style={{fontSize:15,color:"#1E3A2B",marginTop:3}}>{lang==="he"?`יעד: עד ${sc}% מהקלוריות${sc!==10?" (לפי מרשם המחקר)":""} (ירוק ≤${sl}% · צהוב ${sl}–${sc}% · אדום >${sc}%)`:`Target: up to ${sc}% of calories${sc!==10?" (research prescription)":""} (green ≤${sl}% · yellow ${sl}–${sc}% · red >${sc}%)`}</div>
       </div>
       <div style={{background:"#F5F2EB",borderRadius:10,padding:"8px 10px",border:`1px solid ${cholColor}55`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
@@ -23319,7 +23389,7 @@ function SatFatCholPanel({totals,lang,onInfo,dayLabel}){
   );
 }
 const WEEKDAY_SHORT={he:["א","ב","ג","ד","ה","ו","ש"],en:["Su","Mo","Tu","We","Th","Fr","Sa"]};
-function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInfo}){
+function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInfo,satCap=10}){ const sc=satCap, sl=Math.max(1,sc-3);
   const dir=lang==="he"?"rtl":"ltr";
   const pctOf = t => { const kc=calcKcalActual(t)||1; return Math.round((t.satFat||0)*9/kc*100); };
   const plannedPct=pctOf(plannedTotals), actualPct=pctOf(actualTotals);
@@ -23330,10 +23400,10 @@ function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInf
         {onInfo&&<InfoTag infoKey="satfat" lang={lang} onClick={()=>onInfo("satfat")}/>}
       </div>
       <div style={{background:"#F5F2EB",borderRadius:8,padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-        <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"שומן רוֹווי (יעד ≤10%)":"Saturated fat (target ≤10%)"}</span>
+        <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?`שומן רוֹווי (יעד ≤${sc}%)`:`Saturated fat (target ≤${sc}%)`}</span>
         <span style={{display:"flex",gap:10}}>
-          <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"מתוכנן":"Plan"} <b style={{color:triColor(plannedPct,[7,10])}}>{plannedPct}%</b></span>
-          <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"בפועל":"Actual"} <b style={{color:triColor(actualPct,[7,10])}}>{actualPct}%</b></span>
+          <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"מתוכנן":"Plan"} <b style={{color:triColor(plannedPct,[sl,sc])}}>{plannedPct}%</b></span>
+          <span style={{fontSize:15,color:"#1E3A2B"}}>{lang==="he"?"בפועל":"Actual"} <b style={{color:triColor(actualPct,[sl,sc])}}>{actualPct}%</b></span>
         </span>
       </div>
       <div style={{background:"#F5F2EB",borderRadius:8,padding:"6px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -23365,7 +23435,7 @@ function WeeklySatFatCholBar({plannedTotals,actualTotals,dailyData=[],lang,onInf
           <div style={{display:"flex",alignItems:"flex-end",gap:4,height:44}}>
             {dailyData.map((d,i)=>{
               const h=Math.max(3,Math.min(44,Math.round(d.satFatPct/15*44)));
-              const c=triColor(d.satFatPct,[7,10]);
+              const c=triColor(d.satFatPct,[sl,sc]);
               return(
                 <div key={i} title={`${WEEKDAY_SHORT[lang][d.weekday]}: ${d.satFatPct}%`} style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center",height:"100%"}}>
                   <div style={{width:"100%",maxWidth:18,height:h,background:c,borderRadius:"3px 3px 0 0"}}/>
@@ -25454,13 +25524,15 @@ function AppInner(){
         if (!mk) continue; w[k]={...w[k],[mk]:[...w[k][mk],...ad.items.map(([fk,g])=>({fk,g,_id:uid(),_omniSide:1}))]}; break; } }
     return w; };
   const menoSoyWeek=w=>{ if (!w||!hp.menopause||!profile.flex) return w; Object.keys(w).filter(k=>/^d\d$/.test(k)&&w[k]).forEach(k=>{ const di=+k.slice(1); if (MEAL_KEYS.every(mk=>flexOwnMeal(di,mk))) return; w[k]=fruitCapDay(w[k],target,dri,userExclFks,mk=>!flexOwnMeal(di,mk)); w[k]=ensureWholeSoyDay(w[k],target,userExclFks,mk=>!flexOwnMeal(di,mk)); }); return w; };
+  // מרשם מחקר: כללים קרדיו-מטבוליים על השבוע כולו, כולל ארוחות מן החי (rxCardioWeek); בלי מרשם — לא נוגע
+  const rxCardioApp=w=>(w&&rxActive(profile)&&hp.rx)?rxCardioWeek(w,hp,dri,target,userExclFks,flexOwnMeal,profile.omniMed!==false):w;
   const weekGenTok=useRef(0);
   const startWeekGen=()=>{
     const tok=++weekGenTok.current; const cancelled=()=>weekGenTok.current!==tok;
     setWeekPlanLoading(true); setWeekPlanProgress(null);
     generateWeekForModeAsync(weekPlanMode,p=>{ if(!cancelled()) setWeekPlanProgress(p); },cancelled)
       .then(w=>{ if(cancelled()) return; const w1=w?Object.fromEntries(Object.entries(w).map(([k,d])=>[k,flexOwnDay(+String(k).slice(1))?Object.fromEntries(MEAL_KEYS.map(mk=>{ const a0=(meals[k]||{})[mk]||[]; return [mk,weekPlanMode==="completeWeek"?a0:[]]; })) /* יום משלי: בתפריט חדש לשבוע — מנה מן החי חדשה (באג: יום שהיה צמחי ועבר ל"משלי" נשאר צמחי, כי התוכן הקודם נחשב "מה שהמשתמש מילא"); ב"השלם שבוע" — מה שיש נשאר */:(()=>{ const c=consolidateMealSalads(d), di=+String(k).slice(1); return Object.fromEntries(Object.entries(c||{}).map(([mk,a])=>[mk,MEAL_KEYS.includes(mk)&&flexOwnMeal(di,mk)?(weekPlanMode==="completeWeek"&&omniIdOf(meals[k]?.[mk])?meals[k][mk]:[]):a])); })()])):w;
-        const w2=menoCalciumWeek(menoSoyWeek(w1&&profile.flex?omniPlanFill(w1,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false):w1)); /* ארוחות משלי — הצעת מנה מן החי לפי היעד (נספרת בתזונה) */ setWeekPlanData(w2); /* יום משלי — בתצוגה המקדימה כמו שהוא */ setWeekPlanLoading(false);
+        const w2=rxCardioApp(menoCalciumWeek(menoSoyWeek(w1&&profile.flex?omniPlanFill(w1,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false):w1))); /* ארוחות משלי — הצעת מנה מן החי לפי היעד (נספרת בתזונה) */ setWeekPlanData(w2); /* יום משלי — בתצוגה המקדימה כמו שהוא */ setWeekPlanLoading(false);
         if (autoWeek){ if (w2){ handleApplyWeekPlan(weekPlanMode==="completeWeek"?changedDaysOnly(w2):w2,weekPlanMode==="completeWeek"); } setWeekPlanOpen(false); } })
       .catch(e=>{ console.error(e); if(!cancelled()) setWeekPlanLoading(false); });
   };
@@ -25960,7 +26032,7 @@ function AppInner(){
           day[mk]=flexOwnMeal(di,mk)?(keepOwn&&p0.length&&!omniIdOf(p0)?p0:((week[dk]||{})[mk]||[]).filter(it=>it._omni||it._omniSide).map(it=>({...it,_id:uid()}))):((week[dk]||{})[mk]||[]).map(it=>({fk:it.fk,g:it.g,_id:uid()})); }); /* ארוחה משלי — רק הצעת המנה מן החי */
         next[dk]=day;
       });
-      const filled=menoCalciumWeek(menoSoyWeek(profile.flex?{...next,...omniPlanFill(next,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false)}:next)); /* ארוחה משלי ריקה — מקבלת מנה */
+      const filled=rxCardioApp(menoCalciumWeek(menoSoyWeek(profile.flex?{...next,...omniPlanFill(next,flexOwnMeal,target,userExclFks,false,profile.omniMed!==false)}:next))); /* ארוחה משלי ריקה — מקבלת מנה */
       save("wfpb_meals",filled);
       return filled;
     });
@@ -26363,8 +26435,8 @@ function AppInner(){
   const satFatSectionNode=(
     <div style={microSectionCardStyle}>
       <div style={microSectionTitleStyle}>🥓 {lang==="he"?"שומן רוֹווי / כולסטרול":"Saturated Fat / Cholesterol"}</div>
-      <SatFatCholPanel totals={displayTotals} lang={lang} onInfo={setInfoOpen} dayLabel={satFatDayLabel}/>
-      <WeeklySatFatCholBar plannedTotals={weeklyPlannedTotals} actualTotals={weeklyActualTotals} dailyData={weeklyDailySatFatChol} lang={lang} onInfo={setInfoOpen}/>
+      <SatFatCholPanel totals={displayTotals} lang={lang} onInfo={setInfoOpen} dayLabel={satFatDayLabel} satCap={hp.rx&&hp.rx.satFatPct||10}/>
+      <WeeklySatFatCholBar plannedTotals={weeklyPlannedTotals} actualTotals={weeklyActualTotals} dailyData={weeklyDailySatFatChol} lang={lang} onInfo={setInfoOpen} satCap={hp.rx&&hp.rx.satFatPct||10}/>
     </div>
   );
   const microVitSectionNode=(
@@ -26755,7 +26827,7 @@ function AppInner(){
               {cookToday.cook.map(({fk,tmr})=><div key={fk}>• {foodName(fk,lang)}{tmr?<span style={{color:"#8C6D53",fontWeight:700}}>{he?" — גם למחר":" — for tomorrow too"}</span>:null}</div>)}
               {cookToday.ready.map(fk=><div key={fk} style={{color:"#4A5A50"}}>♻️ {foodName(fk,lang)}{he?" — מאתמול":" — from yesterday"}</div>)}
             </div>}</div>; })()}
-        {tab==="meals"&&<RxBanner profile={profile} lang={lang}/>}
+        {tab==="meals"&&<RxBanner profile={profile} lang={lang} meals={meals}/>}
         {rxPending&&!firstDisc&&<RxImportModal res={rxPending} lang={lang} onClose={()=>setRxPending(null)} onApprove={()=>{ const r=rxPending; setProfile(p=>rxApplyToProfile(p,{...r.payload,__ok:true,__code:r.code})); setRxPending(null); }}/>}
         {tab==="meals"&&!weekIsEmpty&&!planBlock&&dayIdx===new Date().getDay()&&(()=>{ const r=(actLog||{})[trackToday]; if (!r||!(+r.min>=20)) return null; const he=lang==="he";
           // יום אימון (מהתיעוד ב״🏃 פעילות גופנית״): הארוחה העשירה ביותר בחלבון היום — לאחרי האימון
