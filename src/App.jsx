@@ -21,7 +21,14 @@ const ACT_HINT={sedentary:{he:"פחות מ־5,000 צעדים ביום, ובלי 
 const ACT_RULE={he:"אימון = פעילות מתוכננת של 30 דקות ומעלה (גם כוח, פילאטיס, יוגה). בוחרים את הגבוה מבין צעדים ואימונים.",en:"Workout = planned activity of 30+ minutes (strength, Pilates, yoga too). Pick the higher of steps and workouts."};
 const ACTIVITY={sedentary:{he:"יושבנית",en:"Sedentary",factor:1.2},low:{he:"קלה",en:"Light",factor:1.375},medium:{he:"בינונית",en:"Moderate",factor:1.55},high:{he:"גבוהה",en:"High",factor:1.725}};
 // בטיחות (ביקורת דיאטנית): עם BMI מתחת ל-18.5 לא בונים גירעון קלורי — "ירידה" נחסמת ומטופלת כ"שמירה"
-const bmiOfProfile=p=>{ const h=+p?.height, w=+p?.weight; return h&&w?w/((h/100)**2):null; };
+// בדיקת סבירות (לבקשת המשתמש: BMI 699 — גובה ומשקל הוזנו הפוך): ערך מחוץ לטווח לא נכנס לחישובים, ומוצגת הודעה
+const BODY_RANGE={height:[120,230],weight:[30,300]};
+const bodyBad=(k,v)=>{ const n=+v; return n>0&&(n<BODY_RANGE[k][0]||n>BODY_RANGE[k][1]); };
+const bodySwapped=p=>{ const h=+p?.height,w=+p?.weight; return h>0&&w>0&&h<100&&w>=100; };
+const BODY_MSG={height:{he:"גובה בס״מ — בין 120 ל-230",en:"Height in cm — between 120 and 230"},weight:{he:"משקל בק״ג — בין 30 ל-300",en:"Weight in kg — between 30 and 300"}};
+function BodySwapNotice({lang,onSwap}){ const he=lang==="he"; return <div data-body-swap style={{background:"#FDECEA",border:"1px solid #e6a39c",borderRadius:10,padding:"8px 10px",fontSize:13,color:"#1E3A2B",lineHeight:1.45}}>
+  {he?"נראה שהגובה והמשקל הוחלפו (גובה בס״מ, משקל בק״ג).":"Height and weight look swapped (height in cm, weight in kg)."} <button data-body-swap-btn onClick={onSwap} style={{marginInlineStart:6,background:"#b3261e",color:"#FFFFFF",border:"none",borderRadius:8,padding:"5px 10px",fontSize:13,fontWeight:700,cursor:"pointer"}}>{he?"להחליף ביניהם":"Swap them"}</button></div>; }
+const bmiOfProfile=p=>{ const h=+p?.height, w=+p?.weight; return h&&w&&!bodyBad("height",h)&&!bodyBad("weight",w)?w/((h/100)**2):null; };
 // ימים שלא תועדו — לפי התפריט, כברירת מחדל (לבקשת המשתמש: רוב האנשים מפסיקים לתעד; מסמנים רק מה שהשתנה)
 const assumePlannedOf=p=>p?.assumePlanned!==false;
 const hasED=p=>(p?.medical||[]).includes("ed"); // הפרעת אכילה (כעת או בעבר) — בלי ירידה במשקל ובלי קלוריות לכל פריט
@@ -1082,7 +1089,7 @@ function formatShoppingQty(fk,g,fd,lang){
   return weightStr(g);
 }
 function totalNut(ings){return sumNuts(ings.map(({fk,g,soaked})=>ingNut(fk,g,soaked)));}
-function calcTDEE(h,w,age,sex,act){if(!h||!w)return null;const bmr=sex==="male"?10*w+6.25*h-5*age+5:10*w+6.25*h-5*age-161;return Math.round(bmr*(ACTIVITY[act]?.factor||1.55));}
+function calcTDEE(h,w,age,sex,act){if(!h||!w||bodyBad("height",h)||bodyBad("weight",w))return null;const bmr=sex==="male"?10*w+6.25*h-5*age+5:10*w+6.25*h-5*age-161;return Math.round(bmr*(ACTIVITY[act]?.factor||1.55));}
 // מקור אמת יחיד: פחמימות נטו×4 + סיבים×2 + חלבון×4 + שומן×9
 // אחוזים נגזרים מקלוריות בפועל, פחמימות=השלמה ל-100% למניעת 99/101%
 // מקור הזרחן (לבקשת המשתמש — הסבר יחס סידן:זרחן תלוי-מקור): כמה מהזרחן מגיע ממוצרים מן החי (חלב/גבינה/ביצים,
@@ -21476,6 +21483,9 @@ const SENS_GROUPS={
   nuts:{he:"אגוזים",en:"Tree nuts",fks:["pecans","pineNuts","almonds","walnuts","hazelnuts","cashews","pistachio","brazilNuts","almondbutter"]},
   peanuts:{he:"בוטנים",en:"Peanuts",fks:["omBamba","peanuts","peanutButter"]},
   sesame:{he:"שומשום",en:"Sesame",fks:["omHummusSalad","sesame","tahiniFullRaw","tahiniRaw"]},
+  // לקטוז (לבקשת המשתמש): בלי חלב, לבן, יוגורט וגבינות טריות; גבינות קשות ובשלות (צהובה, פטה, מוצרלה) דלות מאוד בלקטוז ונשארות.
+  // מוצג רק למי שאוכל/ת חלב וביצים
+  lactose:{he:"לקטוז (חלב)",en:"Lactose (milk)",dairy:true,fks:["milk3pct","milk1pct","leben","yogurtPlain3","yogurtGreek","cottageCheese5","whiteCheese5","creamCheese5"]},
   // פסח (לבקשת המשתמש — מצבים ישראליים): חמץ = חיטה, שעורה, כוסמין, שיבולת שועל; קטניות לפסח (מנהג אשכנז) = קטניות,
   // סויה, אורז, תירס, כוסמת, בוטנים ושומשום. קינואה נשארת (רוב הפוסקים מתירים — יש לבדוק הכשר)
   passover:{he:"פסח — ללא חמץ",en:"Passover — no chametz",fks:["omSchnitzel","omWhiteBread","omChallah","omPita","omBun","omPtitim","omPasta","omPastaTomato","omBurekas","omPizza","omCake","omCookies","omCrackers","omCornflakes","omGranola","omHamin","ryeBread","speltCooked","wholeWheatBread","wholePita","bulgurCooked","bulgurDry","couscous","couscousCooked","wholeWPasta","freekeh","spelledFlour","pearlBarleyCooked","pearlBarleyDry","oatsCooked","oatsThinRaw","oatsMedRaw","oatsThickRaw","oatFlour","oatMilk","wheatGerm"]},
@@ -21873,7 +21883,7 @@ function buildPractitionerReportHTML({lang,profile,dri,hp,target,hist,weekStart,
   const dayName=dk=>(he?WEEK_DAYS_HE:WEEK_DAYS_EN)[weekdayOfDateKey(dk)];
   const dispDate=dk=>{ const p=(dk||"").split("-"); return p.length===3?`${+p[2]}.${+p[1]}.${p[0]}`:dk; };
   const h=+profile.height||0, w=+profile.weight||0, age=+profile.age||0;
-  const bmi=h&&w?fmtN(w/((h/100)**2),1):null;
+  const bmi=bmiOfProfile(profile)!=null?fmtN(bmiOfProfile(profile),1):null;
   const sexTxt=profile.sex==="female"?(he?"אישה":"Female"):(he?"גבר":"Male");
   const sens=(profile.sensitivities||[]).map(k=>SENS_GROUPS[k]?.[lang]||k).join(", ");
   const medFl=medicalFlagsOf(profile); const medTxt=medFl.length?medFl.map(k=>MEDICAL_FLAGS[k][lang]).join(", ")+(profile.dietitian?(he?" — הצהיר/ה על ליווי דיאטן/ית":" — declared dietitian supervision"):(he?" — ללא הצהרת ליווי":" — no supervision declared")):((profile.medical||[]).includes("none")?(he?"דווח: אין":"Reported: none"):(he?"לא נענה":"Not answered"));
@@ -22340,13 +22350,14 @@ const dietOf=p=>p.flex?"omni":p.eatsDairyEggs?"veg":"vegan";
 function ProfileWizard({profile,setProfile,target,lang,onClose,onFinish,onInfo}){
   const he=lang==="he", tx=T[lang]; const[step,setStep]=useState(0); const[showSens,setShowSens]=useState(!!(profile.sensitivities||[]).length);
   const set=(k,v)=>setProfile(p=>({...p,[k]:v})); const h=+profile.height,w=+profile.weight,age=+profile.age;
-  const bmi=h&&w?w/((h/100)*(h/100)):null; const goal=effectiveGoal(profile); const med=profile.medical||[];
-  const ageBad=age>0&&age<18; const ok=[!!(h&&w&&age)&&!ageBad,true,true,med.length>0][step];
+  const bmi=bmiOfProfile(profile); const goal=effectiveGoal(profile); const med=profile.medical||[];
+  const[foc,setFoc]=useState(null); const[swapN,setSwapN]=useState(0); const swapped=bodySwapped(profile);
+  const ageBad=age>0&&(age<18||age>110); const ok=[!!(h&&w&&age)&&!ageBad&&!bodyBad("height",h)&&!bodyBad("weight",w),true,true,med.length>0][step];
   const box={background:"#F5F2EB",borderRadius:12,padding:"10px 12px",border:"1px solid #E2DED4"};
   const big=on=>({flex:1,padding:"12px 6px",borderRadius:12,border:on?"2px solid #2e7d32":"1px solid #D9D3C5",background:on?"#E8F3EA":"#FFFFFF",color:"#1E3A2B",fontSize:15,fontWeight:on?800:600,cursor:"pointer",lineHeight:1.35});
   const chip=(on,c)=>({padding:"7px 12px",borderRadius:20,border:on?"none":"1px solid #D9D3C5",background:on?c:"#FFFFFF",color:on?"#FFFFFF":"#1E3A2B",fontSize:13,fontWeight:700,cursor:"pointer"});
-  const num=(k,l,ph)=><label key={k} style={{...box,display:"block",flex:1}}><div style={{fontSize:12,color:"#6B7C72",marginBottom:4}}>{l}</div>
-    <input data-wiz={k} type="text" inputMode="decimal" placeholder={he?`למשל ${ph}`:`e.g. ${ph}`} defaultValue={profile[k]||""} onChange={e=>set(k,e.target.value.replace(/[^0-9.]/g,""))}
+  const num=(k,l,ph)=><label key={k+swapN} style={{...box,display:"block",flex:1}}><div style={{fontSize:12,color:"#6B7C72",marginBottom:4}}>{l}</div>
+    <input data-wiz={k} type="text" inputMode="decimal" placeholder={he?`למשל ${ph}`:`e.g. ${ph}`} defaultValue={profile[k]||""} onChange={e=>set(k,e.target.value.replace(/[^0-9.]/g,""))} onFocus={()=>setFoc(k)} onBlur={()=>setFoc(null)}
       style={{width:"100%",background:"transparent",border:"none",outline:"none",fontSize:22,fontWeight:800,color:"#1E3A2B",textAlign:"center",boxSizing:"border-box"}}/></label>;
   const titles=he?["קצת עליך","פעילות ומטרה","מה את/ה אוכל/ת?","בריאות"]:["About you","Activity and goal","What do you eat?","Health"];
   const subs=he?["כדי לחשב כמה קלוריות וכמה חלבון, ויטמינים ומינרלים מתאימים לך.","אפשר לשנות בכל רגע בפרופיל.","התפריט ייבנה לפי הבחירה.","האפליקציה מיועדת למבוגרים בריאים."]
@@ -22358,7 +22369,9 @@ function ProfileWizard({profile,setProfile,target,lang,onClose,onFinish,onInfo})
     <div key="0" style={{display:"flex",flexDirection:"column",gap:10}}>
       <div style={{display:"flex",gap:8}}>{[["male",tx.male],["female",tx.female]].map(([k,l])=><button key={k} data-wiz-sex={k} onClick={()=>set("sex",k)} style={big((profile.sex||"male")===k)}>{l}</button>)}</div>
       <div style={{display:"flex",gap:8}}>{num("age",tx.age,"35")}{num("height",tx.height,"170")}{num("weight",tx.weight,"70")}</div>
-      {ageBad&&<div style={{fontSize:13,color:"#c62828"}}>{he?"האפליקציה מיועדת לגיל 18 ומעלה.":"The app is for ages 18 and over."}</div>}
+      {ageBad&&<div style={{fontSize:13,color:"#c62828"}}>{age>110?(he?"גיל — בשנים (עד 110)":"Age in years (up to 110)"):(he?"האפליקציה מיועדת לגיל 18 ומעלה.":"The app is for ages 18 and over.")}</div>}
+      {swapped?<BodySwapNotice lang={lang} onSwap={()=>{ setProfile(p=>({...p,height:p.weight,weight:p.height})); setSwapN(n=>n+1); }}/>
+        :["height","weight"].filter(k=>foc!==k&&bodyBad(k,profile[k])).map(k=><div key={k} data-body-bad={k} style={{fontSize:13,color:"#c62828"}}>{BODY_MSG[k][he?"he":"en"]}</div>)}
     </div>,
     <div key="1" style={{display:"flex",flexDirection:"column",gap:12}}>
       <div><div style={{fontSize:13,fontWeight:700,color:"#1E3A2B",marginBottom:6}}>{he?"כמה את/ה פעיל/ה ביום־יום?":"How active are you day to day?"}</div>
@@ -22375,7 +22388,7 @@ function ProfileWizard({profile,setProfile,target,lang,onClose,onFinish,onInfo})
       {diets.map(([k,e,l,d])=>{ const on=dietOf(profile)===k; return <button key={k} data-wiz-diet={k} onClick={()=>setDiet(k)} style={{...big(on),display:"flex",alignItems:"center",gap:10,textAlign:"start",padding:"11px 12px"}}>
         <span style={{fontSize:24}}>{e}</span><span><span style={{display:"block",fontSize:15.5}}>{on?"✓ ":""}{l}</span><span style={{display:"block",fontSize:12,fontWeight:500,color:"#4A5A50",marginTop:2}}>{d}</span></span></button>; })}
       <button onClick={()=>setShowSens(s=>!s)} style={{background:"transparent",border:"none",color:"#2277a8",fontSize:13,fontWeight:700,cursor:"pointer",textAlign:"start",padding:"4px 0"}}>{showSens?"▾":(he?"◂":"▸")} {he?"יש לי אלרגיה או רגישות":"I have an allergy or sensitivity"}</button>
-      {showSens&&<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{Object.entries(SENS_GROUPS).map(([k,g])=>{ const on=(profile.sensitivities||[]).includes(k); return <button key={k} onClick={()=>setProfile(p=>{ const c=p.sensitivities||[]; return {...p,sensitivities:c.includes(k)?c.filter(x=>x!==k):[...c,k]}; })} style={chip(on,"#c62828")}>{on?"🚫 ":""}{he?g.he:g.en}</button>; })}</div>}
+      {showSens&&<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{Object.entries(SENS_GROUPS).filter(([,g])=>!g.dairy||profile.eatsDairyEggs).map(([k,g])=>{ const on=(profile.sensitivities||[]).includes(k); return <button key={k} onClick={()=>setProfile(p=>{ const c=p.sensitivities||[]; return {...p,sensitivities:c.includes(k)?c.filter(x=>x!==k):[...c,k]}; })} style={chip(on,"#c62828")}>{on?"🚫 ":""}{he?g.he:g.en}</button>; })}</div>}
     </div>,
     <div key="3" style={{display:"flex",flexDirection:"column",gap:10}}>
       <button data-wiz-none onClick={()=>set("medical",med.includes("none")?[]:["none"])} style={{...big(med.includes("none")),padding:"14px 10px"}}>{med.includes("none")?"✓ ":""}{he?"אין לי מצב רפואי או תרופה קבועה":"I have no medical condition or regular medication"}</button>
@@ -22396,16 +22409,16 @@ function ProfileWizard({profile,setProfile,target,lang,onClose,onFinish,onInfo})
         {step>0&&<button onClick={()=>setStep(s=>s-1)} style={{flex:1,padding:"12px 0",borderRadius:12,border:"1px solid #D9D3C5",background:"#FFFFFF",color:"#1E3A2B",fontSize:14,fontWeight:700,cursor:"pointer"}}>{he?"→ חזרה":"← Back"}</button>}
         <button data-wiz-next disabled={!ok} onClick={()=>{ if(!last) setStep(s=>s+1); else onFinish(); }} style={{flex:2,padding:"12px 0",borderRadius:12,border:"none",background:ok?"#2e7d32":"#A9B8AE",color:"#FFFFFF",fontSize:15,fontWeight:800,cursor:ok?"pointer":"default"}}>
           {last?(medicalFlagsOf(profile).length?(he?"סיום — לפרופיל":"Finish — to profile"):(he?"סיום ← למסך הארוחות":"Finish → to my meals")):(he?"המשך ←":"Next →")}</button></div>
-      {!ok&&step===0&&<div style={{fontSize:11.5,color:"#6B7C72",marginTop:6,textAlign:"center"}}>{he?"ממלאים גיל, גובה ומשקל כדי להמשיך":"Fill in age, height and weight to continue"}</div>}
+      {!ok&&step===0&&<div style={{fontSize:11.5,color:"#6B7C72",marginTop:6,textAlign:"center"}}>{(h&&w&&age)?(he?"יש לתקן את הערכים המסומנים כדי להמשיך":"Fix the marked values to continue"):(he?"ממלאים גיל, גובה ומשקל כדי להמשיך":"Fill in age, height and weight to continue")}</div>}
       {!ok&&step===3&&<div style={{fontSize:11.5,color:"#6B7C72",marginTop:6,textAlign:"center"}}>{he?"בוחרים ״אין״ או מצב רפואי":"Choose 'None' or a condition"}</div>}
     </div></div>);
 }
 function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,setRememberProfile,compact,sheet,onOpenSheet}){ // sheet — גוף הפרופיל בתוך חלון "הפרופיל וההגדרות שלי"; onOpenSheet — הפס/הכפתור פותחים את החלון
   // ageErr: גיל מתחת ל-18 — לא נשמר (האפליקציה למבוגרים בלבד)
-  const[open,setOpen]=useState(false); const[ageErr,setAgeErr]=useState(false); const tx=T[lang];const goal=effectiveGoal(profile);
+  const[open,setOpen]=useState(false); const[ageErr,setAgeErr]=useState(false); const[pfoc,setPfoc]=useState(null); const[pswapN,setPswapN]=useState(0); const tx=T[lang];const goal=effectiveGoal(profile);
   useEffect(()=>{ if (onOpenSheet) return; const f=()=>setOpen(true); window.addEventListener("pv-open-profile",f); return ()=>window.removeEventListener("pv-open-profile",f); },[]); // "למילוי הפרופיל" — בלי onOpenSheet פותח את הפאנל (עם — החלון המאוחד נפתח מ-App)
   const h=+profile.height,w=+profile.weight;
-  const bmi=h&&w?fmtN(w/((h/100)*(h/100)),1):null;
+  const bmi=bmiOfProfile(profile)!=null?fmtN(bmiOfProfile(profile),1):null;
   const bmiColor=!bmi?"#6B7C72":bmi<18.5?"#3a7bc8":bmi<25?"#2e7d32":bmi<30?"#b8860b":bmi<35?"#b8722e":"#c62828";
   const bmiLabel=!bmi?"":lang==="he"?(bmi<18.5?"תת-משקל":bmi<25?"תקין":bmi<30?"עודף משקל":"השמנה"):(bmi<18.5?"Under":bmi<25?"Normal":bmi<30?"Overweight":"Obese");
   return(
@@ -22442,7 +22455,7 @@ function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,set
             כיבתה את השמירה. עכשיו שורת מידע בלבד; "לא לזכור" — רק ב-👤 הפרופיל שלי */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:9}}>
           {[{k:"height",l:tx.height,ph:"170"},{k:"weight",l:tx.weight,ph:"70"},{k:"age",l:tx.age,ph:"35"}].map(({k,l,ph})=>(
-            <div key={k} style={{background:"#F5F2EB",borderRadius:10,padding:"9px 10px",border:"1px solid #E2DED4"}}>
+            <div key={k+pswapN} style={{background:"#F5F2EB",borderRadius:10,padding:"9px 10px",border:"1px solid #E2DED4"}}>
               <div style={{fontSize:11,color:"#6B7C72",marginBottom:4}}>{l}</div>
               {/* תיקון (לבקשת המשתמש: "לא צריך להתרוקן כשנוגעים, צריך להיות ריק מלכתחילה") — לא פעולת-JS-
                   שמתרחשת-במגע (onFocus/onBlur, כמו בסבב הקודם); השדה עצמו לא-נשלט (defaultValue, לא value) —
@@ -22453,8 +22466,9 @@ function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,set
                 onChange={e=>{const v=e.target.value.replace(/[^0-9.]/g,"");
                   if (k==="age") { const n=parseFloat(v); if (v && n<18) { setAgeErr(v.length>=2); return; } setAgeErr(false); }
                   setProfile(p=>({...p,[k]:v}));}}
-                onBlur={k==="age"?(e=>{const n=parseFloat(e.target.value); setAgeErr(!!e.target.value&&n<18);}):undefined}
+                onFocus={()=>setPfoc(k)} onBlur={e=>{ setPfoc(null); if (k==="age"){ const n=parseFloat(e.target.value); setAgeErr(!!e.target.value&&n<18); } }}
                 className="profile-num-input" style={{width:"100%",background:"transparent",border:"none",color:"#1E3A2B",fontSize:17,fontWeight:700,outline:"none",textAlign:"center",boxSizing:"border-box"}}/>
+              {k!=="age"&&pfoc!==k&&!bodySwapped(profile)&&bodyBad(k,profile[k])&&<div data-body-bad={k} style={{fontSize:11,color:"#c62828",marginTop:3,textAlign:"center",lineHeight:1.3}}>{BODY_MSG[k][lang==="he"?"he":"en"]}</div>}
               {k==="age"&&(ageErr||(+profile.age>0&&+profile.age<18))&&<div style={{fontSize:11,color:"#c62828",marginTop:3,textAlign:"center",lineHeight:1.3}}>{lang==="he"?"האפליקציה מיועדת לגיל 18 ומעלה — התכנון חסום":"For ages 18+ only — planning is blocked"}</div>}
             </div>
           ))}
@@ -22465,6 +22479,7 @@ function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,set
             </select>
           </div>
         </div>
+        {bodySwapped(profile)&&<div style={{marginBottom:9}}><BodySwapNotice lang={lang} onSwap={()=>{ setProfile(p=>({...p,height:p.weight,weight:p.height})); setPswapN(n=>n+1); }}/></div>}
         <div style={{background:"#F5F2EB",borderRadius:10,padding:"9px 10px",border:"1px solid #E2DED4",marginBottom:9}}>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
             <span style={{fontSize:11,color:"#6B7C72"}}>{tx.activity}</span>
@@ -22551,12 +22566,14 @@ function Profile({profile,setProfile,tdee,target,lang,onInfo,rememberProfile,set
         <div style={{background:"#F5F2EB",borderRadius:10,padding:"9px 10px",border:"1px solid #E2DED4",marginTop:9}}>
           <div style={{fontSize:11,color:"#6B7C72",marginBottom:6}}>{lang==="he"?"רגישויות, אלרגיות ופסח — מזונות ומתכונים עם הרכיבים שנבחרו לא יוצעו":"Sensitivities, allergies & Passover — foods and recipes containing the selected items won't be suggested"}</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-            {Object.entries(SENS_GROUPS).map(([k,g])=>{ const on=(profile.sensitivities||[]).includes(k); return (
+            {Object.entries(SENS_GROUPS).filter(([,g])=>!g.dairy||profile.eatsDairyEggs).map(([k,g])=>{ const on=(profile.sensitivities||[]).includes(k); return (
               <button key={k} onClick={()=>setProfile(p=>{ const cur=p.sensitivities||[]; return {...p,sensitivities:cur.includes(k)?cur.filter(x=>x!==k):[...cur,k]}; })} style={{padding:"5px 11px",borderRadius:20,border:on?"none":"1px solid #D9D3C5",background:on?(k==="vegan"?"#2e7d32":"#c62828"):"#FFFFFF",color:on?"white":"#1E3A2B",fontSize:12,fontWeight:700,cursor:"pointer"}}>{on?(k==="vegan"?"🌱 ":"🚫 "):""}{lang==="he"?g.he:g.en}</button>); })}
           </div>
           {(profile.sensitivities||[]).includes("soy")&&<div style={{fontSize:11,color:"#a6440f",marginTop:5}}>{lang==="he"?"ללא סויה קשה יותר להגיע ליעד הסידן — מומלץ משקה צמחי מועשר בסידן (שיבולת שועל / שקדים).":"Without soy, calcium is harder to reach — a calcium-fortified plant milk (oat / almond) is recommended."}</div>}
           {(profile.sensitivities||[]).includes("kitniyot")&&<div style={{fontSize:11,color:"#a6440f",marginTop:5}}>{lang==="he"?"ללא קטניות, סויה ודגנים כמעט אין מקורות חלבון צמחיים — מומלץ לבחור בתכנון \"שלב מוצרים מן החי\" (ביצים ומוצרי חלב) לימי החג.":"Without legumes, soy and grains there are almost no plant protein sources — for the holiday, choose planning with animal products (eggs and dairy)."}</div>}
           {(profile.sensitivities||[]).some(k=>k==="passover"||k==="kitniyot")&&<div style={{fontSize:11,color:"#6B7C72",marginTop:5}}>{lang==="he"?"זכרו לבטל את מצב פסח אחרי החג. קינואה נשארת בתפריט — יש לבדוק הכשר לפסח.":"Remember to turn Passover mode off after the holiday. Quinoa stays on the menu — check for Passover certification."}</div>}
+          {(profile.sensitivities||[]).includes("lactose")&&profile.eatsDairyEggs&&<div data-lactose-note style={{fontSize:11,color:"#6B7C72",marginTop:5}}>{lang==="he"?"מוצרים נטולי לקטוז מתאימים — הערכים התזונתיים שלהם כמעט זהים, ואפשר לרשום אותם ביומן כמו חלב רגיל. גבינות קשות (צהובה, פטה, מוצרלה) נשארות בתפריט — יש בהן מעט מאוד לקטוז.":"Lactose-free products are fine — their nutrition is nearly the same, so log them like regular milk. Hard cheeses (yellow, feta, mozzarella) stay on the menu — they contain very little lactose."}</div>}
+          <div data-never-tip style={{fontSize:11,color:"#6B7C72",marginTop:6,lineHeight:1.45}}>{lang==="he"?"רוצים להוציא רק מזון אחד (למשל משקה סויה)? בחיפוש של ״✏️ בנה וערוך״ לוחצים 🚫 ליד המזון. הרשימה — בהגדרות ← ״🚫 לעולם לא להציע״.":"Want to drop just one food (e.g. soy milk)? Tap 🚫 next to it in the '✏️ Build & edit' search. The list is in Settings → '🚫 Never suggest'."}</div>
           {(profile.sensitivities||[]).includes("gluten")&&<div style={{fontSize:11,color:"#6B7C72",marginTop:5}}>{lang==="he"?"שיבולת שועל נשארת בתפריט — יש לבחור מוצר המסומן \"ללא גלוטן\".":"Oats stay on the menu — choose a product labeled gluten-free."}</div>}
         </div>
         </details>
