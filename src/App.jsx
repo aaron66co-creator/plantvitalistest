@@ -21609,12 +21609,14 @@ const medicalFlagsOf=p=>(p?.medical||[]).filter(k=>MEDICAL_FLAGS[k]);
 const RESEARCH_PUBKEYS=[{"kid":"kmvae5n4k","x":"c_w50LRQLeiHAjdk1RirHstVRkLjhb5v8enl9ue77Zw","y":"3bgDU3Z_eiXTimQdqgTvK6SHWlcRMXhvE7gbjrZ5Sf0"}];
 const RX_DX={obesity:{he:"השמנה / עודף משקל",en:"Obesity / overweight"},prediabetes:{he:"טרום סוכרת",en:"Prediabetes"},t2d:{he:"סוכרת סוג 2 (בלי אינסולין או סולפונילאוריאה)",en:"Type 2 diabetes (no insulin or sulfonylurea)"},
   masld:{he:"כבד שומני",en:"Fatty liver (MASLD)"},htn:{he:"יתר לחץ דם",en:"High blood pressure"},dyslipidemia:{he:"שומנים בדם (LDL גבוה)",en:"Dyslipidemia (high LDL)"}};
-const RX_MEDS={glp1:{he:"GLP-1 / GIP (סמגלוטייד, טירזפטייד)",en:"GLP-1 / GIP (semaglutide, tirzepatide)"},metformin:{he:"מטפורמין",en:"Metformin"},sglt2:{he:"SGLT2",en:"SGLT2"},statin:{he:"סטטין",en:"Statin"},bp:{he:"תרופה ללחץ דם (לא ACE/ARB/ספירונולקטון)",en:"Blood pressure drug (not ACE/ARB/spironolactone)"}};
+const RX_MEDS={glp1:{he:"GLP-1 / GIP (סמגלוטייד, טירזפטייד)",en:"GLP-1 / GIP (semaglutide, tirzepatide)"},metformin:{he:"מטפורמין",en:"Metformin"},sglt2:{he:"SGLT2",en:"SGLT2"},statin:{he:"סטטין",en:"Statin"},bp:{he:"תרופה ללחץ דם (לא ACE/ARB/ספירונולקטון)",en:"Blood pressure drug (not ACE/ARB/spironolactone)"},acearb:{he:"ACE / ARB / ספירונולקטון (תפקוד כליות תקין)",en:"ACE / ARB / spironolactone (normal kidney function)"}};
 const RX_COVERED=new Set(["diabetes","htn"]); // דגלים שמרשם בתוקף פותח
+// תרופות שמעלות אשלגן (לבקשת המשתמש): מאושרות רק כשהצוות סימן במרשם ACE/ARB/ספירונולקטון עם תפקוד כליות תקין. מחלת כליות — חוסמת תמיד
+const rxCovers=(p,k)=>rxActive(p)&&(RX_COVERED.has(k)||(k==="kmeds"&&(p.rx.meds||[]).includes("acearb")));
 // גרסת המחקר (לבקשת המשתמש): בשאלת הבריאות רק מצבים רלוונטיים — האבחנות הקרדיו-מטבוליות מגיעות מהמרשם, ומהמשתתף/ת
 // נשאלים רק מצבים שמחייבים בדיקה עם הצוות (התפריט עלול להזיק). בלי מרשם — גם סוכרת ויתר לחץ דם
 const RX_SAFETY_FLAGS=["ckd","anticoag","kmeds","preg","ed","other"];
-const medFlagsShown=p=>Object.keys(MEDICAL_FLAGS).filter(k=>(k!=="preg"||p?.sex!=="male")&&(!IS_RESEARCH||RX_SAFETY_FLAGS.includes(k)||(!rxActive(p)&&RX_COVERED.has(k))));
+const medFlagsShown=p=>Object.keys(MEDICAL_FLAGS).filter(k=>(k!=="preg"||p?.sex!=="male")&&(!IS_RESEARCH||(RX_SAFETY_FLAGS.includes(k)&&!rxCovers(p,k))||(!rxActive(p)&&RX_COVERED.has(k))));
 const RX_DIETS={omni:{he:"אוכל/ת הכל",en:"Eats everything"},veg:{he:"צמחוני/ת",en:"Vegetarian"},vegan:{he:"טבעוני/ת",en:"Vegan"}};
 const b64uEnc=buf=>{ let t=""; new Uint8Array(buf).forEach(b=>{ t+=String.fromCharCode(b); }); return btoa(t).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); };
 const b64uDec=s=>{ s=String(s).replace(/-/g,"+").replace(/_/g,"/"); while(s.length%4) s+="="; return Uint8Array.from(atob(s),c=>c.charCodeAt(0)); };
@@ -21634,7 +21636,7 @@ const rxExpired=p=>!!(IS_RESEARCH&&p&&p.rx&&p.rx.__ok&&p.rx.exp&&p.rx.exp<todayK
 // ארוחות צמחיות בשבוע (לאוכלי כל) → טבלת ימים × ארוחות: קודם בוקר, אחר כך ערב, אחר כך צהריים — לאורך השבוע
 function rxGridOf(n){ const k=Math.max(0,Math.min(21,Math.round(+n||0))); const g=Object.fromEntries([0,1,2,3,4,5,6].map(d=>[`d${d}`,[]])); let c=0;
   for (const mk of ["breakfast","dinner","lunch"]) for (let d=0; d<7&&c<k; d++){ g[`d${d}`].push(mk); c++; } return g; }
-function rxApplyToProfile(p,rx){ rx={...rx,__at:(p.rx&&p.rx.__code===rx.__code&&p.rx.__at)||rx.__at||todayKey()}; /* תאריך הצטרפות — תחילת תקופת הייצוא */ const dx=rx.dx||[]; const mapped=[...(dx.some(d=>d==="t2d"||d==="prediabetes")?["diabetes"]:[]),...(dx.includes("htn")?["htn"]:[])];
+function rxApplyToProfile(p,rx){ rx={...rx,__at:(p.rx&&p.rx.__code===rx.__code&&p.rx.__at)||rx.__at||todayKey()}; /* תאריך הצטרפות — תחילת תקופת הייצוא */ const dx=rx.dx||[]; const mapped=[...(dx.some(d=>d==="t2d"||d==="prediabetes")?["diabetes"]:[]),...(dx.includes("htn")?["htn"]:[]),...((rx.meds||[]).includes("acearb")?["kmeds"]:[])];
   const others=(p.medical||[]).filter(k=>k!=="none"&&!RX_COVERED.has(k)); const med=[...new Set([...mapped,...others])]; // מצב חמור שסומן נשאר — ונשאר חוסם
   return {...p, rx, medical:med.length?med:["none"], flex:rx.diet==="omni", eatsDairyEggs:rx.diet!=="vegan", ...(rx.diet==="omni"?{flexGrid:rxGridOf(rx.plantMeals??7)}:{})}; }
 const rxErrText=(err,he)=>({format:he?"הקוד לא תקין או שונה.":"The code is invalid or was altered.",sig:he?"הקוד לא תקין או שונה.":"The code is invalid or was altered.",key:he?"המרשם נחתם במפתח לא מוכר.":"The prescription was signed with an unknown key.",
@@ -21660,6 +21662,7 @@ function RxBanner({profile,lang,meals}){ const he=lang==="he"; if (!IS_RESEARCH|
     <b>🔬 {he?"מחקר":"Study"} {rx.study} · {he?"משתתף/ת":"Participant"} {rx.pid}</b>{rx.arm?<> · {rx.arm}</>:null}
     <div>{exp?(he?"⛔ תוקף המרשם פג — התפריט חזר להגדרות הרגילות. פנו לצוות המחקר.":"⛔ The prescription has expired — the menu is back to regular settings. Contact the research team.")
       :(he?`התפריט נבנה לפי הנחיות צוות המחקר — עד ${rx.exp?rx.exp.split("-").reverse().join("."):"—"}.`:`The menu follows the research team's instructions — until ${rx.exp||"—"}.`)}{rx.contact?<> {he?"לפניות:":"Contact:"} {rx.contact}</>:null}</div>
+    {!exp&&(rx.meds||[]).includes("acearb")&&<div data-rx-k-note style={{fontSize:12.5,color:"#15507a",marginTop:2}}>{he?"💊 התפריט עשיר באשלגן — בדיקות הדם לפי הנחיית הצוות.":"💊 The menu is rich in potassium — blood tests as the team instructs."}</div>}
     {cmp&&<details data-rx-compliance style={{marginTop:3}}><summary style={{cursor:"pointer",fontSize:12.5,color:"#15507a",fontWeight:700}}>{he?"עמידה במרשם בתפריט השבוע":"Prescription compliance this week"}</summary>
       <div style={{fontSize:12.5,lineHeight:1.55,marginTop:3}}>
         {cmp.sat[1]>0&&<div>• {he?`שומן רווי עד ${rx.satFatPct}%: ${fr(cmp.sat)} ימים`:`Saturated fat ≤${rx.satFatPct}%: ${fr(cmp.sat)} days`}</div>}
@@ -21730,7 +21733,7 @@ function planBlockOf(p){
   if (age>0 && age<18) return {kind:"age",flags:[]};
   // לא ענה/תה על שאלת המצב הרפואי (לא סימן "אין" ולא מצב) — חסום עד שעונים (לבקשת המשתמש)
   if (!fl.length && !(p?.medical||[]).includes("none")) return {kind:"unanswered",flags:[]};
-  const flB=rxActive(p)?fl.filter(k=>!RX_COVERED.has(k)):fl; // מרשם מחקר בתוקף — המצבים שבפרוטוקול לא חוסמים
+  const flB=fl.filter(k=>!rxCovers(p,k)); // מרשם מחקר בתוקף — המצבים שבפרוטוקול לא חוסמים
   const severe=flB.filter(k=>MEDICAL_FLAGS[k].sev>=2);
   if (severe.length) return {kind:"severe",flags:severe};
   const needD=flB.filter(k=>MEDICAL_FLAGS[k].sev>=1); // sev 0 (הפרעת אכילה) — לא חוסם
@@ -21762,7 +21765,7 @@ function PlanBlockedNotice({block,lang,onOpenProfile,hiddenPlan,setProfile}){
   </div>);
 }
 function MedicalNotice({profile,lang}){
-  const he=lang==="he"; const fl=medicalFlagsOf(profile).filter(k=>!(rxActive(profile)&&RX_COVERED.has(k))); if(!fl.length) return null;
+  const he=lang==="he"; const fl=medicalFlagsOf(profile).filter(k=>!rxCovers(profile,k)); if(!fl.length) return null;
   const strong=fl.some(k=>MEDICAL_FLAGS[k].sev>=2);
   return (<div style={{background:strong?"#FDECEA":"#FFF6E5",border:`1px solid ${strong?"#e6a39c":"#ecc98a"}`,borderRadius:12,padding:"8px 11px",marginBottom:8,fontSize:12,lineHeight:1.5,color:"#1E3A2B"}}>
     <b>🩺 {he?"התפריט בנוי לאנשים בריאים":"This menu is designed for healthy adults"}</b> — {he?`סימנת: ${fl.map(k=>MEDICAL_FLAGS[k].he).join(", ")}. `:`You marked: ${fl.map(k=>MEDICAL_FLAGS[k].en).join(", ")}. `}
@@ -22475,7 +22478,7 @@ function ProfileWizard({profile,setProfile,target,lang,onClose,onFinish,onInfo})
   const set=(k,v)=>setProfile(p=>({...p,[k]:v})); const h=+profile.height,w=+profile.weight,age=+profile.age;
   const bmi=bmiOfProfile(profile); const goal=effectiveGoal(profile); const med=profile.medical||[];
   const[foc,setFoc]=useState(null); const[swapN,setSwapN]=useState(0); const swapped=bodySwapped(profile);
-  const rxOn=IS_RESEARCH&&rxActive(profile); const[rxNone,setRxNone]=useState(false); const rxSafe=med.some(k=>RX_SAFETY_FLAGS.includes(k));
+  const rxOn=IS_RESEARCH&&rxActive(profile); const[rxNone,setRxNone]=useState(false); const rxSafe=med.some(k=>RX_SAFETY_FLAGS.includes(k)&&!rxCovers(profile,k));
   const ageBad=age>0&&(age<18||age>110); const ok=[!!(h&&w&&age)&&!ageBad&&!bodyBad("height",h)&&!bodyBad("weight",w),true,true,rxOn?(rxNone||rxSafe):med.length>0][step]; /* מחקר: חובה לענות על שאלת הבטיחות (המרשם כבר ממלא את האבחנות) */
   const box={background:"#F5F2EB",borderRadius:12,padding:"10px 12px",border:"1px solid #E2DED4"};
   const big=on=>({flex:1,padding:"12px 6px",borderRadius:12,border:on?"2px solid #2e7d32":"1px solid #D9D3C5",background:on?"#E8F3EA":"#FFFFFF",color:"#1E3A2B",fontSize:15,fontWeight:on?800:600,cursor:"pointer",lineHeight:1.35});
@@ -22515,7 +22518,7 @@ function ProfileWizard({profile,setProfile,target,lang,onClose,onFinish,onInfo})
       {showSens&&<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{Object.entries(SENS_GROUPS).filter(([,g])=>!g.dairy||profile.eatsDairyEggs).map(([k,g])=>{ const on=(profile.sensitivities||[]).includes(k); return <button key={k} onClick={()=>setProfile(p=>{ const c=p.sensitivities||[]; return {...p,sensitivities:c.includes(k)?c.filter(x=>x!==k):[...c,k]}; })} style={chip(on,"#c62828")}>{on?"🚫 ":""}{he?g.he:g.en}</button>; })}</div>}
     </div>,
     <div key="3" style={{display:"flex",flexDirection:"column",gap:10}}>
-      {rxOn&&<div data-wiz-rx-dx style={{background:"#EAF1FB",border:"1px solid #b8cde8",borderRadius:12,padding:"10px 12px",fontSize:14,lineHeight:1.5,color:"#1E3A2B"}}>🔬 <b>{he?"לפי מרשם המחקר:":"Per the research prescription:"}</b> {(profile.rx.dx||[]).map(k=>(RX_DX[k]||{})[he?"he":"en"]||k).join(he?", ":", ")||"—"}<div style={{fontSize:12,color:"#15507a",marginTop:2}}>{he?"נקבע על ידי צוות המחקר.":"Set by the research team."}</div></div>}
+      {rxOn&&<div data-wiz-rx-dx style={{background:"#EAF1FB",border:"1px solid #b8cde8",borderRadius:12,padding:"10px 12px",fontSize:14,lineHeight:1.5,color:"#1E3A2B"}}>🔬 <b>{he?"לפי מרשם המחקר:":"Per the research prescription:"}</b> {(profile.rx.dx||[]).map(k=>(RX_DX[k]||{})[he?"he":"en"]||k).join(he?", ":", ")||"—"}{(profile.rx.meds||[]).length>0&&<div data-wiz-rx-meds><b>{he?"תרופות:":"Medications:"}</b> {profile.rx.meds.map(k=>(RX_MEDS[k]||{})[he?"he":"en"]||k).join(he?", ":", ")}</div>}<div style={{fontSize:12,color:"#15507a",marginTop:2}}>{he?"נקבע על ידי צוות המחקר.":"Set by the research team."}</div></div>}
       {(()=>{ const noneOn=rxOn?(rxNone&&!rxSafe):med.includes("none"); return <button data-wiz-none onClick={()=>{ if (rxOn){ setRxNone(true); setProfile(p=>rxApplyToProfile({...p,medical:[]},p.rx)); } else set("medical",med.includes("none")?[]:["none"]); }} style={{...big(noneOn),padding:"14px 10px"}}>{noneOn?"✓ ":""}{rxOn?(he?"אין לי אף אחד מהמצבים שלמטה":"I have none of the conditions below"):(he?"אין לי מצב רפואי או תרופה קבועה":"I have no medical condition or regular medication")}</button>; })()}
       <div style={{fontSize:12.5,color:"#4A5A50"}}>{rxOn?(he?"או שיש לי גם (במצבים האלה יש לפנות לצוות המחקר לפני שמתחילים):":"Or I also have (contact the research team before starting):"):(he?"או שיש לי:":"Or I have:")}</div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{medFlagsShown(profile).map(k=>[k,MEDICAL_FLAGS[k]]).map(([k,g])=>{ const on=med.includes(k); return <button key={k} data-wiz-med={k} onClick={()=>{ setRxNone(false); setProfile(p=>{ const c=(p.medical||[]).filter(x=>x!=="none"); return {...p,medical:c.includes(k)?c.filter(x=>x!==k):[...c,k]}; }); }} style={chip(on,g.sev>=2?"#c62828":"#b26a00")}>{on?"✓ ":""}{he?g.he:g.en}</button>; })}</div>
@@ -22533,7 +22536,7 @@ function ProfileWizard({profile,setProfile,target,lang,onClose,onFinish,onInfo})
       <div style={{display:"flex",gap:8,marginTop:16}}>
         {step>0&&<button onClick={()=>setStep(s=>s-1)} style={{flex:1,padding:"12px 0",borderRadius:12,border:"1px solid #D9D3C5",background:"#FFFFFF",color:"#1E3A2B",fontSize:14,fontWeight:700,cursor:"pointer"}}>{he?"→ חזרה":"← Back"}</button>}
         <button data-wiz-next disabled={!ok} onClick={()=>{ if(!last) setStep(s=>s+1); else onFinish(); }} style={{flex:2,padding:"12px 0",borderRadius:12,border:"none",background:ok?"#2e7d32":"#A9B8AE",color:"#FFFFFF",fontSize:15,fontWeight:800,cursor:ok?"pointer":"default"}}>
-          {last?(medicalFlagsOf(profile).filter(k=>!(rxActive(profile)&&RX_COVERED.has(k))).length?(he?"סיום — לפרופיל":"Finish — to profile"):(he?"סיום ← למסך הארוחות":"Finish → to my meals")):(he?"המשך ←":"Next →")}</button></div>
+          {last?(medicalFlagsOf(profile).filter(k=>!rxCovers(profile,k)).length?(he?"סיום — לפרופיל":"Finish — to profile"):(he?"סיום ← למסך הארוחות":"Finish → to my meals")):(he?"המשך ←":"Next →")}</button></div>
       {!ok&&step===0&&<div style={{fontSize:11.5,color:"#6B7C72",marginTop:6,textAlign:"center"}}>{(h&&w&&age)?(he?"יש לתקן את הערכים המסומנים כדי להמשיך":"Fix the marked values to continue"):(he?"ממלאים גיל, גובה ומשקל כדי להמשיך":"Fill in age, height and weight to continue")}</div>}
       {!ok&&step===3&&<div style={{fontSize:11.5,color:"#6B7C72",marginTop:6,textAlign:"center"}}>{he?"בוחרים ״אין״ או מצב רפואי":"Choose 'None' or a condition"}</div>}
     </div></div>);
@@ -27149,7 +27152,7 @@ function AppInner(){
       {showWelcome&&!firstDisc&&<WelcomeModal lang={lang} onClose={()=>{dismissWelcome();setTab("meals");}} onStartTour={(full)=>{dismissWelcome();setTab("meals");setInfoOpen(null);fillDemoDayIfEmpty();setTourFull(!!full);setOnboardActive(true);}}/>}
       {wizOpen&&<ProfileWizard profile={profile} setProfile={setProfile} target={target} lang={lang} onInfo={setInfoOpen}
         onClose={()=>{ setWizOpen(false); setWizDismissed(true); }}
-        onFinish={()=>{ const flagged=medicalFlagsOf(profile).filter(k=>!(rxActive(profile)&&RX_COVERED.has(k))).length>0; setProfile(p=>({...p,mealStyle:p.mealStyle||"simple",sex:p.sex||"male",activity:p.activity||"medium"})); setWizOpen(false); setWizDismissed(true);
+        onFinish={()=>{ const flagged=medicalFlagsOf(profile).filter(k=>!rxCovers(profile,k)).length>0; setProfile(p=>({...p,mealStyle:p.mealStyle||"simple",sex:p.sex||"male",activity:p.activity||"medium"})); setWizOpen(false); setWizDismissed(true);
           if (flagged){ setTimeout(()=>{ try{ window.dispatchEvent(new Event("pv-open-profile")); }catch(e){} },50); } else setTab("meals"); }}/>} {/* בסיום — מסך הארוחות, ובו בוחרים תכנון אוטומטי או בנייה ידנית (לבקשת המשתמש) */}
       {onboardActive&&<OnboardTour lang={lang} steps={tourFull?ONBOARD_STEPS:ONBOARD_STEPS_SHORT} onDone={()=>{setDayPlanOpen(false);setInfoMenuOpen(false);setOnboardActive(false);setTab("meals");}} setTab={setTab} setDayPlanMode={setDayPlanMode} setDayPlanOpen={setDayPlanOpen} setInfoMenuOpen={setInfoMenuOpen}/>}
       {savedDaysOpen&&<SavedDaysModal onClose={()=>setSavedDaysOpen(false)} onSaveToday={name=>saveDayAsTemplate(name)}
