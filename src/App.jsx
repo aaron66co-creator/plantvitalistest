@@ -24963,8 +24963,8 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop,sim
 // אמיתית "מאחורי הקלעים" כמו שרת אמיתי היה מספק — רק הנעילה הזמנית שבקוד כאן.
 // כדי לשנות סיסמה: הרץ בקונסולת הדפדפן (או ב-Node) קוד PBKDF2 דומה לזה שמופיע בפונקציה pbkdf2Hex למטה,
 // עם salt אקראי חדש, ועדכן את שתי הקבועים הבאים (SALT ו-HASH) בהתאם.
-const APP_PASSWORD_SALT = IS_DEMO2?"2ee64643eaaaa6bd4b598fc2ccfa0c78":"fa9ca7529bb6b01c42c9d1e222524cd9"; // ⬅️ salt (hex) — לכל גרסה סיסמה משלה
-const APP_PASSWORD_HASH = IS_DEMO2?"0404ac77d21a3180f59cd94308995f914232e0fa02fa6020706976479ecf320d":"3db56954a7b39ca5265dee36d840c86ea59b41abe5ebf028b9731954e5db143b"; // ⬅️ PBKDF2 hash (hex) — של הסיסמה ללא רווחים
+const APP_PASSWORD_SALT = IS_DEMO2?"2ee64643eaaaa6bd4b598fc2ccfa0c78":IS_RESEARCH?"65c52b524789e80c2f371242de1d9813":"fa9ca7529bb6b01c42c9d1e222524cd9"; // ⬅️ salt (hex) — לכל גרסה סיסמה משלה
+const APP_PASSWORD_HASH = IS_DEMO2?"0404ac77d21a3180f59cd94308995f914232e0fa02fa6020706976479ecf320d":IS_RESEARCH?"1ab7b0dfeb0e0b2582eff6294a8f6f59a9f58ba641617c0047a33f170d10eb84":"3db56954a7b39ca5265dee36d840c86ea59b41abe5ebf028b9731954e5db143b"; // ⬅️ PBKDF2 hash (hex) — של הסיסמה ללא רווחים
 const APP_PASSWORD_ITERATIONS = 200000;
 const APP_UNLOCK_KEY = "wfpb_unlocked_v1";
 // דילוג על הסיסמה מהכניסה השנייה (לבקשת המשתמש): אחרי כניסה ראשונה עם סיסמה נכונה המכשיר נזכר (localStorage),
