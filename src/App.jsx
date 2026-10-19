@@ -99,7 +99,7 @@ function proteinRefWeight(p){ const h=+p?.height, w=+p?.weight; if(!h||!w) retur
 // מרשם מחקר בתוקף: חלבון (גר' לק״ג, לפי משקל הייחוס) ותקרת הנתרן — לפי המרשם; שומן רווי, פחמימות לארוחה וחלבון לארוחה — hp.rx, נאכפים ב-rxCardioWeek
 function resolveHealthProfile(profile){ const hp=resolveHealthProfile__base(profile); if (!rxActive(profile)) return hp; const rx=profile.rx;
   const refW=proteinRefWeight(profile), w=+profile?.weight||0, refF=refW&&w?refW/w:1; const pk=+rx.protKg>0?Math.round(+rx.protKg*refF*1000)/1000:hp.protPerKg;
-  return {...hp, protPerKg:pk, protPerKgMax:Math.max(hp.protPerKgMax||1.6,(+rx.protKg||0)+0.2), sodiumMax:Math.min(hp.sodiumMax||2300,+rx.naCap||2300), rx:{satFatPct:rx.satFatPct||null,carbMeal:rx.carbMeal||null,protMealMin:rx.protMealMin||null}}; }
+  return {...hp, protPerKg:pk, protPerKgMax:Math.max(hp.protPerKgMax||1.6,(+rx.protKg||0)+0.2), sodiumMax:Math.min(hp.sodiumMax||2300,+rx.naCap||2300), rx:{satFatPct:rx.satFatPct||null,carbMeal:rx.carbMeal||null,protMealMin:rx.protMealMin||null,glp:(rx.meds||[]).includes("glp1")||null}}; }
 function resolveHealthProfile__base(profile){
   const base = HEALTH_PROFILES[profile?.healthProfile||"none"]||HEALTH_PROFILES.none;
   const mult = ACTIVITY_PROTEIN_MULT[profile?.activity||"medium"] ?? 1.0;
@@ -16250,6 +16250,21 @@ function rxCardioDay(d, hp, dri, target, excl, isOwnMeal, med, usedIds){ const R
     const om=ALLM.filter(m=>isOwnMeal(m)&&!(d.__fx&&d.__fx[m])&&(d[m]||[]).some(x=>x._omni)).sort((a,b)=>(mt(b).sodium||0)-(mt(a).sodium||0))[0]; if (!om) break;
     const before=mt(om).sodium||0, keep=d[om]; if (!omniSwap(om,true)||(mt(om).sodium||0)>=before){ d[om]=keep; break; } }
   carbPass(); /* שלבי הנתרן והשומן הרווי מזיזים מנות — בדיקה אחרונה של טווח הפחמימות */
+  // (4) מצב GLP-1: בחילה/הקאה לאחרונה — שומן יומי עד 25% (מקטינים את עתירי השומן, מפצים בפריט דל שומן באותה ארוחה);
+  // ואז ארוחה עיקרית מעל 30% — מעבירים פריט שאינו מקור חלבון לארוחת הביניים (חלבון וטווח הפחמימות נשמרים בארוחה)
+  if (R.glp){ const dayT=()=>sumNuts(ALLM.flatMap(m=>[...((d.__fx||{})[m]||[]),...(d[m]||[])]).map(nut));
+    if (glpRecent(["nausea","vomit"])) for (let r=0; r<30; r++){ const T=dayT(); if ((T.fat||0)*9/Math.max(1,T.kcal||0)<=GLP_FAT_NAUSEA) break;
+      const c=ALLM.flatMap(m=>free(m).map(x=>({m,x}))).filter(({x})=>dens(x,"fat")>=0.04).sort((a,b)=>(nut(b.x).fat||0)-(nut(a.x).fat||0));
+      const hit=c.find(({m,x})=>{ const g0=x.g; if (!grow(x,-1,9,0.4)) return false; if (R.protMealMin>0&&PM.includes(m)&&(mt(m).protein||0)<R.protMealMin-0.3){ x.g=g0; return false; } x.__g0=g0; return true; }); if (!hit) break;
+      // פיצוי קלורי מכל היום — פריטים דלי שומן (חלבון קודם), בלי לעבור את טווח הפחמימות לארוחה; אם אי אפשר — מבטלים (קלוריות קודמות לשומן)
+      const comp=[]; for (let k=0; k<8&&dayK()<target*0.97; k++){ const lf=ALLM.flatMap(m=>free(m).map(x=>({m,x}))).filter(({x})=>x!==hit.x&&dens(x,"fat")<0.012&&(nut(x).kcal||0)>10).sort((a,b)=>dens(b.x,"protein")-dens(a.x,"protein"));
+        const ok=lf.find(({m,x})=>{ const g0=x.g; if (!grow(x,1,2,0)) return false; if ((cHi!=null&&MAIN.includes(m)&&(mt(m).carbs||0)>cHi+0.3)||(dayT().sodium||0)>naCap){ x.g=g0; return false; } comp.push([x,g0]); return true; }); if (!ok) break; }
+      if (dayK()<target*0.95){ comp.reverse().forEach(([x,g0])=>{ x.g=g0; }); hit.x.g=hit.x.__g0; delete hit.x.__g0; break; } delete hit.x.__g0; }
+    if (glpRecent(["nausea","vomit"])) carbPass();
+    for (const m of MAIN){ if (d.__fx&&d.__fx[m]) continue;
+      for (let r=0; r<6; r++){ const T=mt(m), k=T.kcal||0; if (k<=target*GLP_MEAL_MAX*1.02) break; const over=k-target*GLP_MEAL_MAX, room=target*GLP_SNACK_MAX-(mt("snack").kcal||0);
+        const c=free(m).filter(x=>!isProt(x)&&!x._omni).map(x=>({x,n:nut(x)})).filter(({n})=>(n.kcal||0)>=15&&(n.kcal||0)<=room&&(cLo==null||(T.carbs||0)-(n.carbs||0)>=cLo-0.3)&&(!(R.protMealMin>0&&PM.includes(m))||(T.protein||0)-(n.protein||0)>=R.protMealMin-0.3));
+        if (!c.length) break; c.sort((a,b)=>Math.abs((a.n.kcal||0)-over)-Math.abs((b.n.kcal||0)-over)); const x=c[0].x; d[m]=d[m].filter(y=>y!==x); d.snack=[...(d.snack||[]),x]; } } }
   return d; }
 function rxCardioWeek(week, hp, dri, target, excl, isOwn, med){ if (!week||!hp||!hp.rx) return week; const used=new Set(); Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>MEAL_KEYS.forEach(mk=>{ const id=omniIdOf(week[k][mk]); if (id) used.add(id); }));
   Object.keys(week).filter(k=>/^d\d$/.test(k)&&week[k]).forEach(k=>{ const di=+k.slice(1); rxCardioDay(week[k],hp,dri,target,excl,mk=>!!(isOwn&&isOwn(di,mk)),med,used); }); return week; }
@@ -21611,6 +21626,16 @@ const RX_DX={obesity:{he:"השמנה / עודף משקל",en:"Obesity / overweig
   masld:{he:"כבד שומני",en:"Fatty liver (MASLD)"},htn:{he:"יתר לחץ דם",en:"High blood pressure"},dyslipidemia:{he:"שומנים בדם (LDL גבוה)",en:"Dyslipidemia (high LDL)"}};
 const RX_MEDS={glp1:{he:"GLP-1 / GIP (סמגלוטייד, טירזפטייד)",en:"GLP-1 / GIP (semaglutide, tirzepatide)"},metformin:{he:"מטפורמין",en:"Metformin"},sglt2:{he:"SGLT2",en:"SGLT2"},statin:{he:"סטטין",en:"Statin"},bp:{he:"תרופה ללחץ דם (לא ACE/ARB/ספירונולקטון)",en:"Blood pressure drug (not ACE/ARB/spironolactone)"},acearb:{he:"ACE / ARB / ספירונולקטון (תפקוד כליות תקין)",en:"ACE / ARB / spironolactone (normal kidney function)"}};
 const RX_COVERED=new Set(["diabetes","htn"]); // דגלים שמרשם בתוקף פותח
+// מודול 4 — מצב GLP-1 (לבקשת המשתמש; ACLM/ASN/OMA/TOS 2025): כשהצוות סימן GLP-1 / GIP במרשם — ארוחות עיקריות עד 30% מהיום
+// (העודף עובר לביניים, עד 20%), "חלבון קודם", יומן תופעות לוואי; בחילה/הקאה ב-3 הימים האחרונים — שומן עד 25% בתפריט הבא;
+// רצפת קלוריות בפועל: 1,200 (אישה) / 1,500 (גבר)
+const GLP_LOG="wfpb_glp_log"; const GLP_MEAL_MAX=0.30, GLP_SNACK_MAX=0.20, GLP_FAT_NAUSEA=0.25;
+const GLP_SYM={nausea:{he:"בחילה",en:"Nausea"},vomit:{he:"הקאה",en:"Vomiting"},constip:{he:"עצירות",en:"Constipation"},diarr:{he:"שלשול",en:"Diarrhea"},reflux:{he:"צרבת",en:"Heartburn"},appetite:{he:"תיאבון נמוך",en:"Low appetite"}};
+const rxGlp=p=>rxActive(p)&&(p.rx.meds||[]).includes("glp1");
+const glpFloorOf=p=>p?.sex==="male"?1500:1200;
+function glpRecent(keys,days=3){ const L=load(GLP_LOG,{})||{}; for (let i=0;i<days;i++){ const e=L[shiftDateKey(todayKey(),-i)]; if (e&&keys.some(k=>(e[k]||0)>0)) return true; } return false; }
+// ימים מתועדים (לא "לפי התפריט") ב-7 הימים האחרונים שבהם נאכל פחות מהרצפה
+function glpLowDays(p){ const th=load(TRACK_HISTORY_STORAGE,{})||{}, fl=glpFloorOf(p); let n=0,c=0; for (let i=1;i<=7;i++){ const h=th[shiftDateKey(todayKey(),-i)]; if (!h||h.as||!h.a||!(h.a.kcal>0)) continue; c++; if (h.a.kcal<fl&&!(h.fs>0)) n++; } return {n,c,fl}; }
 // תרופות שמעלות אשלגן (לבקשת המשתמש): מאושרות רק כשהצוות סימן במרשם ACE/ARB/ספירונולקטון עם תפקוד כליות תקין. מחלת כליות — חוסמת תמיד
 const rxCovers=(p,k)=>rxActive(p)&&(RX_COVERED.has(k)||(k==="kmeds"&&(p.rx.meds||[]).includes("acearb")));
 // גרסת המחקר (לבקשת המשתמש): בשאלת הבריאות רק מצבים רלוונטיים — האבחנות הקרדיו-מטבוליות מגיעות מהמרשם, ומהמשתתף/ת
@@ -21663,12 +21688,29 @@ function RxBanner({profile,lang,meals}){ const he=lang==="he"; if (!IS_RESEARCH|
     <div>{exp?(he?"⛔ תוקף המרשם פג — התפריט חזר להגדרות הרגילות. פנו לצוות המחקר.":"⛔ The prescription has expired — the menu is back to regular settings. Contact the research team.")
       :(he?`התפריט נבנה לפי הנחיות צוות המחקר — עד ${rx.exp?rx.exp.split("-").reverse().join("."):"—"}.`:`The menu follows the research team's instructions — until ${rx.exp||"—"}.`)}{rx.contact?<> {he?"לפניות:":"Contact:"} {rx.contact}</>:null}</div>
     {!exp&&(rx.meds||[]).includes("acearb")&&<div data-rx-k-note style={{fontSize:12.5,color:"#15507a",marginTop:2}}>{he?"💊 התפריט עשיר באשלגן — בדיקות הדם לפי הנחיית הצוות.":"💊 The menu is rich in potassium — blood tests as the team instructs."}</div>}
+    {!exp&&rxGlp(profile)&&<GlpPanel profile={profile} lang={lang}/>}
     {cmp&&<details data-rx-compliance style={{marginTop:3}}><summary style={{cursor:"pointer",fontSize:12.5,color:"#15507a",fontWeight:700}}>{he?"עמידה במרשם בתפריט השבוע":"Prescription compliance this week"}</summary>
       <div style={{fontSize:12.5,lineHeight:1.55,marginTop:3}}>
         {cmp.sat[1]>0&&<div>• {he?`שומן רווי עד ${rx.satFatPct}%: ${fr(cmp.sat)} ימים`:`Saturated fat ≤${rx.satFatPct}%: ${fr(cmp.sat)} days`}</div>}
         {cmp.carb[1]>0&&<div>• {he?`פחמימות ${rx.carbMeal[0]}–${rx.carbMeal[1]} גר' בארוחה: ${fr(cmp.carb)} ארוחות`:`Carbs ${rx.carbMeal[0]}–${rx.carbMeal[1]} g per meal: ${fr(cmp.carb)} meals`}</div>}
         {cmp.prot[1]>0&&<div>• {he?`חלבון לפחות ${rx.protMealMin} גר' בצהריים ובערב: ${fr(cmp.prot)} ארוחות`:`Protein ≥${rx.protMealMin} g at lunch and dinner: ${fr(cmp.prot)} meals`}</div>}
         <div style={{color:"#4A5A50",marginTop:2}}>{he?"לפי התפריט המתוכנן. שינויים ידניים בארוחות יכולים לשנות את התמונה.":"Based on the planned menu. Manual changes to meals can change this."}</div></div></details>}</div>; }
+// מצב GLP-1 בפס המחקר: עצות קצרות, התראת רצפת קלוריות ויומן תופעות לוואי יומי (אין / קל / חזק)
+function GlpPanel({profile,lang}){ const he=lang==="he"; const today=todayKey(); const[L,setL]=useState(()=>load(GLP_LOG,{})||{}); const e=L[today]||{};
+  const setSym=(k,v)=>setL(prev=>{ const n={...(prev||{}),[today]:{...((prev||{})[today]||{}),[k]:v}}; save(GLP_LOG,n); return n; });
+  const rec=ks=>{ for (let i=0;i<3;i++){ const x=L[shiftDateKey(today,-i)]; if (x&&ks.some(k=>(x[k]||0)>0)) return true; } return false; };
+  const nau=rec(["nausea","vomit"]), con=rec(["constip"]), low=glpLowDays(profile), sev=(e.vomit||0)>=2;
+  const lvl=[he?"אין":"None",he?"קל":"Mild",he?"חזק":"Strong"]; const done=Object.keys(GLP_SYM).some(k=>e[k]!=null);
+  return <div data-glp style={{fontSize:12.5,color:"#15507a",marginTop:3,lineHeight:1.5}}>
+    <div>{he?"🍽 מצב GLP-1: ארוחות קטנות יותר (עד כ-30% מהיום בארוחה; השאר בביניים). מתחילים מהחלבון, אוכלים לאט ועוצרים כשמרגישים שובע.":"🍽 GLP-1 mode: smaller meals (up to about 30% of the day each; the rest as a snack). Start with the protein, eat slowly and stop when full."}</div>
+    <div>{he?"💧 לשתות 8–10 כוסות ביום, לאורך היום.":"💧 Drink 8–10 glasses a day, spread through the day."}{con?(he?" עם עצירות: להעלות סיבים בהדרגה, יחד עם השתייה. אם נמשך — לפנות לצוות.":" With constipation: raise fiber gradually, together with fluids. If it persists — contact the team."):""}</div>
+    {nau&&<div data-glp-lowfat>{he?"🤢 דיווחת על בחילה או הקאה — תפריט חדש ייבנה עם פחות שומן (כ-25%). אפשר לבנות שוב: \"תפריט לשבוע\".":"🤢 You reported nausea or vomiting — a new menu is built with less fat (about 25%). Rebuild with \"Week menu\"."}</div>}
+    {low.n>=3&&<div data-glp-floor style={{color:"#b3261e",fontWeight:700}}>{he?`⚠ ב-${low.n} מתוך ${low.c} הימים המתועדים האחרונים נאכלו פחות מ-${low.fl.toLocaleString("en-US")} קק״ל — כדאי לפנות לצוות המחקר.`:`⚠ On ${low.n} of the last ${low.c} logged days you ate under ${low.fl.toLocaleString("en-US")} kcal — please contact the research team.`}</div>}
+    {sev&&<div style={{color:"#b3261e",fontWeight:700}}>{he?"⛔ הקאות חזקות או קושי לשתות — לפנות היום לצוות או לרופא/ה.":"⛔ Strong vomiting or trouble drinking — contact the team or your doctor today."}</div>}
+    <details data-glp-log style={{marginTop:3}}><summary style={{cursor:"pointer",fontWeight:700}}>{he?`📝 תופעות לוואי היום${done?" ✓":""}`:`📝 Side effects today${done?" ✓":""}`}</summary>
+      <div style={{marginTop:4}}>{Object.entries(GLP_SYM).map(([k,o])=><div key={k} data-glp-sym={k} style={{display:"flex",alignItems:"center",gap:4,margin:"3px 0"}}><span style={{minWidth:88,color:"#1E3A2B"}}>{he?o.he:o.en}</span>
+        {lvl.map((t,v)=><button key={v} data-v={v} onClick={()=>setSym(k,v)} style={{padding:"3px 9px",borderRadius:8,border:"1px solid #b8cde8",fontSize:12.5,cursor:"pointer",background:e[k]===v?(v?"#15507a":"#1E5631"):"#FFFFFF",color:e[k]===v?"#FFFFFF":"#15507a",fontWeight:700}}>{t}</button>)}</div>)}
+        <div style={{color:"#4A5A50",fontSize:11.5}}>{he?"נשמר במכשיר ונכלל בקובץ לצוות ובדו\"ח לרופא/ה.":"Saved on this device and included in the team file and the physician report."}</div></div></details></div>; }
 function RxImportModal({res,lang,onApprove,onClose}){ const he=lang==="he"; if (!res) return null;
   return <div style={{position:"fixed",inset:0,zIndex:400,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={onClose}>
     <div data-rx-import onClick={e=>e.stopPropagation()} dir={he?"rtl":"ltr"} style={{background:"#FFFFFF",borderRadius:14,padding:"18px 16px",maxWidth:420,width:"100%",color:"#1E3A2B"}}>
@@ -21684,14 +21726,14 @@ function RxImportModal({res,lang,onApprove,onClose}){ const he=lang==="he"; if (
     </div></div>; }
 // מודול 5 — ייצוא נתוני מחקר (לבקשת המשתמש): קובץ CSV אחד, שורה לכל תאריך מאז ההצטרפות, שהמשתתף/ת שולח/ת לצוות.
 // רק סכומים יומיים (בלי שם ובלי פירוט מזונות): תיעוד, מתוכנן מול בפועל, מאקרו, נתרן, ארוחות צמחיות / מן החי, משקל, מותניים, פעילות
-const RX_CSV_COLS=["study","participant","arm","app_version","date","log_status","kcal_target","kcal_planned","kcal_actual","protein_g","carbs_g","fat_g","satfat_g","satfat_pct","fiber_g","sodium_mg","plant_meals","animal_meals","red_meat_g","processed_meat_g","weight_kg","waist_cm","steps","activity_min","strength"];
+const RX_CSV_COLS=["study","participant","arm","app_version","date","log_status","kcal_target","kcal_planned","kcal_actual","protein_g","carbs_g","fat_g","satfat_g","satfat_pct","fiber_g","sodium_mg","plant_meals","animal_meals","red_meat_g","processed_meat_g","weight_kg","waist_cm","steps","activity_min","strength",...Object.keys(GLP_SYM).map(k=>"glp_"+k)];
 function rxExportCSV(profile,target){ const rx=profile.rx||{}; const today=todayKey(); const start=rx.__at||shiftDateKey(today,-120);
-  const th=load(TRACK_HISTORY_STORAGE,{})||{}, wl=load("wfpb_weight_log",{})||{}, sr=load("wfpb_self_reports",{})||{}, al=load("wfpb_activity_log",{})||{};
-  const dates=[...new Set([...Object.keys(th),...Object.keys(wl),...Object.keys(sr),...Object.keys(al)])].filter(d=>/^\d{4}-\d\d-\d\d$/.test(d)&&d>=start&&d<=today).sort();
+  const th=load(TRACK_HISTORY_STORAGE,{})||{}, wl=load("wfpb_weight_log",{})||{}, sr=load("wfpb_self_reports",{})||{}, al=load("wfpb_activity_log",{})||{}, gl=load(GLP_LOG,{})||{};
+  const dates=[...new Set([...Object.keys(th),...Object.keys(wl),...Object.keys(sr),...Object.keys(al),...Object.keys(gl)])].filter(d=>/^\d{4}-\d\d-\d\d$/.test(d)&&d>=start&&d<=today).sort();
   const q=v=>{ const t=v==null?"":String(v); return /[",\n]/.test(t)?`"${t.replace(/"/g,'""')}"`:t; }; const r0=v=>v==null||!isFinite(v)?"":Math.round(v), r1=v=>v==null||!isFinite(v)?"":Math.round(v*10)/10;
   const rows=dates.map(d=>{ const h=th[d], a=h&&h.a, om=h&&h.om, w=wl[d]!=null?wl[d]:sr[d]?.weight, act=al[d]||{};
     return [rx.study,rx.pid,rx.arm||"",RESEARCH_VERSION,d,h?(h.as?"assumed_planned":"logged"):"",target||"",r0(h&&h.p&&h.p.kcal),r0(a&&a.kcal),r1(a&&a.protein),r1(a&&a.carbs),r1(a&&a.fat),r1(a&&a.satFat),
-      a&&a.kcal?r1((a.satFat||0)*9/a.kcal*100):"",r1(a&&a.fiber),r0(a&&a.sodium),om?(om.p?.n??""):"",om?(om.o?.n??""):"",om?r0(om.redG):"",om?r0(om.procG):"",r1(w),r1(sr[d]?.waist),r0(act.steps),r0(act.min),(act.type||[]).includes("str")?1:""].map(q).join(","); });
+      a&&a.kcal?r1((a.satFat||0)*9/a.kcal*100):"",r1(a&&a.fiber),r0(a&&a.sodium),om?(om.p?.n??""):"",om?(om.o?.n??""):"",om?r0(om.redG):"",om?r0(om.procG):"",r1(w),r1(sr[d]?.waist),r0(act.steps),r0(act.min),(act.type||[]).includes("str")?1:"",...Object.keys(GLP_SYM).map(k=>gl[d]?.[k]??"")].map(q).join(","); });
   const name=`PlantVitalis_${String(rx.study||"study").replace(/[^A-Za-z0-9_-]/g,"")}_${String(rx.pid||"p").replace(/[^A-Za-z0-9_-]/g,"")}_${today}.csv`;
   return {name,csv:[RX_CSV_COLS.join(","),...rows].join("\n"),n:rows.length,logged:dates.filter(d=>th[d]&&!th[d].as).length,start}; }
 async function rxShareExport(profile,target){ const {name,csv,n}=rxExportCSV(profile,target); const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
@@ -22169,6 +22211,9 @@ function buildRxPeriodReportHTML({lang,profile,target}){
     ...(proteinRefWeight(profile)?[he?`חלבון לק"ג — לפי משקל ייחוס ${f1(refW)} ק"ג (BMI 30 ומעלה), כמו בתכנון התפריט.`:`Protein per kg — by a reference weight of ${f1(refW)} kg (BMI 30+), as in menu planning.`]:[]),
     ...(rx.carbMeal?[he?"פחמימות לארוחה לא נשמרות בהיסטוריה (רק סיכומים יומיים) — העמידה בטווח מוצגת למשתתף/ת על התפריט המתוכנן.":"Carbs per meal are not stored in history (daily totals only) — the participant sees range compliance on the planned menu."]:[]),
     he?"הדו\"ח אינו מסמך רפואי ואינו מחליף הערכה קלינית.":"This report is not a medical document and does not replace clinical assessment."];
+  // מצב GLP-1: תופעות לוואי (ימים קל / חזק) וימים מתועדים מתחת לרצפת הקלוריות
+  const gl=load(GLP_LOG,{})||{}; const gd=Object.keys(gl).filter(inP); const fl=glpFloorOf(profile); const under=logged.filter(d=>th[d].a.kcal<fl&&!(th[d].fs>0)).length;
+  const glpHtml=(rx.meds||[]).includes("glp1")||gd.length?`<h2>${he?"GLP-1 — תופעות לוואי ורצפת קלוריות":"GLP-1 — side effects and calorie floor"}</h2><p>• ${he?(gd.length===1?"דווח ביום אחד":`דווח ב-${gd.length} ימים`):`Reported on ${gd.length} day${gd.length===1?"":"s"}`}${gd.length?": "+Object.entries(GLP_SYM).map(([k,o])=>{ const m=gd.filter(d=>gl[d][k]===1).length, st=gd.filter(d=>gl[d][k]===2).length; return m||st?`${esc(he?o.he:o.en)} ${he?`קל ${m} · חזק ${st}`:`mild ${m} · strong ${st}`}`:null; }).filter(Boolean).join(" · ")||(he?"בלי תופעות":"no symptoms"):""}</p><p>• ${he?`ימים מתועדים מתחת ל-${f0(fl)} קק"ל: <b>${under}</b> מתוך ${logged.length}`:`Logged days under ${f0(fl)} kcal: <b>${under}</b> of ${logged.length}`}</p>`:"";
   const title=he?"דו\"ח לרופא/ה — תקופת המחקר":"Physician report — study period";
   const css=`*{box-sizing:border-box}body{font-family:Arial,"Segoe UI",sans-serif;color:#1E3A2B;margin:0;padding:16px;font-size:12px;line-height:1.42;background:#fff}h1{font-size:18px;margin:0 0 2px}h2{font-size:13.5px;margin:12px 0 5px;padding-bottom:2px;border-bottom:2px solid #15507a}h3{font-size:12.5px;margin:7px 0 2px}p{margin:3px 0}.sub{color:#4A5A52;font-size:11.5px}table{width:100%;border-collapse:collapse;margin-top:3px}th,td{border:1px solid #D9D3C5;padding:3px 5px;text-align:start;vertical-align:top}th{background:#EAF1FB;font-size:11px}td.num,th.num{text-align:center}.ok{color:#256428;font-weight:700}.bad{color:#b3261e;font-weight:700}.muted{color:#6B7C72;font-weight:400}.box{background:#EAF1FB;border:1px solid #b8cde8;border-radius:8px;padding:6px 9px}.foot{margin-top:10px;font-size:10.5px;color:#4A5A52;border-top:1px solid #D9D3C5;padding-top:5px}@media print{body{padding:0}h2{break-after:avoid}tr{break-inside:avoid}@page{margin:10mm}}`;
   return `<!doctype html><html lang="${he?"he":"en"}" dir="${he?"rtl":"ltr"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} ${esc(rx.study)} ${esc(rx.pid)}</title><style>${css}</style></head><body>
@@ -22178,7 +22223,7 @@ function buildRxPeriodReportHTML({lang,profile,target}){
 <h2>${he?"המרשם":"Prescription"}</h2>${rxSummaryLines(rx,he).map(l=>`<p>• ${esc(l)}</p>`).join("")}${rx.exp?`<p class="muted">${he?"בתוקף עד":"Valid until"} ${esc(dd(rx.exp))}</p>`:""}
 <h2>${he?"היענות":"Adherence"}</h2>${adh.map(s=>`<p>• ${s}</p>`).join("")}
 <h2>${he?"עמידה במרשם לפי מה שנאכל":"Prescription compliance by actual intake"}</h2>${docs.length?cmpTable(S1,he?"ימים שתועדו ביומן":"Logged days")+cmpTable(S2,he?"ימים \"לפי התפריט\" (לא תועדו — הנחה)":"\"As planned\" days (not logged — assumed)"):`<p class="muted">${he?"אין עדיין ימים עם נתוני צריכה בתקופה.":"No days with intake data in the period yet."}</p>`}
-<h2>${he?"לפי שבוע":"By week"}</h2><table><thead><tr><th>${he?"שבוע":"Week"}</th><th class="num">${he?"ימים מתועדים":"Logged days"}</th><th class="num">${he?"קק\"ל":"kcal"}</th><th class="num">${he?"חלבון (גר')":"Protein (g)"}</th><th class="num">${he?"שומן רווי":"Sat. fat"}</th><th class="num">${he?"נתרן (מ\"ג)":"Sodium (mg)"}</th>${rx.diet==="omni"?`<th class="num">${he?"ארוחות צמחיות":"Plant meals"}</th>`:""}<th class="num">${he?"משקל":"Weight"}</th></tr></thead><tbody>${weeks.join("")}</tbody></table>
+${glpHtml}<h2>${he?"לפי שבוע":"By week"}</h2><table><thead><tr><th>${he?"שבוע":"Week"}</th><th class="num">${he?"ימים מתועדים":"Logged days"}</th><th class="num">${he?"קק\"ל":"kcal"}</th><th class="num">${he?"חלבון (גר')":"Protein (g)"}</th><th class="num">${he?"שומן רווי":"Sat. fat"}</th><th class="num">${he?"נתרן (מ\"ג)":"Sodium (mg)"}</th>${rx.diet==="omni"?`<th class="num">${he?"ארוחות צמחיות":"Plant meals"}</th>`:""}<th class="num">${he?"משקל":"Weight"}</th></tr></thead><tbody>${weeks.join("")}</tbody></table>
 <p class="muted">${he?"\"+\" — ימים \"לפי התפריט\" שנכללו בממוצעי השבוע.":"\"+\" — \"as planned\" days included in the week's averages."}</p>
 <div class="foot">${notes.map(s=>`<p>• ${esc(s)}</p>`).join("")}</div>
 </body></html>`;
@@ -27484,12 +27529,13 @@ function StaffRxScreen(){ const he=true; const KEYK="pv_rx_staff_key";
         {lab("סוג תזונה")}<div>{Object.entries(RX_DIETS).filter(([k])=>!(IS_VEG&&k==="omni")).map(([k,o])=>chip(f.diet===k,o.he,()=>set("diet",k)))}</div>
         {f.diet==="omni"&&<>{lab("ארוחות צמחיות בשבוע (0–21) — ״המינון״")}<input data-f="plantMeals" type="number" min="0" max="21" value={f.plantMeals} onChange={e=>set("plantMeals",e.target.value)} style={{...inp,width:110}}/></>}
         {lab("יעד קלוריות")}<div>{chip(f.kcalMode==="kcal","קבוע",()=>set("kcalMode","kcal"))}{chip(f.kcalMode==="def","גירעון מההוצאה",()=>set("kcalMode","def"))}{chip(f.kcalMode==="profile","לפי הפרופיל",()=>set("kcalMode","profile"))}</div>
+        {f.meds.includes("glp1")&&<div data-staff-glp style={{fontSize:12,color:"#15507a",margin:"2px 0 4px",lineHeight:1.5}}>מצב GLP-1 יופעל: ארוחות עיקריות עד כ-30% מהיום, "חלבון קודם", יומן תופעות לוואי, ושומן עד כ-25% אחרי דיווח על בחילה. רצפת קלוריות בפועל: 1,200 (אישה) / 1,500 (גבר).{f.kcalMode==="kcal"&&+f.kcal>0&&+f.kcal<1200&&<b style={{color:"#b3261e"}}> יעד הקלוריות נמוך מ-1,200.</b>}</div>}
         {f.kcalMode==="kcal"&&<input data-f="kcal" type="number" value={f.kcal} onChange={e=>set("kcal",e.target.value)} style={{...inp,width:140}}/>}{f.kcalMode==="def"&&<input data-f="deficitPct" type="number" value={f.deficitPct} onChange={e=>set("deficitPct",e.target.value)} style={{...inp,width:110}}/>}
         {lab("חלבון (גר' לק״ג, לפי משקל מותאם ב-BMI 30+) · מינימום לארוחה עיקרית (גר')")}<div style={{display:"flex",gap:8}}><input data-f="protKg" type="number" step="0.1" value={f.protKg} onChange={e=>set("protKg",e.target.value)} style={{...inp,width:110}}/><input data-f="protMealMin" type="number" value={f.protMealMin} onChange={e=>set("protMealMin",e.target.value)} style={{...inp,width:110}}/></div>
         {lab("תקרת נתרן (מ״ג) · שומן רווי (% מהקלוריות)")}<div style={{display:"flex",gap:8}}><input data-f="naCap" type="number" value={f.naCap} onChange={e=>set("naCap",e.target.value)} style={{...inp,width:110}}/><input data-f="satFatPct" type="number" value={f.satFatPct} onChange={e=>set("satFatPct",e.target.value)} style={{...inp,width:110}}/></div>
         {lab("פחמימות לארוחה עיקרית (גר')")}<label style={{fontSize:13,display:"flex",gap:6,alignItems:"center"}}><input type="checkbox" checked={f.carbOn} onChange={e=>set("carbOn",e.target.checked)}/>להגדיר טווח</label>
         {f.carbOn&&<div style={{display:"flex",gap:8,marginTop:4}}><input type="number" value={f.carbLo} onChange={e=>set("carbLo",e.target.value)} style={{...inp,width:90}}/><span>–</span><input type="number" value={f.carbHi} onChange={e=>set("carbHi",e.target.value)} style={{...inp,width:90}}/></div>}
-        <div style={{fontSize:12,color:"#6B7C72",marginTop:4}}>כל הערכים פעילים בתכנון: קלוריות, חלבון יומי ולארוחה עיקרית, נתרן, שומן רווי, פחמימות לארוחה (אם הוגדר טווח), סוג תזונה וארוחות צמחיות — גם בארוחות מן החי.</div>
+        <div style={{fontSize:12,color:"#6B7C72",marginTop:4}}>כל הערכים פעילים בתכנון: קלוריות, חלבון יומי ולארוחה עיקרית, נתרן, שומן רווי, פחמימות לארוחה (אם הוגדר טווח), סוג תזונה וארוחות צמחיות — גם בארוחות מן החי. עם GLP-1 — גם ארוחות קטנות יותר ויומן תופעות לוואי.</div>
         {lab("בתוקף עד")}<input data-f="exp" type="date" value={f.exp} onChange={e=>set("exp",e.target.value)} style={{...inp,width:180}}/>
         {lab("איש קשר למשתתף (טלפון / מייל, לא חובה)")}<input data-f="contact" value={f.contact} onChange={e=>set("contact",e.target.value)} style={inp}/>
         {err&&<div data-staff-err style={{color:"#b3261e",fontSize:13.5,marginTop:8}}>{err}</div>}
