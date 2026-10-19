@@ -21758,8 +21758,22 @@ function rxExportCSV(profile,target){ const rx=profile.rx||{}; const today=today
       a&&a.kcal?r1((a.satFat||0)*9/a.kcal*100):"",r1(a&&a.fiber),r0(a&&a.sodium),om?(om.p?.n??""):"",om?(om.o?.n??""):"",om?r0(om.redG):"",om?r0(om.procG):"",r1(w),r1(sr[d]?.waist),r0(act.steps),r0(act.min),(act.type||[]).includes("str")?1:"",...Object.keys(GLP_SYM).map(k=>gl[d]?.[k]??"")].map(q).join(","); });
   const name=`PlantVitalis_${String(rx.study||"study").replace(/[^A-Za-z0-9_-]/g,"")}_${String(rx.pid||"p").replace(/[^A-Za-z0-9_-]/g,"")}_${today}.csv`;
   return {name,csv:[RX_CSV_COLS.join(","),...rows].join("\n"),n:rows.length,logged:dates.filter(d=>th[d]&&!th[d].as).length,start}; }
-async function rxShareExport(profile,target){ const {name,csv,n}=rxExportCSV(profile,target); const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
-  try{ const file=new File([blob],name,{type:"text/csv"}); if (navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return {how:"shared",n}; } }catch(e){ if (e&&e.name==="AbortError") return {how:"cancel",n}; }
+// הצפנת קובץ הנתונים לצוות (לבקשת המשתמש — אבטחת מידע): ECDH P-256 עם מפתח חד-פעמי + HKDF-SHA256 + AES-GCM 256, למפתח הציבורי
+// של צוות המחקר (אותו זוג מפתחות של חתימת המרשמים; HKDF עם info נפרד). רק מי שמחזיק את המפתח הפרטי (מסך הצוות) פותח את הקובץ
+const RX_ENC_INFO=new TextEncoder().encode("PVX1-export");
+const rxEcdhPub=(x,y)=>crypto.subtle.importKey("jwk",{kty:"EC",crv:"P-256",x,y,ext:true},{name:"ECDH",namedCurve:"P-256"},false,[]);
+async function rxAesKey(bits,salt,use){ const hk=await crypto.subtle.importKey("raw",bits,"HKDF",false,["deriveKey"]); return crypto.subtle.deriveKey({name:"HKDF",hash:"SHA-256",salt,info:RX_ENC_INFO},hk,{name:"AES-GCM",length:256},false,[use]); }
+async function rxEncrypt(text,kid){ const pk=RESEARCH_PUBKEYS.find(k=>k.kid===kid)||RESEARCH_PUBKEYS[0]; const pub=await rxEcdhPub(pk.x,pk.y);
+  const eph=await crypto.subtle.generateKey({name:"ECDH",namedCurve:"P-256"},true,["deriveBits"]); const bits=await crypto.subtle.deriveBits({name:"ECDH",public:pub},eph.privateKey,256);
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12)); const epk=await crypto.subtle.exportKey("jwk",eph.publicKey);
+  const hdr={pvx:1,kid:pk.kid,epk:{x:epk.x,y:epk.y},salt:b64uEnc(salt),iv:b64uEnc(iv)}; const aad=new TextEncoder().encode(JSON.stringify(hdr));
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv,additionalData:aad},await rxAesKey(bits,salt,"encrypt"),new TextEncoder().encode(text)); return JSON.stringify({...hdr,ct:b64uEnc(ct)}); }
+async function rxDecrypt(blob,priv){ const j=JSON.parse(blob); if (j.pvx!==1||!j.epk||!j.ct) throw new Error("format"); if (j.kid!==priv.kid) throw new Error("key");
+  const sk=await crypto.subtle.importKey("jwk",{kty:"EC",crv:"P-256",x:priv.x,y:priv.y,d:priv.d,ext:true},{name:"ECDH",namedCurve:"P-256"},false,["deriveBits"]);
+  const bits=await crypto.subtle.deriveBits({name:"ECDH",public:await rxEcdhPub(j.epk.x,j.epk.y)},sk,256); const {ct,...hdr}=j;
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64uDec(j.iv),additionalData:new TextEncoder().encode(JSON.stringify(hdr))},await rxAesKey(bits,b64uDec(j.salt),"decrypt"),b64uDec(ct)); return new TextDecoder().decode(pt); }
+async function rxShareExport(profile,target){ const {name:csvName,csv,n}=rxExportCSV(profile,target); const name=csvName.replace(/\.csv$/,".pvx"); const blob=new Blob([await rxEncrypt(csv,profile.rx&&profile.rx.kid)],{type:"application/octet-stream"});
+  try{ const file=new File([blob],name,{type:"application/octet-stream"}); if (navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return {how:"shared",n}; } }catch(e){ if (e&&e.name==="AbortError") return {how:"cancel",n}; }
   const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),3000); return {how:"downloaded",n,name}; }
 // נתוני הדגמה (לבקשת המשתמש — להצגה לצוות רפואי): רק למשתתף שמספרו מתחיל ב-DEMO. 4 שבועות מלאים לפני השבוע הנוכחי
 // (השבוע הנוכחי נבנה מחדש מהיומן): 22 ימים מתועדים, 3 "לפי התפריט", 3 בלי נתונים — מתוך התפריט של השבוע עם שונות יומית;
@@ -21789,7 +21803,7 @@ function RxSettingsSection({profile,setProfile,lang,row,lbl,target}){ const he=l
       <div style={{fontSize:12.5,lineHeight:1.55,marginTop:5,background:"#EAF1FB",borderRadius:9,padding:"6px 9px"}}>{rxSummaryLines(rx,he).map((l,i)=><div key={i}>• {l}</div>)}<div style={{marginTop:3,color:"#15507a",fontWeight:700}}>{he?"🔒 נקבע על ידי צוות המחקר — לא ניתן לשינוי כאן.":"🔒 Set by the research team — can't be changed here."}</div></div>
       {(()=>{ const sum=rxExportCSV(profile,target); return <div data-rx-export-box style={{marginTop:7,background:"#F5F2EB",borderRadius:9,padding:"7px 9px"}}>
         <button data-rx-export onClick={()=>rxShareExport(profile,target).then(r=>setExp(r))} style={{background:"#15507a",color:"#FFFFFF",border:"none",borderRadius:9,padding:"7px 12px",fontSize:13.5,fontWeight:700,cursor:"pointer"}}>📤 {he?"שליחת הנתונים לצוות המחקר":"Send data to the research team"}</button>
-        <div style={{fontSize:12,color:"#4A5A50",marginTop:5,lineHeight:1.5}}>{he?`קובץ אחד עם ${sum.n===1?"יום אחד":`${sum.n} ימים`} מאז ${sum.start.split("-").reverse().join(".")} (${sum.logged} מתועדים ביומן): סיכומים יומיים — קלוריות, חלבון, פחמימות, שומן רווי, נתרן, ארוחות צמחיות ומן החי, משקל, מותניים ופעילות. בלי שם ובלי פירוט המזונות.`:`One file with ${sum.n} days since ${sum.start} (${sum.logged} logged): daily totals — calories, protein, carbs, saturated fat, sodium, plant and animal meals, weight, waist and activity. No name and no food details.`}</div>
+        <div style={{fontSize:12,color:"#4A5A50",marginTop:5,lineHeight:1.5}}>{he?`קובץ אחד עם ${sum.n===1?"יום אחד":`${sum.n} ימים`} מאז ${sum.start.split("-").reverse().join(".")} (${sum.logged} מתועדים ביומן): סיכומים יומיים — קלוריות, חלבון, פחמימות, שומן רווי, נתרן, ארוחות צמחיות ומן החי, משקל, מותניים ופעילות. בלי שם ובלי פירוט המזונות. 🔒 הקובץ מוצפן — רק צוות המחקר יכול לפתוח אותו.`:`One file with ${sum.n} days since ${sum.start} (${sum.logged} logged): daily totals — calories, protein, carbs, saturated fat, sodium, plant and animal meals, weight, waist and activity. No name and no food details. 🔒 The file is encrypted — only the research team can open it.`}</div>
         {rxIsDemo(rx)&&<div data-rx-demo style={{marginTop:7,background:"#FFF7E6",border:"1px dashed #d9a441",borderRadius:9,padding:"6px 9px",fontSize:12,color:"#6b4a00",lineHeight:1.5}}>🧪 {he?"משתתף הדגמה: אפשר למלא 4 שבועות של נתונים לדוגמה (תיעוד, משקל, מותניים ותופעות לוואי), כדי לראות איך נראים הדו\"ח והקובץ. נדרש תפריט לשבוע.":"Demo participant: fill 4 weeks of sample data (log, weight, waist and side effects) to see the report and file. A week menu is needed."}
           <div><button data-rx-demo-fill onClick={()=>{ const st=rxFillDemo(profile,target); if (!st){ setExp({how:"nodemo"}); return; } setProfile(p=>({...p,rx:{...p.rx,__at:st}})); setTimeout(()=>window.location.reload(),400); }} style={{marginTop:5,background:"#d9a441",color:"#FFFFFF",border:"none",borderRadius:8,padding:"5px 11px",fontSize:12.5,fontWeight:700,cursor:"pointer"}}>{he?"🧪 מילוי נתוני הדגמה":"🧪 Fill demo data"}</button></div></div>}
         <button data-rx-report onClick={()=>setRep(true)} style={{marginTop:7,background:"#FFFFFF",color:"#15507a",border:"1px solid #15507a",borderRadius:9,padding:"7px 12px",fontSize:13.5,fontWeight:700,cursor:"pointer"}}>🩺 {he?"דו\"ח לרופא/ה — תקופת המחקר":"Physician report — study period"}</button>
@@ -21802,7 +21816,7 @@ function RxSettingsSection({profile,setProfile,lang,row,lbl,target}){ const he=l
       <button data-rx-check onClick={()=>rxVerify(code).then(setRes)} disabled={!code.trim()} style={{marginTop:6,background:"#1E3A2B",color:"#FFFFFF",border:"none",borderRadius:9,padding:"7px 14px",fontSize:13.5,fontWeight:700,cursor:code.trim()?"pointer":"default",opacity:code.trim()?1:0.5}}>{he?"בדיקה ואישור":"Check & approve"}</button></>}
     <RxImportModal res={res} lang={lang} onClose={()=>setRes(null)} onApprove={()=>{ setProfile(p=>rxApplyToProfile(p,{...res.payload,__ok:true,__code:res.code})); setRes(null); setCode(""); }}/>
     {rep&&rx&&<div style={{position:"fixed",inset:0,zIndex:420}}><PractitionerReportModal lang={lang} weekLabel={`${String(rx.pid||"p").replace(/[^A-Za-z0-9_-]/g,"")}-${todayKey()}`} fileBase={he?"דוח-מחקר":"study-report"} onClose={()=>setRep(false)}
-      title={he?"דו\"ח לרופא/ה — תקופת המחקר":"Physician report — study period"} desc={he?"סיכום מאז ההצטרפות: המרשם, משקל ומותניים, תיעוד ועמידה במרשם — להדפסה, לשמירה כ-PDF או לשליחה לרופא/ה ולצוות המחקר.":"A summary since joining: prescription, weight and waist, logging and compliance — print, save as PDF or send to your physician and the research team."}
+      title={he?"דו\"ח לרופא/ה — תקופת המחקר":"Physician report — study period"} desc={he?"סיכום מאז ההצטרפות: המרשם, משקל ומותניים, תיעוד ועמידה במרשם. מומלץ להדפיס או להציג בביקור — לא לשלוח בקבוצות או לאנשים אחרים.":"A summary since joining: prescription, weight and waist, logging and compliance. Best printed or shown at the visit — don't send it to groups or other people."}
       html={buildRxPeriodReportHTML({lang,profile,target})}/></div>}
   </div>; }
 // גרסת מחקר: כרטיס הפתיחה למשתתף/ת חדש/ה — קודם טוענים את מרשם המחקר מהצוות, ואז שאלון קצר
@@ -27533,6 +27547,20 @@ function DemoGate({children}){
   if (!terms) return <DemoTerms onOk={()=>{ try{ localStorage.setItem(DEMO_TERMS_KEY,new Date().toISOString()); }catch{} setTerms(true); }}/>;
   return <>{children}<div data-demo-wm aria-hidden="true" style={{position:"fixed",inset:0,zIndex:1999,pointerEvents:"none",backgroundImage:DEMO_WM,backgroundRepeat:"repeat"}}/><div data-demo-bar style={{position:"fixed",top:0,left:0,right:0,zIndex:2000,background:"#8C6D53",color:"#FFFFFF",fontSize:11.5,fontWeight:700,textAlign:"center",padding:"2px 0",pointerEvents:"none",direction:"rtl"}}>גרסת הדגמה · {left>90?`נותרו כ־${Math.round(left/60)} שעות`:`נותרו ${left} דקות`}</div></>;
 }
+// מסך הצוות — פתיחת קבצי משתתפים (.pvx): פענוח במפתח הפרטי שבמכשיר, ואיחוד לקובץ CSV אחד (כותרת אחת)
+function StaffDecrypt({keyJ}){ const[res,setRes]=useState(null);
+  const onFiles=async files=>{ const rows=[]; let head=null; const list=[];
+    for (const f of [...files]){ try{ const csv=await rxDecrypt(await f.text(),keyJ); const L=csv.split("\n"); head=head||L[0]; rows.push(...L.slice(1).filter(Boolean)); list.push({n:f.name,ok:true,r:L.length-1}); }
+      catch(e){ list.push({n:f.name,ok:false,e:e&&e.message==="key"?"הקובץ הוצפן במפתח אחר":"לא ניתן לפתוח — הקובץ פגום או לא שייך למחקר"}); } }
+    setRes({list,csv:head?[head,...rows].join("\n"):null}); };
+  const dl=()=>{ const url=URL.createObjectURL(new Blob(["\ufeff"+res.csv],{type:"text/csv;charset=utf-8"})); const a=document.createElement("a"); a.href=url; a.download=`PlantVitalis_data_${todayKey()}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),3000); };
+  return <div data-staff-decrypt style={{background:"#FFFFFF",border:"1px solid #E2DED4",borderRadius:12,padding:"12px 14px",marginBottom:10}}>
+    <div style={{fontSize:15,fontWeight:800}}>📥 פתיחת קבצי משתתפים</div>
+    <div style={{fontSize:12.5,color:"#4A5A50",margin:"3px 0 7px",lineHeight:1.5}}>הקבצים שהמשתתפים שולחים (‎.pvx) מוצפנים. בוחרים כאן קובץ אחד או כמה — הם נפתחים במחשב הזה בלבד ומתאחדים לקובץ CSV אחד. כדאי לשמור את ה-CSV רק במערכות המוסד.</div>
+    <input data-staff-decrypt-in type="file" multiple accept=".pvx,application/octet-stream" onChange={e=>onFiles(e.target.files)} style={{fontSize:13}}/>
+    {res&&<div style={{marginTop:7,fontSize:13,lineHeight:1.6}}>{res.list.map((x,i)=><div key={i} style={{color:x.ok?"#1E5631":"#b3261e"}}>{x.ok?"✓":"✗"} {x.n}{x.ok?` — ${x.r} ימים`:` — ${x.e}`}</div>)}
+      {res.csv&&<button data-staff-decrypt-dl onClick={dl} style={{marginTop:6,padding:"7px 12px",borderRadius:9,border:"none",background:"#15507a",color:"#FFFFFF",fontWeight:700,cursor:"pointer"}}>⬇️ הורדת CSV מאוחד</button>}</div>}
+  </div>; }
 // 🔬 מסך הצוות (?staff=1, לא בתפריט הרגיל): טעינת המפתח הפרטי (נשמר רק במכשיר הזה), טופס המרשם, הפקת קוד חתום + קישור + QR, ודף להדפסה
 function StaffRxScreen(){ const he=true; const KEYK="pv_rx_staff_key";
   const[key,setKey]=useState(()=>{ try{ return JSON.parse(localStorage.getItem(KEYK)||"null"); }catch{ return null; } }); const[keyTxt,setKeyTxt]=useState(""); const[keyErr,setKeyErr]=useState("");
@@ -27597,6 +27625,7 @@ function StaffRxScreen(){ const he=true; const KEYK="pv_rx_staff_key";
           <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(out.link)} style={{padding:"7px 11px",borderRadius:9,border:"1px solid #D9D3C5",background:"#FFFFFF",fontWeight:700,cursor:"pointer"}}>📋 העתקת הקישור</button>
           <button onClick={()=>navigator.clipboard&&navigator.clipboard.writeText(out.code)} style={{padding:"7px 11px",borderRadius:9,border:"1px solid #D9D3C5",background:"#FFFFFF",fontWeight:700,cursor:"pointer"}}>📋 העתקת הקוד</button>
           <button onClick={()=>window.print()} style={{padding:"7px 11px",borderRadius:9,border:"1px solid #D9D3C5",background:"#FFFFFF",fontWeight:700,cursor:"pointer"}}>🖨 הדפסה</button></div></div>}
+      <StaffDecrypt keyJ={key}/>
       <button onClick={()=>{ if (window.confirm("להסיר את המפתח מהמכשיר הזה?")) { localStorage.removeItem(KEYK); setKey(null); setOut(null); } }} style={{background:"none",border:"none",color:"#6B7C72",fontSize:12.5,cursor:"pointer",textDecoration:"underline"}}>הסרת המפתח מהמכשיר</button>
       </>}
     </div></div>; }
