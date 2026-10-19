@@ -21697,7 +21697,7 @@ function rxExportCSV(profile,target){ const rx=profile.rx||{}; const today=today
 async function rxShareExport(profile,target){ const {name,csv,n}=rxExportCSV(profile,target); const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
   try{ const file=new File([blob],name,{type:"text/csv"}); if (navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return {how:"shared",n}; } }catch(e){ if (e&&e.name==="AbortError") return {how:"cancel",n}; }
   const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),3000); return {how:"downloaded",n,name}; }
-function RxSettingsSection({profile,setProfile,lang,row,lbl,target}){ const he=lang==="he"; const[code,setCode]=useState(""); const[res,setRes]=useState(null); const[ask,setAsk]=useState(false); const[exp,setExp]=useState(null);
+function RxSettingsSection({profile,setProfile,lang,row,lbl,target}){ const he=lang==="he"; const[code,setCode]=useState(""); const[res,setRes]=useState(null); const[ask,setAsk]=useState(false); const[exp,setExp]=useState(null); const[rep,setRep]=useState(false);
   const rx=profile.rx&&profile.rx.__ok?profile.rx:null;
   return <div data-rx-settings style={row}><div style={lbl}>🔬 {he?"מחקר":"Research"}</div>
     <div style={{fontSize:11.5,color:"#6B7C72",marginBottom:4}}>{he?`גרסת מחקר ${RESEARCH_VERSION}`:`Research version ${RESEARCH_VERSION}`}</div>
@@ -21707,6 +21707,7 @@ function RxSettingsSection({profile,setProfile,lang,row,lbl,target}){ const he=l
       {(()=>{ const sum=rxExportCSV(profile,target); return <div data-rx-export-box style={{marginTop:7,background:"#F5F2EB",borderRadius:9,padding:"7px 9px"}}>
         <button data-rx-export onClick={()=>rxShareExport(profile,target).then(r=>setExp(r))} style={{background:"#15507a",color:"#FFFFFF",border:"none",borderRadius:9,padding:"7px 12px",fontSize:13.5,fontWeight:700,cursor:"pointer"}}>📤 {he?"שליחת הנתונים לצוות המחקר":"Send data to the research team"}</button>
         <div style={{fontSize:12,color:"#4A5A50",marginTop:5,lineHeight:1.5}}>{he?`קובץ אחד עם ${sum.n===1?"יום אחד":`${sum.n} ימים`} מאז ${sum.start.split("-").reverse().join(".")} (${sum.logged} מתועדים ביומן): סיכומים יומיים — קלוריות, חלבון, פחמימות, שומן רווי, נתרן, ארוחות צמחיות ומן החי, משקל, מותניים ופעילות. בלי שם ובלי פירוט המזונות.`:`One file with ${sum.n} days since ${sum.start} (${sum.logged} logged): daily totals — calories, protein, carbs, saturated fat, sodium, plant and animal meals, weight, waist and activity. No name and no food details.`}</div>
+        <button data-rx-report onClick={()=>setRep(true)} style={{marginTop:7,background:"#FFFFFF",color:"#15507a",border:"1px solid #15507a",borderRadius:9,padding:"7px 12px",fontSize:13.5,fontWeight:700,cursor:"pointer"}}>🩺 {he?"דו\"ח לרופא/ה — תקופת המחקר":"Physician report — study period"}</button>
         {exp&&<div data-rx-export-msg style={{fontSize:12,color:"#1E5631",marginTop:4}}>{exp.how==="shared"?(he?"✓ נשלח.":"✓ Sent."):exp.how==="downloaded"?(he?`✓ הקובץ נשמר בהורדות (${exp.name}) — שולחים אותו לצוות בוואטסאפ או במייל.`:`✓ Saved to downloads (${exp.name}) — send it to the team by WhatsApp or email.`):(he?"השליחה בוטלה.":"Sending was cancelled.")}</div>}</div>; })()}
       {!ask?<button data-rx-exit onClick={()=>setAsk(true)} style={{marginTop:7,background:"#FFFFFF",border:"1px solid #e6a39c",borderRadius:9,color:"#b3261e",padding:"6px 11px",fontSize:13,fontWeight:700,cursor:"pointer"}}>{he?"יציאה ממצב מחקר":"Leave research mode"}</button>
         :<div style={{marginTop:7,fontSize:13}}>{he?"לצאת ממצב מחקר? כדאי לעדכן את צוות המחקר.":"Leave research mode? Please let the research team know."} <button data-rx-exit-ok onClick={()=>{ setProfile(p=>{ const {rx:_r,...q}=p; return q; }); setAsk(false); }} style={{marginInlineStart:6,background:"#b3261e",color:"#FFFFFF",border:"none",borderRadius:8,padding:"5px 10px",fontWeight:700,cursor:"pointer"}}>{he?"כן, לצאת":"Yes, leave"}</button> <button onClick={()=>setAsk(false)} style={{background:"none",border:"none",color:"#4A5A50",cursor:"pointer"}}>{he?"ביטול":"Cancel"}</button></div>}</>
@@ -21715,6 +21716,9 @@ function RxSettingsSection({profile,setProfile,lang,row,lbl,target}){ const he=l
       <textarea data-rx-code value={code} onChange={e=>setCode(e.target.value)} placeholder="PVRX1…" style={{width:"100%",minHeight:48,marginTop:6,fontSize:12,boxSizing:"border-box",direction:"ltr"}}/>
       <button data-rx-check onClick={()=>rxVerify(code).then(setRes)} disabled={!code.trim()} style={{marginTop:6,background:"#1E3A2B",color:"#FFFFFF",border:"none",borderRadius:9,padding:"7px 14px",fontSize:13.5,fontWeight:700,cursor:code.trim()?"pointer":"default",opacity:code.trim()?1:0.5}}>{he?"בדיקה ואישור":"Check & approve"}</button></>}
     <RxImportModal res={res} lang={lang} onClose={()=>setRes(null)} onApprove={()=>{ setProfile(p=>rxApplyToProfile(p,{...res.payload,__ok:true,__code:res.code})); setRes(null); setCode(""); }}/>
+    {rep&&rx&&<div style={{position:"fixed",inset:0,zIndex:420}}><PractitionerReportModal lang={lang} weekLabel={`${String(rx.pid||"p").replace(/[^A-Za-z0-9_-]/g,"")}-${todayKey()}`} fileBase={he?"דוח-מחקר":"study-report"} onClose={()=>setRep(false)}
+      title={he?"דו\"ח לרופא/ה — תקופת המחקר":"Physician report — study period"} desc={he?"סיכום מאז ההצטרפות: המרשם, משקל ומותניים, תיעוד ועמידה במרשם — להדפסה, לשמירה כ-PDF או לשליחה לרופא/ה ולצוות המחקר.":"A summary since joining: prescription, weight and waist, logging and compliance — print, save as PDF or send to your physician and the research team."}
+      html={buildRxPeriodReportHTML({lang,profile,target})}/></div>}
   </div>; }
 // גרסת מחקר: כרטיס הפתיחה למשתתף/ת חדש/ה — קודם טוענים את מרשם המחקר מהצוות, ואז שאלון קצר
 function ResearchWelcome({lang,setProfile,onOpenProfile}){ const he=lang==="he"; const[code,setCode]=useState(""); const[res,setRes]=useState(null);
@@ -22114,6 +22118,69 @@ ${n?(isCur?(foodsHtml?`<h2>${he?"מה נאכל בפועל":"What was actually ea
  "Food data: the Israeli Ministry of Health Tzameret database, with USDA for gaps; cooking losses of vitamins and minerals per USDA tables.",
  "Full methods — in the app's Knowledge library (ℹ️ Info → 📚 Knowledge library)."]).map(x=>`<p>• ${esc(x)}</p>`).join("")}</div>
 <div class="foot">${he?"הערכים מחושבים מתוך מאגר המזון של האפליקציה (בעיקר מאגר משרד הבריאות ו-USDA) לפי מה שהמשתמש/ת תיעד/ה ביומן, ולכן הם הערכה. יעדי הברזל והאבץ מותאמים לתזונה צמחית (IOM: ברזל ×1.8, אבץ ×1.5). הספיגה בפועל לא נמדדת. B12 וויטמין D תלויים בתוסף. הדוח אינו מסמך רפואי ואינו מחליף הערכה קלינית.":"Values are computed from the app's food database (mainly the Israeli Ministry of Health database and USDA) based on what the user logged, so they are estimates. Iron and zinc targets are adjusted for vegetarian diets (IOM: iron ×1.8, zinc ×1.5). Actual absorption is not measured. B12 and vitamin D depend on supplements. This report is not a medical document and does not replace clinical assessment."}</div>
+</body></html>`;
+}
+// מודול 6 — דו"ח לרופא/ה לתקופת המחקר (לבקשת המשתמש): עמוד אחד מאז ההצטרפות — המרשם, משקל ומותניים, היענות לתיעוד,
+// עמידה במרשם לפי מה שנאכל (ימים מתועדים בנפרד מימים "לפי התפריט") וטבלה שבועית. אותם מקורות נתונים כמו ייצוא ה-CSV
+function buildRxPeriodReportHTML({lang,profile,target}){
+  const he=lang==="he"; const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const rx=profile.rx||{}; const today=todayKey(); const start=rx.__at||shiftDateKey(today,-120);
+  const th=load(TRACK_HISTORY_STORAGE,{})||{}, wl=load("wfpb_weight_log",{})||{}, sr=load("wfpb_self_reports",{})||{};
+  const inP=d=>/^\d{4}-\d\d-\d\d$/.test(d)&&d>=start&&d<=today; const dd=dk=>{ const p=String(dk).split("-"); return p.length===3?`${+p[2]}.${+p[1]}.${p[0]}`:dk; };
+  const nDays=Math.round((new Date(today+"T12:00:00")-new Date(start+"T12:00:00"))/864e5)+1;
+  const docs=Object.keys(th).filter(d=>inP(d)&&th[d]&&th[d].a&&(th[d].a.kcal||0)>0).sort(); const logged=docs.filter(d=>!th[d].as), assumed=docs.filter(d=>th[d].as);
+  const wts=[...new Set([...Object.keys(wl),...Object.keys(sr)])].filter(inP).sort().map(d=>[d,+(wl[d]!=null?wl[d]:sr[d]?.weight)]).filter(([,v])=>v>=BODY_RANGE.weight[0]&&v<=BODY_RANGE.weight[1]);
+  const wst=Object.keys(sr).filter(d=>inP(d)&&+sr[d]?.waist>0).sort().map(d=>[d,+sr[d].waist]);
+  const f1=v=>fmtN(v,1), f0=v=>Math.round(v).toLocaleString("en-US"), kg=he?"ק\"ג":"kg";
+  const h=+profile.height; const bmiOf=w=>h>=BODY_RANGE.height[0]&&h<=BODY_RANGE.height[1]&&w>0?w/((h/100)**2):null;
+  const refW=proteinRefWeight(profile)||+profile.weight||0; const naCap=+rx.naCap||2300, satCap=+rx.satFatPct||null;
+  // עמידה לפי מה שנאכל — לקבוצת ימים
+  const stat=ds=>{ if (!ds.length) return null; const A=ds.map(d=>th[d].a); const av=k=>A.reduce((s,a)=>s+(a[k]||0),0)/A.length;
+    const satP=a=>(a.satFat||0)*9/a.kcal*100; return {n:ds.length,kcal:av("kcal"),prot:av("protein"),sat:A.reduce((s,a)=>s+satP(a),0)/A.length,satOk:satCap?A.filter(a=>satP(a)<=satCap+0.05).length:null,na:av("sodium"),naOk:A.filter(a=>(a.sodium||0)<=naCap*1.01).length}; };
+  const S1=stat(logged), S2=stat(assumed);
+  const plantOf=ds=>ds.reduce((s,d)=>s+(th[d].om?.p?.n||0),0), omniOf=ds=>ds.reduce((s,d)=>s+(th[d].om?.o?.n||0),0);
+  const ok=c=>c?`<span class="ok">✓</span>`:`<span class="bad">⚠</span>`;
+  const cmpRows=S=>!S?"":[
+    [he?"קלוריות ביום":"Calories a day", f0(S.kcal), target?`${f0(target)} (${Math.round(S.kcal/target*100)}%)`:"—", target?ok(S.kcal>=target*0.9&&S.kcal<=target*1.05):""],
+    [he?"חלבון ביום":"Protein a day", `${f0(S.prot)} ${he?"גר'":"g"}${refW?` · ${fmtN(S.prot/refW,2)} ${he?"גר'/ק\"ג":"g/kg"}`:""}`, `${rx.protKg||1.2} ${he?"גר'/ק\"ג":"g/kg"}${refW?` (${f0((rx.protKg||1.2)*refW)} ${he?"גר'":"g"})`:""}`, refW?ok(S.prot>=(rx.protKg||1.2)*refW*0.95):""],
+    ...(satCap?[[he?"שומן רווי":"Saturated fat", `${f1(S.sat)}% · ${he?`${S.satOk}/${S.n} ימים בתקרה`:`${S.satOk}/${S.n} days within cap`}`, `≤ ${satCap}%`, ok(S.sat<=satCap+0.05)]]:[]),
+    [he?"נתרן ביום":"Sodium a day", `${f0(S.na)} ${he?"מ\"ג":"mg"} · ${he?`${S.naOk}/${S.n} ימים בתקרה`:`${S.naOk}/${S.n} days within cap`}`, `≤ ${f0(naCap)}`, ok(S.na<=naCap*1.01)],
+  ].map(r=>`<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td><td class="num">${r[2]}</td><td class="num">${r[3]}</td></tr>`).join("");
+  const cmpTable=(S,ttl)=>S?`<h3>${esc(ttl)} <span class="muted">(${S.n} ${he?"ימים":"days"})</span></h3><table><thead><tr><th></th><th class="num">${he?"בפועל — ממוצע":"Actual — average"}</th><th class="num">${he?"במרשם":"Prescribed"}</th><th class="num"></th></tr></thead><tbody>${cmpRows(S)}</tbody></table>`:"";
+  // טבלה שבועית
+  const weeks=[]; for (let ws=weekStartKey(start); ws<=today; ws=shiftDateKey(ws,7)){ const we=shiftDateKey(ws,6); const inW=d=>d>=ws&&d<=we; const ds=docs.filter(inW); const S=stat(ds); const lw=wts.filter(([d])=>inW(d)).pop();
+    weeks.push(`<tr><td>${esc(dd(ws<start?start:ws).slice(0,-5))}–${esc(dd(we>today?today:we).slice(0,-5))}</td><td class="num">${ds.filter(d=>!th[d].as).length}${ds.some(d=>th[d].as)?` <span class="muted">+${ds.filter(d=>th[d].as).length}</span>`:""}</td><td class="num">${S?f0(S.kcal):"—"}</td><td class="num">${S?f0(S.prot):"—"}</td><td class="num">${S?f1(S.sat)+"%":"—"}</td><td class="num">${S?f0(S.na):"—"}</td>${rx.diet==="omni"?`<td class="num">${ds.length?plantOf(ds):"—"}</td>`:""}<td class="num">${lw?f1(lw[1]):"—"}</td></tr>`); }
+  // תוצאות עיקריות
+  const w0=wts[0], w1=wts[wts.length-1]; const dW=w0&&w1&&w1[0]>w0[0]?w1[1]-w0[1]:null;
+  const x0=wst[0], x1=wst[wst.length-1]; const sg=v=>`<bdi dir="ltr">${v>0?"+":v<0?"−":""}${f1(Math.abs(v))}</bdi>`;
+  const key=[
+    w0?(he?`משקל: ${f1(w0[1])} ${kg} (${dd(w0[0])})${dW!=null?` ← ${f1(w1[1])} ${kg} (${dd(w1[0])}) · <b>${sg(dW)} ${kg} (${sg(dW/w0[1]*100)}%)</b>`:""}`:`Weight: ${f1(w0[1])} kg (${w0[0]})${dW!=null?` → ${f1(w1[1])} kg (${w1[0]}) · <b>${sg(dW)} kg (${sg(dW/w0[1]*100)}%)</b>`:""}`):(he?"משקל: לא נרשמו שקילות בתקופה.":"Weight: no weigh-ins in the period."),
+    x0?(he?`היקף מותניים: ${f1(x0[1])} ס"מ${x1[0]>x0[0]?` ← ${f1(x1[1])} ס"מ · <b>${sg(x1[1]-x0[1])} ס"מ</b>`:""}`:`Waist: ${f1(x0[1])} cm${x1[0]>x0[0]?` → ${f1(x1[1])} cm · <b>${sg(x1[1]-x0[1])} cm</b>`:""}`):(he?"היקף מותניים: לא נרשם.":"Waist: not recorded."),
+    ...(w0&&bmiOf(w0[1])?[`BMI: ${f1(bmiOf(w0[1]))}${dW!=null?` ${he?"←":"→"} ${f1(bmiOf(w1[1]))}`:""}`]:[]),
+  ];
+  const adh=[he?`ימים בתקופה: ${nDays} · תועדו ביומן: <b>${logged.length}</b> (${Math.round(logged.length/nDays*100)}%) · "לפי התפריט" (לא תועדו): ${assumed.length} · בלי נתונים: ${nDays-docs.length}`:`Days in period: ${nDays} · logged: <b>${logged.length}</b> (${Math.round(logged.length/nDays*100)}%) · "as planned" (not logged): ${assumed.length} · no data: ${nDays-docs.length}`,
+    he?`שקילות: ${wts.length} · מדידות מותניים: ${wst.length}`:`Weigh-ins: ${wts.length} · waist measurements: ${wst.length}`];
+  if (rx.diet==="omni"&&docs.length){ const pw=plantOf(docs)/docs.length*7, ow=omniOf(docs)/docs.length*7; adh.push(he?`ארוחות צמחיות: כ-<b>${f1(pw)}</b> בשבוע מול ${rx.plantMeals??7} במרשם (ארוחות מן החי: כ-${f1(ow)} בשבוע)`:`Plant-based meals: about <b>${f1(pw)}</b> a week vs ${rx.plantMeals??7} prescribed (animal-based: about ${f1(ow)} a week)`); }
+  const safe=medicalFlagsOf(profile).filter(k=>RX_SAFETY_FLAGS.includes(k)&&!rxCovers(profile,k)).map(k=>MEDICAL_FLAGS[k][lang]);
+  const notes=[...(rxExpired(profile)?[he?`⛔ תוקף המרשם פג ב-${dd(rx.exp)} — התפריט חזר להגדרות הרגילות.`:`⛔ The prescription expired on ${rx.exp} — the menu is back to regular settings.`]:[]),
+    ...(safe.length?[he?`מצבים שסומנו בשאלון ודורשים בדיקה עם הצוות: ${safe.join(", ")}.`:`Conditions marked in the questionnaire that need review with the team: ${safe.join(", ")}.`]:[]),
+    ...((rx.meds||[]).includes("acearb")?[he?"ACE / ARB / ספירונולקטון אושרו במרשם — התפריט עשיר באשלגן; מעקב אשלגן ותפקוד כליות לפי שיקול הצוות.":"ACE / ARB / spironolactone approved in the prescription — the menu is rich in potassium; monitor potassium and kidney function as the team decides."]:[]),
+    he?"הנתונים מדווחים על ידי המשתתף/ת ומחושבים ממאגר המזון של האפליקציה (בעיקר משרד הבריאות ו-USDA) — הערכה. ימים \"לפי התפריט\" הם הנחה שהתפריט המתוכנן נאכל, ולכן מוצגים בנפרד.":"Data are self-reported and computed from the app's food database (mainly the Israeli Ministry of Health and USDA) — estimates. \"As planned\" days assume the planned menu was eaten, so they are shown separately.",
+    ...(proteinRefWeight(profile)?[he?`חלבון לק"ג — לפי משקל ייחוס ${f1(refW)} ק"ג (BMI 30 ומעלה), כמו בתכנון התפריט.`:`Protein per kg — by a reference weight of ${f1(refW)} kg (BMI 30+), as in menu planning.`]:[]),
+    ...(rx.carbMeal?[he?"פחמימות לארוחה לא נשמרות בהיסטוריה (רק סיכומים יומיים) — העמידה בטווח מוצגת למשתתף/ת על התפריט המתוכנן.":"Carbs per meal are not stored in history (daily totals only) — the participant sees range compliance on the planned menu."]:[]),
+    he?"הדו\"ח אינו מסמך רפואי ואינו מחליף הערכה קלינית.":"This report is not a medical document and does not replace clinical assessment."];
+  const title=he?"דו\"ח לרופא/ה — תקופת המחקר":"Physician report — study period";
+  const css=`*{box-sizing:border-box}body{font-family:Arial,"Segoe UI",sans-serif;color:#1E3A2B;margin:0;padding:16px;font-size:12px;line-height:1.42;background:#fff}h1{font-size:18px;margin:0 0 2px}h2{font-size:13.5px;margin:12px 0 5px;padding-bottom:2px;border-bottom:2px solid #15507a}h3{font-size:12.5px;margin:7px 0 2px}p{margin:3px 0}.sub{color:#4A5A52;font-size:11.5px}table{width:100%;border-collapse:collapse;margin-top:3px}th,td{border:1px solid #D9D3C5;padding:3px 5px;text-align:start;vertical-align:top}th{background:#EAF1FB;font-size:11px}td.num,th.num{text-align:center}.ok{color:#256428;font-weight:700}.bad{color:#b3261e;font-weight:700}.muted{color:#6B7C72;font-weight:400}.box{background:#EAF1FB;border:1px solid #b8cde8;border-radius:8px;padding:6px 9px}.foot{margin-top:10px;font-size:10.5px;color:#4A5A52;border-top:1px solid #D9D3C5;padding-top:5px}@media print{body{padding:0}h2{break-after:avoid}tr{break-inside:avoid}@page{margin:10mm}}`;
+  return `<!doctype html><html lang="${he?"he":"en"}" dir="${he?"rtl":"ltr"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} ${esc(rx.study)} ${esc(rx.pid)}</title><style>${css}</style></head><body>
+<h1>🔬 PlantVitalis — ${esc(title)}</h1>
+<div class="sub">${he?"מחקר":"Study"} <b>${esc(rx.study)}</b> · ${he?"משתתף/ת":"Participant"} <b>${esc(rx.pid)}</b>${rx.arm?` · ${esc(rx.arm)}`:""} · ${he?"גרסה":"Version"} ${esc(RESEARCH_VERSION)}<br>${he?"תקופה":"Period"}: ${esc(dd(start))} – ${esc(dd(today))} (${nDays} ${he?"ימים":"days"}) · ${he?"הופק":"Generated"} ${esc(dd(today))}</div>
+<h2>${he?"תוצאות עיקריות":"Key results"}</h2><div class="box">${key.map(s=>`<p>• ${s}</p>`).join("")}</div>
+<h2>${he?"המרשם":"Prescription"}</h2>${rxSummaryLines(rx,he).map(l=>`<p>• ${esc(l)}</p>`).join("")}${rx.exp?`<p class="muted">${he?"בתוקף עד":"Valid until"} ${esc(dd(rx.exp))}</p>`:""}
+<h2>${he?"היענות":"Adherence"}</h2>${adh.map(s=>`<p>• ${s}</p>`).join("")}
+<h2>${he?"עמידה במרשם לפי מה שנאכל":"Prescription compliance by actual intake"}</h2>${docs.length?cmpTable(S1,he?"ימים שתועדו ביומן":"Logged days")+cmpTable(S2,he?"ימים \"לפי התפריט\" (לא תועדו — הנחה)":"\"As planned\" days (not logged — assumed)"):`<p class="muted">${he?"אין עדיין ימים עם נתוני צריכה בתקופה.":"No days with intake data in the period yet."}</p>`}
+<h2>${he?"לפי שבוע":"By week"}</h2><table><thead><tr><th>${he?"שבוע":"Week"}</th><th class="num">${he?"ימים מתועדים":"Logged days"}</th><th class="num">${he?"קק\"ל":"kcal"}</th><th class="num">${he?"חלבון (גר')":"Protein (g)"}</th><th class="num">${he?"שומן רווי":"Sat. fat"}</th><th class="num">${he?"נתרן (מ\"ג)":"Sodium (mg)"}</th>${rx.diet==="omni"?`<th class="num">${he?"ארוחות צמחיות":"Plant meals"}</th>`:""}<th class="num">${he?"משקל":"Weight"}</th></tr></thead><tbody>${weeks.join("")}</tbody></table>
+<p class="muted">${he?"\"+\" — ימים \"לפי התפריט\" שנכללו בממוצעי השבוע.":"\"+\" — \"as planned\" days included in the week's averages."}</p>
+<div class="foot">${notes.map(s=>`<p>• ${esc(s)}</p>`).join("")}</div>
 </body></html>`;
 }
 function PractitionerReportModal({lang,html,weekLabel,onClose,title,desc,fileBase}){
