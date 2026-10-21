@@ -25275,7 +25275,7 @@ function AppInner(){
   // הפתיחה, נגמר/מדולג עצמאית מ"ראיתי-את-מסך-הפתיחה" (אפשר לדלג-על-הסיור אבל עדיין-לסמן-שראית-את-הפתיחה)
   const[onboardActive,setOnboardActive]=useState(false);
   const[omniBannerX,setOmniBannerX]=useState(()=>load("wfpb_omni_banner_x",false)); const[howHintX,setHowHintX]=useState(()=>load("wfpb_how_hint_x",false)); // הודעות חד-פעמיות עם ✕ (לבקשת המשתמש: לפשט)
-  const[wizOpen,setWizOpen]=useState(false); const[wizDismissed,setWizDismissed]=useState(false);  // אשף פרופיל ראשוני
+  const[wizOpen,setWizOpen]=useState(false); const[wizDismissed,setWizDismissed]=useState(false); const[needBody,setNeedBody]=useState(false);  // אשף פרופיל ראשוני
   // תיקון (לבקשת המשתמש: "נא החזר pwa כך שלא יברח בפיירפוקס") — פיירפוקס-מובייל, בשונה מכרום, לא נותן ל-PWA-
   // מותקן חלון-עצמאי-אמיתי בפועל (התקנה שם עדיין פותחת בלשונית-פיירפוקס-רגילה) — כך שגם עם ה-manifest/service-
   // worker שכבר נוספו, המערכת עדיין יכולה "להרוג" את הלשונית-ברקע ולטעון-מחדש כשחוזרים אליה, בדיוק כמו כל
@@ -25608,8 +25608,11 @@ function AppInner(){
   const planGuard=(fn,mode)=>{ if(planBlock&&mode!=="actual"){ setPlanBlockOpen(true); return; } fn(); };
   // תקציב — כלי נוסף (לבקשת המשתמש): מוסתר עד שמפעילים אותו ב"הפרופיל וההגדרות שלי" (מי שכבר הגדיר תקציב — פעיל)
   const showBudget=profile.showBudget!=null?!!profile.showBudget:monthlyBudget>0;
-  const askBudgetThen=(kind,open)=>{ if(planBlock){ setPlanBlockOpen(true); return; } if(showBudget) setBudgetAsk({kind,open}); else { setPlanByBudget(false); open(); } };
+  // בלי יעד קלורי (חסרים / לא תקינים גיל, גובה או משקל) התכנון לא יכול להתחיל — קודם היה נסגר בשקט ("הכפתורים לא עובדים");
+  // עכשיו נפתח השאלון הקצר עם הודעה מה חסר
+  const askBudgetThen=(kind,open)=>{ if(planBlock){ setPlanBlockOpen(true); return; } if(!target){ setNeedBody(true); setWizOpen(true); return; } if(showBudget) setBudgetAsk({kind,open}); else { setPlanByBudget(false); open(); } };
   const budgetCtxNow=()=>{ if(!(planByBudget&&monthlyBudget>0)) return null; const c=makeBudgetCtx(monthlyBudget, priceOverrides); c.dri=dri; return c; };
+  useEffect(()=>{ if(!wizOpen) setNeedBody(false); },[wizOpen]);
   const[costSwapModalOpen,setCostSwapModalOpen]=useState(false);
   const[dayPlanOpen,setDayPlanOpen]=useState(false);
   const[weekPlanOpen,setWeekPlanOpen]=useState(false);
@@ -27321,6 +27324,10 @@ function AppInner(){
       {savedOpen&&<SavedMealsModal mealKey={savedOpen} onClose={()=>setSavedOpen(null)}
         onLoad={ings=>{setMeal(savedOpen,ings.map(x=>({...x,_id:x._id||uid()})));setSavedOpen(null);}} lang={lang}/>}
       {showWelcome&&!firstDisc&&<WelcomeModal lang={lang} onClose={()=>{dismissWelcome();setTab("meals");}} onStartTour={(full)=>{dismissWelcome();setTab("meals");setInfoOpen(null);fillDemoDayIfEmpty();setTourFull(!!full);setOnboardActive(true);}}/>}
+      {wizOpen&&needBody&&(()=>{ const he=lang==="he"; const nm={age:he?"גיל":"age",height:he?"גובה":"height",weight:he?"משקל":"weight"};
+        const bad=["height","weight"].filter(k=>bodyBad(k,profile[k])).map(k=>nm[k]), miss=["age","height","weight"].filter(k=>!(+profile[k]>0)).map(k=>nm[k]);
+        return <div data-need-body dir={he?"rtl":"ltr"} style={{position:"fixed",top:10,left:"50%",transform:"translateX(-50%)",zIndex:395,width:"min(420px,calc(100vw - 24px))",boxSizing:"border-box",background:"#FFF4E5",border:"1px solid #e0a64a",borderRadius:12,padding:"9px 12px",fontSize:14,fontWeight:700,color:"#6b4a00",lineHeight:1.45,boxShadow:"0 4px 14px rgba(0,0,0,.18)"}}>
+          {he?"כדי לבנות תפריט צריך גיל, גובה ומשקל.":"To build a menu we need age, height and weight."}{bad.length?(he?` ${bad.join(" ו")} מחוץ לטווח — נא לתקן.`:` ${bad.join(" and ")} out of range — please fix.`):miss.length?(he?` חסר: ${miss.join(", ")}.`:` Missing: ${miss.join(", ")}.`):""}</div>; })()}
       {wizOpen&&<ProfileWizard profile={profile} setProfile={setProfile} target={target} lang={lang} onInfo={setInfoOpen}
         onClose={()=>{ setWizOpen(false); setWizDismissed(true); }}
         onFinish={()=>{ const flagged=medicalFlagsOf(profile).filter(k=>!rxCovers(profile,k)).length>0; setProfile(p=>({...p,mealStyle:p.mealStyle||"simple",sex:p.sex||"male",activity:p.activity||"medium"})); setWizOpen(false); setWizDismissed(true);
