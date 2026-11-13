@@ -24756,7 +24756,7 @@ function RecipesPanel({recipes,setRecipes,lang,onAddToMeal,profile,isDesktop,sim
     setRecipes(next);save(RECIPE_STORAGE,next);
   }
   const filtered=Object.entries(FDB).filter(([,f])=>{if(f.logOnly)return false;const n=lang==="he"?f.he:f.en;const matchesSearch=!search||n.toLowerCase().includes(search.toLowerCase());const matchesCat=catFilter==="הכל"||f.cat===catFilter||(f.tags&&f.tags.includes(catFilter));return matchesSearch&&matchesCat;}).slice(0,40);
-  const[bookOpen,setBookOpen]=useState(false); // הלשונית נפתחת ישר ברשימת המתכונים (לבקשת המשתמש); הספר — בכפתור "📖 פתח כספר"
+  const[bookOpen,setBookOpen]=useState(true); // הלשונית נפתחת ישר בספר המתכונים הדיגיטלי (לבקשת המשתמש); סגירת הספר — מסך ניהול המתכונים
   // צפייה במתכון בלי עריכה (לבקשת המשתמש) + חזרה למקום ברשימה אחרי יציאה מעריכה (לא לקפוץ לראש הרשימה)
   const[viewId,setViewId]=useState(null);
   const lastRecIdRef=useRef(null);
