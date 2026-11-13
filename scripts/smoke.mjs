@@ -46,7 +46,7 @@ async function run(mobile) {
   for (const item of ["שאלו שאלה", "מדריך למשתמש", "שאלות ותשובות", "ספריית הידע", "מקורות הנתונים", "טבלת המזונות", "על האפליקציה"])
     await step(item, async () => { await btn("מידע").click(); await p.waitForTimeout(300); await btn(item).click(); await p.waitForTimeout(600); await vegScan(); await closeAll(); });
   for (const tab of mobile ? ["תזונה", "יומן", "מתכונים", "ארוחות"] : ["אבות המזון", "מיקרו", "יומן", "מתכונים", "ארוחות"])
-    await step("לשונית " + tab, async () => { const t = p.locator("button:visible", { hasText: tab }).last(); await t.click(); await p.waitForTimeout(700); });
+    await step("לשונית " + tab, async () => { await closeAll(); /* לשונית המתכונים נפתחת בספר המתכונים, שמכסה את סרגל הלשוניות */ const t = p.locator("button:visible", { hasText: tab }).last(); await t.click(); await p.waitForTimeout(700); });
   const hs = await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1); results.push([tag, "בלי גלילה הצידה", hs ? "✗" : "✓"]);
   await b.close();
 }
