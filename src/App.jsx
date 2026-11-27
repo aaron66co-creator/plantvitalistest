@@ -10395,6 +10395,22 @@ function capManganese(d, dri, target, LEU){ const UL=dri?.manganese?.ul||15; con
   return d; }
 // שבוע במצב פשוט: הארוחה בצלחת אחת של הצהריים חוזרת יומיים ברצף (בישול אחד), כל מתכון עד פעמיים בשבוע;
 // ארוחות בוקר חדשות עד פעמיים בשבוע (מגיל 65 ומ-1,800 קק"ל — עד 3) (השאר — ארוחות הבוקר הקיימות, לבקשת המשתמש: 70% מהמנות ממתכונים קיימים)
+// קיצוץ קלורי אחרון לתפריט הפשוט (לבקשת המשתמש: ימים עברו 100% מהיעד, בניגוד לכלל 98%-100%): המחולל הפשוט בונה בטווח
+// ביניים של עד 105%, ולכן יום שמעל 100% מוקטן בצעדים קטנים — דגן שאינו מתכון (עד 60%), פרי (עד 50%), מנת מתכון (עד ¾),
+// אגוזים וזרעים (עד 50%). בלי למחוק פריטים, בלי לגעת בפריטי המשתמש ובמנות מן החי, ובלי להוריד חלבון מתחת ליעד (או מהערך שהיה)
+function simpleTrimToTarget(day,target,protMin){ const M4=["breakfast","snack","lunch","dinner"]; if (!target||!day) return day;
+  const all=()=>M4.flatMap(m=>day[m]||[]).concat(Object.values(day.__fx||{}).flat()); const N=()=>sumNuts(all().filter(x=>x&&x.fk).map(x=>ingNut(x.fk,x.g,x.soaked)));
+  const T0=N(); if (!(T0.kcal>target)) return day; const pFloor=Math.min(T0.protein||0,protMin||0)-0.5;
+  const fd=fk=>FDB[fk]||TEMP_FDB[fk]; const free=m=>(day[m]||[]).filter(x=>x&&x.fk&&!x._user&&!x._keep&&!x._omni&&!x._omniSide&&x.g>0);
+  const inSnack=new Set(day.snack||[]); const tiers=[x=>!fd(x.fk)?._isRecipe&&fd(x.fk)?.cat==="דגן", x=>fd(x.fk)?.cat==="פרי"&&!inSnack.has(x) /* פרי בביניים — יחידות שלמות */, x=>!!fd(x.fk)?._isRecipe, x=>["אגוזים","זרעים"].includes(fd(x.fk)?.cat)];
+  const minF=[0.6,0.5,0.75,0.5]; const orig=new Map(all().map(x=>[x,x.g]));
+  for (let guard=0; guard<80; guard++){ if (N().kcal<=target) break; let moved=false;
+    for (let ti=0; ti<tiers.length&&!moved; ti++){ const c=M4.flatMap(m=>free(m)).filter(tiers[ti]).sort((a,b)=>(ingNut(b.fk,b.g).kcal||0)-(ingNut(a.fk,a.g).kcal||0));
+      for (const x of c){ const o=orig.get(x)||x.g, pu=PIECE_UNITS[x.fk], st=pu&&pu.g>=20?pu.g/2:Math.max(5,Math.round(x.g*0.1)), ng=Math.round((x.g-st)*10)/10;
+        if (ng<o*minF[ti]-0.01||ng<=0) continue; const g0=x.g; x.g=ng; if ((N().protein||0)<pFloor){ x.g=g0; continue; } moved=true; break; } }
+    if (!moved) break; }
+  return day; }
+const simpleTrimWeek=(w,target,protMin)=>{ const wk=w&&w.week?w.week:w; if (wk) Object.keys(wk).forEach(k=>{ if (/^d\d$/.test(k)&&wk[k]) simpleTrimToTarget(wk[k],target,protMin); }); return w; };
 function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, excludedFks=new Set(), opts={}){
   // נתרן (לבקשת המשתמש): יעד מועדף 1,500–2,000 מ״ג ביום, ויוד 100% — התפריט נבנה עד 2,000; מעבר לכך (עד תקרת הפרופיל) רק
   // כשצריך עוד ⅛ כפית מלח מיודד כדי להגיע ל־100% יוד (בסוף, topUpIodineDay עם התקרה המלאה)
@@ -10541,7 +10557,7 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
     // השלמת לאוצין בסוף השבוע (אחרי שינויי הסידן) — בהחלפה, בלי לעבור 105% ובלי להוריד סידן
     for (const k of days) { const d=week[k]; for (const mk of MAIN) { if (leuM(d[mk])>=LEU) continue; const snap=JSON.stringify(d), c0=avgCa();
       simpleLeuSwap(d,mk,LEU,target,P.ok); if (avgCa()<Math.min(c0,caT)-0.01||(!vegOk(d)&&vegOk(JSON.parse(snap)))) week[k]=JSON.parse(snap); } }
-    // טווח הקלוריות (95%-105%): עודף — מקטינים; חוסר — רבע מנה נוספת מהמנה העיקרית בצהריים/ערב
+    // טווח הקלוריות בשלב הבנייה (95%-105%; בסוף — simpleTrimToTarget מקצץ ל-100% לפי הכלל 98%-100%): עודף — מקטינים; חוסר — רבע מנה נוספת מהמנה העיקרית בצהריים/ערב
     for (const k of days) { const d=week[k]; if (dN(d).kcal>target*1.05) fits(d,[],0);
       for (let r=0; r<4 && dN(d).kcal<target*0.95; r++) { const m=["lunch","dinner"].flatMap(mk=>(d[mk]||[]).filter(x=>TEMP_FDB[x.fk]?._isRecipe))
           .filter(x=>x.g+(TEMP_FDB[x.fk]._servingG||200)*0.25<=(TEMP_FDB[x.fk]._servingG||200)*1.5).sort((x,y)=>x.g/(TEMP_FDB[x.fk]._servingG||200)-y.g/(TEMP_FDB[y.fk]._servingG||200))[0];
@@ -10560,6 +10576,7 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
       const cand=(lowE?[["almonds",14],["sunflowerS",10]]:[["almonds",14]]).filter(([fk])=>P.ok(fk)&&FDB[fk]&&!(d.breakfast||[]).some(y=>y.fk===fk));
       for (const [fk,g] of cand) { const old=[x.fk,x.g], e0=avg("vitE"), c0=avg("calcium"), k0=dayN(d).kcal; x.fk=fk; x.g=g;
         if (dayN(d).kcal>Math.max(target*1.05,k0)+0.5||avg("vitE")<e0-0.01||avg("calcium")<c0-0.5) { x.fk=old[0]; x.g=old[1]; } else break; } } }
+  simpleTrimWeek(week,target,wKg&&hp?wKg*hp.protPerKg:0); /* קיצוץ אחרון ל-100% (לפני שהארוחות של המשתמש חוזרות — __fx נספר אבל לא מוקטן) */
   for (const k of Object.keys(week)) { const day=week[k]; if (!day.__fx) continue; Object.entries(day.__fx).forEach(([mk,a])=>{ day[mk]=[...a,...(day[mk]||[])]; }); delete day.__fx; } // ארוחות המשתמש חוזרות למקומן (ותוספות ההשלמה אחריהן)
   return week;
 }
@@ -25724,7 +25741,7 @@ function AppInner(){
   };
   // אותו דבר ברקע (לבקשת המשתמש): מחזיר Promise ומדווח התקדמות — המסך לא קופא בזמן החישוב
   const generateWeekForModeAsync=(mode,onProgress,isCancelled)=>{
-    if (simpleMode) { const exW=mode==="completeWeek"?existingWeekNow():null; return new Promise(res=>setTimeout(()=>{ if (isCancelled&&isCancelled()) return res(null); const w=generateSimpleWeekPlan(target,recipes,dri,wKg,hp,excludedFks,{...simpleOpts(),...(exW?{existingWeek:exW}:{})}); res(animalOn?simpleAnimalSubsWeek(w,excludedFks,exW,!!hp.menopause):w); },0)); }
+    if (simpleMode) { const exW=mode==="completeWeek"?existingWeekNow():null; return new Promise(res=>setTimeout(()=>{ if (isCancelled&&isCancelled()) return res(null); const w=generateSimpleWeekPlan(target,recipes,dri,wKg,hp,excludedFks,{...simpleOpts(),...(exW?{existingWeek:exW}:{})}); res(animalOn?simpleTrimWeek(simpleAnimalSubsWeek(w,excludedFks,exW,!!hp.menopause),target,wKg*hp.protPerKg):w); },0)); }
     if (mode==="completeWeek") { const ex=existingWeekNow(); return generateWeekForModeAsync("full",onProgress,isCancelled).then(w=>(!w||(isCancelled&&isCancelled()))?w:completeWeekFull(w,ex,target,planRecipes,recipeIds,dri,wKg,hp,excludedFks)); }
     if (mode!=="recipesNSF") return generateWeekPlanAsync(onProgress,isCancelled,budgetCtxNow(),target,wKg,hp,dri,recipeIds,excludedFks);
     const rawHistory = load(RECIPE_USAGE_HISTORY_STORAGE, {});
