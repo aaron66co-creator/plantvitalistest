@@ -10267,7 +10267,7 @@ function leucineDensityPass(d, target, dri, ok, LEU){ const MEALS=["breakfast","
 // יוד יומי (שלב ה'): בבדיקה, בסגנון "מגוון" רוב הימים נשארו בכ-120 מק"ג (היעד 150) והממוצע השבועי נשען על יום בודד עם הרבה
 // וואקמה. בסוף כל יום: מלח מיודד בשמיניות כפית (0.75 גר') ליד סלט או תבשיל, עד ¼ כפית בארוחה, בתוך תקרת הנתרן; עדיין חסר —
 // חצי גרם וואקמה ליד סלט (עד גרם ביום). לא כשמסומן תוסף יוד ביומן התוספים
-function topUpIodineDay(d, dri, ok){ const T=dri?.iodine?.dri; if (!T) return d; try { if (typeof iodineSuppOn==="function"&&iodineSuppOn()) return d; } catch(e){}
+function topUpIodineDay(d, dri, ok, exact){ const T=dri?.iodine?.dri; if (!T) return d; try { if (typeof iodineSuppOn==="function"&&iodineSuppOn()) return d; } catch(e){}
   const okF=ok||(fk=>!!FDB[fk]); const MEALS=["breakfast","snack","lunch","dinner"], MAIN=["breakfast","lunch","dinner"]; const fx=d.__fx||{}; const naCap=(dri&&dri._naCap)||((dri?._age||0)>=65?2000:2300);
   const dayN=()=>sumNuts(MEALS.flatMap(m=>[...(fx[m]||[]),...(d[m]||[])]).map(x=>ingNut(x.fk,x.g,x.soaked)));
   const isSal=fk=>TEMP_FDB[fk]?._isRecipe&&isSaladFk(fk); const host=m=>!fx[m]&&(d[m]||[]).some(x=>TEMP_FDB[x.fk]?._isRecipe&&(isSaladFk(x.fk)||["תבשילי קטניות","תבשילי דגנים","מרקים"].includes(recipeCatOfFk(x.fk))));
@@ -10278,6 +10278,12 @@ function topUpIodineDay(d, dri, ok){ const T=dri?.iodine?.dri; if (!T) return d;
     const cand=MAIN.filter(m=>!fx[m]&&(d[m]||[]).length&&saltG(m)+0.75<=2.26&&!(d[m]||[]).some(x=>x.fk==="wakame"));
     const m=[...cand.filter(host),...cand.filter(m=>!host(m))].sort((a,b)=>(host(b)-host(a))||(saltG(a)-saltG(b)))[0]; if (!m) break;
     const ex=d[m].find(x=>x.fk==="saltIodized"&&!x._user); if (ex) ex.g=Math.round((ex.g+0.75)*100)/100; else d[m].push({fk:"saltIodized",g:0.75}); }
+  // השלמה עד התקרה בדיוק (לבקשת המשתמש): כשנשאר מתחת לתקרת הנתרן פחות משמינית כפית — מוסיפים את היתרה (בגרם אחד מכל 0.05)
+  // למלח מיודד שכבר יש בארוחה (כמות נפרדת קטנה כל כך הייתה "כמות זעירה"), עד ⅜ כפית בארוחה
+  if (exact&&okF("saltIodized")&&FDB.saltIodized){ /* רק בשלב האחרון — באמצע הבנייה שלבים אחרים עוד מוסיפים מזון (ונתרן) */ const N=dayN(), per=ingNut("saltIodized",1), need=T-(N.iodine||0), room=naCap-5-(N.sodium||0); /* 5 מ"ג מרווח לעיגול */
+    if (need>0.5&&room>0&&per.iodine>0&&per.sodium>0){ let g=Math.floor(Math.min(need/per.iodine,room/per.sodium)*20)/20;
+      for (const m of MAIN.filter(m=>!fx[m]).sort((a,b)=>(host(b)-host(a))||(saltG(a)-saltG(b)))){ if (g<0.05) break; const ex=(d[m]||[]).find(x=>x.fk==="saltIodized"&&!x._user); if (!ex) continue;
+        const add=Math.min(g,Math.max(0,2.26-saltG(m))); if (add<0.05) continue; ex.g=Math.round((ex.g+add)*100)/100; g=Math.round((g-add)*100)/100; } } }
   if (okF("wakame")&&FDB.wakame){ let w=MEALS.reduce((a,m)=>a+(d[m]||[]).filter(x=>x.fk==="wakame").reduce((s,x)=>s+x.g,0),0);
     for (let r=0;r<2&&w<1;r++){ const N=dayN(); if ((N.iodine||0)>=T) break; if ((N.sodium||0)+(ingNut("wakame",0.5).sodium||0)>naCap) break;
       const m=MAIN.filter(m=>!fx[m]&&(d[m]||[]).some(x=>isSal(x.fk))).sort((a,b)=>saltG(a)-saltG(b))[0]; if (!m) break;
@@ -10563,7 +10569,7 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
           .filter(x=>x.g+(TEMP_FDB[x.fk]._servingG||200)*0.25<=(TEMP_FDB[x.fk]._servingG||200)*1.5).sort((x,y)=>x.g/(TEMP_FDB[x.fk]._servingG||200)-y.g/(TEMP_FDB[y.fk]._servingG||200))[0];
         if (!m) break; const sv=TEMP_FDB[m.fk]._servingG||200; m.g=Math.round((m.g+sv*0.25)*10)/10; if (dN(d).kcal>target*1.05) { m.g=Math.round((m.g-sv*0.25)*10)/10; break; } } } }
   for (const key of Object.keys(week)) balanceMealMix(week[key],target,dri,P.ok,+key.slice(1)||0); reduceCookingWeek(week,target,dri,P.ok).forEach(key=>balanceMealMix(week[key],target,dri,P.ok,+key.slice(1)||0)); trimWakameWeek(week,dri); trimFiberWeek(week,target,dri,excludedFks); topUpProteinWeek(week,target,dri,hp,wKg,excludedFks);
-  if (dri) { const dH={...dri,_naCap:naHard}; for (const key of Object.keys(week)) topUpIodineDay(week[key],dH,P.ok); } // יוד עדיין מתחת ל־100% — עוד ⅛ כפית, עד התקרה המלאה
+  if (dri) { const dH={...dri,_naCap:naHard}; for (const key of Object.keys(week)) topUpIodineDay(week[key],dH,P.ok,true); } // יוד עדיין מתחת ל־100% — עוד ⅛ כפית, עד התקרה המלאה
   // ויטמין E וסידן שבועיים (לבקשת המשתמש: "לתקן את השבועות החלשים"): כשהממוצע השבועי מתחת ליעד — אגוזי הבוקר מוחלפים
   // בשקדים (ויטמין E וסידן) או בגרעיני חמנייה (ויטמין E). לא נוגעים בגרעיני דלעת ובבוטנים (לאוצין); נשמר רק אם היום לא עובר
   // 105% קלוריות (או לא עולה), וויטמין E וסידן לא יורדים
@@ -10577,6 +10583,7 @@ function generateSimpleWeekPlan(target, recipes=[], dri=null, wKg=0, hp=null, ex
       for (const [fk,g] of cand) { const old=[x.fk,x.g], e0=avg("vitE"), c0=avg("calcium"), k0=dayN(d).kcal; x.fk=fk; x.g=g;
         if (dayN(d).kcal>Math.max(target*1.05,k0)+0.5||avg("vitE")<e0-0.01||avg("calcium")<c0-0.5) { x.fk=old[0]; x.g=old[1]; } else break; } } }
   simpleTrimWeek(week,target,wKg&&hp?wKg*hp.protPerKg:0); /* קיצוץ אחרון ל-100% (לפני שהארוחות של המשתמש חוזרות — __fx נספר אבל לא מוקטן) */
+  if (dri) { const dH={...dri,_naCap:naHard}; for (const key of Object.keys(week)) if (/^d\d$/.test(key)&&week[key]) topUpIodineDay(week[key],dH,P.ok,true); } // הקיצוץ מקטין מנות עם מלח — עוד השלמת מלח מיודד עד התקרה
   for (const k of Object.keys(week)) { const day=week[k]; if (!day.__fx) continue; Object.entries(day.__fx).forEach(([mk,a])=>{ day[mk]=[...a,...(day[mk]||[])]; }); delete day.__fx; } // ארוחות המשתמש חוזרות למקומן (ותוספות ההשלמה אחריהן)
   return week;
 }
@@ -15540,7 +15547,7 @@ function generateWeekPlan(...a){ a[3]=planDRI(a[3]); const r=withAgeMealCaps(a[3
 // יוד (לבקשת המשתמש): בסוף התכנון בסגנון המלא — עוד מלח מיודד עד תקרת הנתרן של המשתמש (2,300; מגיל 65 או ביתר לחץ דם — 2,000)
 function iodineSaltWeek(week,dri,hp,excl){ if (!week||!dri) return week; const ex=excl instanceof Set?excl:new Set(excl||[]);
   const dH={...dri,_naCap:hp?.sodiumMax||dri._naCap||((dri?._age||0)>=65?2000:2300)};
-  Object.keys(week).forEach(k=>{ if (/^d\d$/.test(k)&&week[k]) topUpIodineDay(week[k],dH,fk=>!ex.has(fk)&&!!FDB[fk]); }); return week; }
+  Object.keys(week).forEach(k=>{ if (/^d\d$/.test(k)&&week[k]) topUpIodineDay(week[k],dH,fk=>!ex.has(fk)&&!!FDB[fk],true); }); return week; }
 function generateWeekPlan__impl(...a){ return runGenSync(generateWeekPlan__gen(...a)); }
 function* generateWeekPlan__gen(target,wKg,hp,dri,recipeIds=[],excludedFks=new Set()){
   const week={}; const daysArr=[];
@@ -23133,9 +23140,9 @@ const b12Line=(profile,lang)=>{ const he=lang==="he", v=isVeganProfile(profile);
 // תוסף יוד ביומן. אפור (בין הדרישה הממוצעת ליעד) — "קרוב ליעד, אבל לא בוודאות"; כתום (מתחת לדרישה הממוצעת) — "כנראה לא מספיק"
 const iodineLine=(val,dri,hp,lang)=>{ if (iodineSuppOn()) return null; const he=lang==="he", T=dri?.iodine?.dri||150, E=dri?.iodine?.warn||95; if (!(val<T)) return null;
   const lowNa=(hp?.sodiumMax||2300)<=2000, below=val<E;
-  const txt=he?(below?"יוד — כנראה לא מספיק מהתפריט. מלח מיודד מוגבל בגלל תקרת הנתרן. מומלץ לברר עם רופא/ה או דיאטן/ית לגבי תוסף יוד."
+  const txt=he?(below?"יוד — כנראה לא מספיק מהתפריט: מלח מיודד מוגבל בגלל תקרת הנתרן, וכבר נוסף עד התקרה. מומלץ לשקול תוסף יוד — לפי הנחיה של רופא/ה או דיאטן/ית."
       :"יוד — קרוב ליעד, אבל לא בוודאות. בתפריט צמחי קשה להגיע ליעד המלא מהמזון, ובישראל יש מחסור ביוד. כדאי לברר עם רופא/ה או דיאטן/ית אם צריך תוסף יוד.")
-    :(below?"Iodine — probably not enough from the menu. Iodized salt is limited by the sodium ceiling. Ask your doctor or dietitian about an iodine supplement."
+    :(below?"Iodine — probably not enough from the menu: iodized salt is limited by the sodium ceiling and is already added up to it. Consider an iodine supplement — as your doctor or dietitian advises."
       :"Iodine — close to the target, but not for sure. On a plant-based menu it's hard to reach the full target from food, and iodine deficiency is common in Israel. Ask your doctor or dietitian whether you need an iodine supplement.");
   const extra=lowNa?(he?" תקרת הנתרן שלך נמוכה יותר, ולכן התפריט מוסיף פחות מלח.":" Your sodium ceiling is lower, so the menu adds less salt."):"";
   return <div key="iodine" data-iodine-line>{simpleLine("🧂",<>{txt}{extra}{suppBtn(lang)}</>,below?"#a6440f":undefined)}</div>; };
